@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Token {
     NOT, AND, OR, IMPLY, IFF,
     LPAREN, RPAREN,
