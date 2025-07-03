@@ -1,0 +1,227 @@
+use std::{mem::take, rc::Rc};
+
+use crate::formula::Formula;
+
+type SignedFormula = (bool, Rc<Formula>);
+
+#[derive(Debug)]
+pub(crate) struct Tableau {
+    is_closed: Option<bool>,
+    formulae: Vec<SignedFormula>,
+    children: Vec<Tableau>,
+}
+
+enum Expansion {
+    Sequence(Vec<SignedFormula>),
+    Split(SignedFormula, SignedFormula, Vec<SignedFormula>),
+}
+
+impl Tableau {
+    pub(crate) fn create(signedformula: SignedFormula) -> Self {
+        let mut out = Self::new(signedformula);
+        out.expand(vec![]);
+        out
+    }
+
+    fn new(signedformula: SignedFormula) -> Self {
+        Self {
+            is_closed: None,
+            formulae: vec![signedformula],
+            children: vec![],
+        }
+    }
+
+    fn close(&mut self) {
+        todo!()
+    }
+
+    fn expand(&mut self, mut splits: Vec<(SignedFormula, SignedFormula, Vec<SignedFormula>)>) {
+        // println!("Formula");
+        // for (sign, f) in &self.formulae {
+            // println!("{sign} {f}");
+        // }
+        // println!("Splits");
+        // for (sf0, sf1, sfs) in &splits {
+            // for (sign, f) in sfs {
+                // println!("{sign} {f}");
+            // }
+        // }
+
+        // println!("Splits Raw: {:?}", splits);
+        let mut processed = vec![];
+        let mut queue = take(&mut self.formulae);
+        while let Some(sform) = queue.pop() {
+            match Self::expand_once(&sform) {
+                Expansion::Sequence(mut sfs) => queue.append(&mut sfs),
+                Expansion::Split(sf0, sf1, sfs) => {
+                    splits.push((sf0, sf1, sfs));
+                }
+            }
+            processed.push(sform);
+        }
+        self.formulae = processed;
+
+        // println!("Expanded");
+        // for (sign, f) in &self.formulae {
+            // println!("{sign} {f}");
+        // }
+        // println!("New Splits");
+        // for ((sign0, f0), (sign1, f1), sfs) in &splits {
+            // println!("{sign0} {f0}");
+            // println!("{sign1} {f1}");
+            // for (sign, f) in sfs {
+                // println!("{sign} {f}");
+            // }
+        // }
+        self.add_splits(splits);
+    }
+
+    fn add_splits(&mut self, mut splits: Vec<(SignedFormula, SignedFormula, Vec<SignedFormula>)>) {
+        // println!("Splits Raw: {:?}", splits);
+        if let Some((sf0, sf1, sfs)) = splits.pop() {
+            // println!("Splitting");
+            // println!("{} {}", sf0.0, sf0.1);
+            self.children.push(Tableau::new(sf0));
+            // println!("{} {}", sf1.0, sf1.1);
+            self.children.push(Tableau::new(sf1));
+            for sf in sfs {
+                // println!("{} {}", sf.0, sf.1);
+                self.children.push(Tableau::new(sf));
+            }
+        }
+        // println!();
+        // println!();
+        for child in &mut self.children {
+            child.expand(splits.clone());
+        }
+    }
+
+    fn expand_once(signedformula: &SignedFormula) -> Expansion {
+        let (sign, f) = signedformula;
+        match (f.as_ref(), sign) {
+            (Formula::PropVar(_), _) => Expansion::Sequence(vec![]),
+            (Formula::Not(formula), true) => Expansion::Sequence(vec![(false, formula.clone())]),
+            (Formula::Not(formula), false) => Expansion::Sequence(vec![(true, formula.clone())]),
+            (Formula::And(formula, formula1), true) => {
+                Expansion::Sequence(vec![(true, formula.clone()), (true, formula1.clone())])
+            }
+            (Formula::And(formula, formula1), false) => {
+                Expansion::Split((false, formula.clone()), (false, formula1.clone()), vec![])
+            }
+            (Formula::Or(formula, formula1), true) => {
+                Expansion::Split((true, formula.clone()), (true, formula1.clone()), vec![])
+            }
+            (Formula::Or(formula, formula1), false) => {
+                Expansion::Sequence(vec![(false, formula.clone()), (false, formula1.clone())])
+            }
+            (Formula::Imply(formula, formula1), true) => {
+                Expansion::Split((false, formula.clone()), (true, formula1.clone()), vec![])
+            }
+            (Formula::Imply(formula, formula1), false) => {
+                Expansion::Sequence(vec![(true, formula.clone()), (false, formula1.clone())])
+            }
+            (Formula::Iff(formula, formula1), true) => Expansion::Split(
+                (
+                    true,
+                    Rc::new(Formula::And(formula.clone(), formula1.clone())),
+                ),
+                (
+                    true,
+                    Rc::new(Formula::And(
+                        Rc::new(Formula::Not(formula.clone())),
+                        Rc::new(Formula::Not(formula1.clone())),
+                    )),
+                ),
+                vec![],
+            ),
+            (Formula::Iff(formula, formula1), false) => Expansion::Split(
+                (
+                    true,
+                    Rc::new(Formula::And(
+                        formula.clone(),
+                        Rc::new(Formula::Not(formula1.clone())),
+                    )),
+                ),
+                (
+                    true,
+                    Rc::new(Formula::And(
+                        Rc::new(Formula::Not(formula.clone())),
+                        formula1.clone(),
+                    )),
+                ),
+                vec![],
+            ),
+        }
+    }
+
+    pub(crate) fn to_table_string(&self) -> String {
+        let mut out = String::new();
+        let mut level_nodes = vec![self];
+        while let Some(n) = level_nodes.iter().map(|node| node.formulae.len()).max() {
+            for i in 0..n {
+                for node in &level_nodes {
+                    if let Some((sign, f)) = node.formulae.get(i) {
+                        out.push_str(if *sign { "T " } else { "F " });
+                        out.push_str(&f.to_string());
+                    }
+                    out.push_str(" |:| ");
+                }
+                out.push('\n');
+            }
+            level_nodes = level_nodes
+                .into_iter()
+                .flat_map(|node| &node.children)
+                .collect();
+        }
+        out
+    }
+
+    pub(crate) fn to_tree_string(&self) -> String {
+        let mut out = String::new();
+        self.to_tree_string_rec(&mut out, 0);
+        out
+    }
+
+    // pub(crate) fn to_tree_string_rec(&self, out: &mut String, indent: usize) {
+    //     for _ in 1..indent {
+    //         out.push_str("  ");
+    //     }
+    //     if indent > 0 {
+    //         out.push_str("+ ");
+    //     }
+    //     for (sign, form) in &self.formulae {
+    //         out.push_str(if *sign { "T: \"" } else { "F: \"" });
+    //         out.push_str(&form.to_string());
+    //         out.push_str("\"; ");
+    //     }
+    //     out.push_str("\n");
+    //     for child in &self.children {
+    //         child.to_tree_string_rec(out, indent + 1);
+    //     }
+    // }
+
+    pub(crate) fn to_tree_string_rec(&self, out: &mut String, indent: usize) {
+        for _ in 1..indent {
+            out.push_str("  ");
+        }
+        if indent > 0 {
+            out.push_str("+ ");
+        }
+        if let Some((sign, form)) = self.formulae.first() {
+            out.push_str(if *sign { "T: " } else { "F: " });
+            out.push_str(&form.to_string());
+            out.push_str("\n");
+        }
+        for (sign, form) in &self.formulae[1..] {
+            for _ in 0..indent {
+                out.push_str("  ");
+            }
+            out.push_str(if *sign { "T: " } else { "F: " });
+            out.push_str(&form.to_string());
+            out.push_str("\n");
+        }
+        for child in &self.children {
+            child.to_tree_string_rec(out, indent + 1);
+        }
+    }
+}

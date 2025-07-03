@@ -1,9 +1,13 @@
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    rc::Rc,
+};
 
-use crate::{formula::full_parser, token::tokenize};
+use crate::{formula::full_parser, tableau::Tableau, token::tokenize};
 
 mod formula;
 mod parser;
+mod tableau;
 mod token;
 
 pub fn run() {
@@ -30,7 +34,22 @@ fn print_tokens() {
 
             let stream = tokens.into_iter().enumerate();
             match full_parser(stream) {
-                Ok(f) => print!("{:#?}\n", f),
+                Ok(f) => {
+                    // println!("{:#?}", f);
+                    // println!();
+                    // println!();
+                    // println!("{}", f);
+                    // println!();
+                    // println!();
+                    let tab = Tableau::create((false, Rc::new(f)));
+                    // println!("{:#?}", tab);
+                    println!("{}", tab.to_tree_string());
+                    // println!();
+                    // println!();
+                    // tab.expand(vec![]);
+                    // println!("{:#?}", tab);
+                    // println!("{}", tab.to_tree_string());
+                }
                 Err(Some((i, tok))) => {
                     eprintln!("Error: bad token sequence '{:#?}' at index {}", tok, i)
                 }

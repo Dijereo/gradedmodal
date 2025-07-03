@@ -1,6 +1,12 @@
+use std::{
+    fmt::{self, Debug, Display},
+    rc::Rc,
+};
+
 use crate::{
     parser::{
-        parse_all, parse_eq, parse_fst, parse_opt, parse_para, parse_snd, parse_tup, parse_unit, DynParser
+        DynParser, parse_all, parse_eq, parse_fst, parse_opt, parse_para, parse_snd, parse_tup,
+        parse_unit,
     },
     token::Token,
 };
@@ -8,11 +14,79 @@ use crate::{
 #[derive(Debug, PartialEq)]
 pub enum Formula {
     PropVar(Option<u8>),
-    Not(Box<Formula>),
-    And(Box<Formula>, Box<Formula>),
-    Or(Box<Formula>, Box<Formula>),
-    Imply(Box<Formula>, Box<Formula>),
-    Iff(Box<Formula>, Box<Formula>),
+    Not(Rc<Formula>),
+    And(Rc<Formula>, Rc<Formula>),
+    Or(Rc<Formula>, Rc<Formula>),
+    Imply(Rc<Formula>, Rc<Formula>),
+    Iff(Rc<Formula>, Rc<Formula>),
+}
+
+impl fmt::Display for Formula {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Formula::PropVar(Some(n)) => Display::fmt("p", f).and(Display::fmt(n, f)),
+            Formula::PropVar(None) => Display::fmt("p", f),
+            Formula::Not(subformula) => match subformula.as_ref() {
+                Formula::PropVar(_) | Formula::Not(_) => {
+                    Display::fmt("~", f).and(Display::fmt(subformula, f))
+                }
+                _ => Display::fmt("~(", f)
+                    .and(Display::fmt(subformula, f))
+                    .and(Display::fmt(")", f)),
+            },
+            Formula::And(leftsubf, rightsubf) => match leftsubf.as_ref() {
+                Formula::PropVar(_) | Formula::Not(_) | Formula::And(_, _) => {
+                    Display::fmt(leftsubf, f).and(Display::fmt(" & ", f))
+                }
+                _ => Display::fmt("(", f)
+                    .and(Display::fmt(leftsubf, f))
+                    .and(Display::fmt(") & ", f)),
+            }
+            .and(match rightsubf.as_ref() {
+                Formula::PropVar(_) | Formula::Not(_) | Formula::And(_, _) => {
+                    Display::fmt(rightsubf, f)
+                }
+                _ => Display::fmt("(", f)
+                    .and(Display::fmt(rightsubf, f))
+                    .and(Display::fmt(")", f)),
+            }),
+            Formula::Or(leftsubf, rightsubf) => match leftsubf.as_ref() {
+                Formula::PropVar(_) | Formula::Not(_) | Formula::And(_, _) | Formula::Or(_, _) => {
+                    Display::fmt(leftsubf, f).and(Display::fmt(" | ", f))
+                }
+                _ => Display::fmt("(", f)
+                    .and(Display::fmt(leftsubf, f))
+                    .and(Display::fmt(") | ", f)),
+            }
+            .and(match rightsubf.as_ref() {
+                Formula::PropVar(_) | Formula::Not(_) | Formula::And(_, _) | Formula::Or(_, _) => {
+                    Display::fmt(rightsubf, f)
+                }
+                _ => Display::fmt("(", f)
+                    .and(Display::fmt(rightsubf, f))
+                    .and(Display::fmt(")", f)),
+            }),
+            Formula::Imply(leftsubf, rightsubf) => match leftsubf.as_ref() {
+                Formula::Imply(_, _) => Display::fmt("(", f)
+                    .and(Display::fmt(leftsubf, f))
+                    .and(Display::fmt(") -> ", f)),
+                _ => Display::fmt(leftsubf, f).and(Display::fmt(" -> ", f)),
+            }
+            .and(Display::fmt(rightsubf, f)),
+            Formula::Iff(leftsubf, rightsubf) => match leftsubf.as_ref() {
+                Formula::Imply(_, _) => Display::fmt("(", f)
+                    .and(Display::fmt(leftsubf, f))
+                    .and(Display::fmt(") <-> ", f)),
+                _ => Display::fmt(leftsubf, f).and(Display::fmt(" <-> ", f)),
+            }
+            .and(match rightsubf.as_ref() {
+                Formula::Imply(_, _) => Display::fmt("(", f)
+                    .and(Display::fmt(rightsubf, f))
+                    .and(Display::fmt(")", f)),
+                _ => Display::fmt(rightsubf, f),
+            }),
+        }
+    }
 }
 
 pub(crate) fn full_parser<S>(stream: S) -> Result<Formula, Option<(usize, Token)>>
@@ -73,7 +147,7 @@ where
         stream,
         |s| parse_eq(s, &Token::NOT, ()),
         |s| atom_parser(s),
-        |_, formula| Formula::Not(Box::new(formula)),
+        |_, formula| Formula::Not(Rc::new(formula)),
     )
 }
 
@@ -114,7 +188,7 @@ where
         atom_parser,
         |s| parse_opt(s, and_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::And(Box::new(f1), Box::new(f2)),
+            Some(f2) => Formula::And(Rc::new(f1), Rc::new(f2)),
             None => f1,
         },
     )
@@ -129,7 +203,7 @@ where
         conj_parser,
         |s| parse_opt(s, or_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::Or(Box::new(f1), Box::new(f2)),
+            Some(f2) => Formula::Or(Rc::new(f1), Rc::new(f2)),
             None => f1,
         },
     )
@@ -144,7 +218,7 @@ where
         ncond_parser,
         |s| parse_opt(s, iff_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::Iff(Box::new(f1), Box::new(f2)),
+            Some(f2) => Formula::Iff(Rc::new(f1), Rc::new(f2)),
             None => f1,
         },
     )
@@ -159,7 +233,7 @@ where
         nimply_parser,
         |s| parse_opt(s, imply_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::Imply(Box::new(f1), Box::new(f2)),
+            Some(f2) => Formula::Imply(Rc::new(f1), Rc::new(f2)),
             None => f1,
         },
     )
@@ -178,23 +252,23 @@ mod tests {
     }
 
     fn not(f: Formula) -> Formula {
-        Formula::Not(Box::new(f))
+        Formula::Not(Rc::new(f))
     }
 
     fn and(l: Formula, r: Formula) -> Formula {
-        Formula::And(Box::new(l), Box::new(r))
+        Formula::And(Rc::new(l), Rc::new(r))
     }
 
     fn or(l: Formula, r: Formula) -> Formula {
-        Formula::Or(Box::new(l), Box::new(r))
+        Formula::Or(Rc::new(l), Rc::new(r))
     }
 
     fn imply(l: Formula, r: Formula) -> Formula {
-        Formula::Imply(Box::new(l), Box::new(r))
+        Formula::Imply(Rc::new(l), Rc::new(r))
     }
 
     fn iff(l: Formula, r: Formula) -> Formula {
-        Formula::Iff(Box::new(l), Box::new(r))
+        Formula::Iff(Rc::new(l), Rc::new(r))
     }
 
     fn parse_str(input: &str) -> Formula {
@@ -244,7 +318,10 @@ mod tests {
 
     #[test]
     fn test_parse_grouping() {
-        assert_eq!(parse_str("~(p1 & p2)"), not(and(prop(Some(1)), prop(Some(2)))));
+        assert_eq!(
+            parse_str("~(p1 & p2)"),
+            not(and(prop(Some(1)), prop(Some(2))))
+        );
         assert_eq!(
             parse_str("(p1 -> p2) & p3"),
             and(imply(prop(Some(1)), prop(Some(2))), prop(Some(3)))
@@ -257,7 +334,9 @@ mod tests {
 
     #[test]
     fn test_parse_error_unexpected_token() {
-        let tokens = vec![Token::AND, Token::PROPVAR(Some(1))].into_iter().enumerate();
+        let tokens = vec![Token::AND, Token::PROPVAR(Some(1))]
+            .into_iter()
+            .enumerate();
         let err = full_parser(tokens).unwrap_err();
         assert_eq!(err, Some((0, Token::AND)));
     }
