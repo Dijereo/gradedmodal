@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{formula::full_parser, tableau::Tableau, token::tokenize};
+use crate::{formula::{full_parser, Formula}, tableau::Tableau, token::tokenize};
 
 mod formula;
 mod parser;
@@ -39,11 +39,12 @@ fn print_tokens() {
                     // println!();
                     // println!();
                     // println!("{}", f);
-                    // println!();
-                    // println!();
                     let tab = Tableau::create((false, Rc::new(f)));
+                    println!();
+                    println!();
                     // println!("{:#?}", tab);
                     println!("{}", tab.to_tree_string());
+                    // println!("{}", Formula::PropVar(Some(0)) == Formula::PropVar(None))
                     // println!();
                     // println!();
                     // tab.expand(vec![]);

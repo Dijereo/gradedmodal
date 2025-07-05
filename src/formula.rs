@@ -5,8 +5,8 @@ use std::{
 
 use crate::{
     parser::{
-        DynParser, parse_all, parse_eq, parse_fst, parse_opt, parse_para, parse_snd, parse_tup,
-        parse_unit,
+        DynParser, parse_any, parse_entire, parse_eq, parse_fst, parse_option, parse_snd,
+        parse_tup, parse_unit,
     },
     token::Token,
 };
@@ -24,67 +24,60 @@ pub enum Formula {
 impl fmt::Display for Formula {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Formula::PropVar(Some(n)) => Display::fmt("p", f).and(Display::fmt(n, f)),
-            Formula::PropVar(None) => Display::fmt("p", f),
+            Formula::PropVar(Some(n)) => write!(f, "p{n}"),
+            Formula::PropVar(None) => write!(f, "p"),
             Formula::Not(subformula) => match subformula.as_ref() {
-                Formula::PropVar(_) | Formula::Not(_) => {
-                    Display::fmt("~", f).and(Display::fmt(subformula, f))
-                }
-                _ => Display::fmt("~(", f)
-                    .and(Display::fmt(subformula, f))
-                    .and(Display::fmt(")", f)),
+                Formula::PropVar(_) | Formula::Not(_) => write!(f, "~{subformula}"),
+                _ => write!(f, "~({subformula})"),
             },
             Formula::And(leftsubf, rightsubf) => match leftsubf.as_ref() {
                 Formula::PropVar(_) | Formula::Not(_) | Formula::And(_, _) => {
-                    Display::fmt(leftsubf, f).and(Display::fmt(" & ", f))
+                    write!(f, "{leftsubf} & ")
                 }
-                _ => Display::fmt("(", f)
-                    .and(Display::fmt(leftsubf, f))
-                    .and(Display::fmt(") & ", f)),
+                _ => write!(f, "({leftsubf}) & "),
             }
             .and(match rightsubf.as_ref() {
                 Formula::PropVar(_) | Formula::Not(_) | Formula::And(_, _) => {
-                    Display::fmt(rightsubf, f)
+                    write!(f, "{rightsubf}")
                 }
-                _ => Display::fmt("(", f)
-                    .and(Display::fmt(rightsubf, f))
-                    .and(Display::fmt(")", f)),
+                _ => write!(f, "({rightsubf})"),
             }),
-            Formula::Or(leftsubf, rightsubf) => match leftsubf.as_ref() {
-                Formula::PropVar(_) | Formula::Not(_) | Formula::And(_, _) | Formula::Or(_, _) => {
-                    Display::fmt(leftsubf, f).and(Display::fmt(" | ", f))
+            Formula::Or(leftsubf, rightsubf) => {
+                let out = match leftsubf.as_ref() {
+                    Formula::PropVar(_)
+                    | Formula::Not(_)
+                    | Formula::And(_, _)
+                    | Formula::Or(_, _) => {
+                        write!(f, "{leftsubf} | ")
+                    }
+                    _ => write!(f, "({leftsubf}) | "),
                 }
-                _ => Display::fmt("(", f)
-                    .and(Display::fmt(leftsubf, f))
-                    .and(Display::fmt(") | ", f)),
+                .and(match rightsubf.as_ref() {
+                    Formula::PropVar(_)
+                    | Formula::Not(_)
+                    | Formula::And(_, _)
+                    | Formula::Or(_, _) => {
+                        write!(f, "{rightsubf}")
+                    }
+                    _ => write!(f, "({rightsubf})"),
+                });
+                out
             }
-            .and(match rightsubf.as_ref() {
-                Formula::PropVar(_) | Formula::Not(_) | Formula::And(_, _) | Formula::Or(_, _) => {
-                    Display::fmt(rightsubf, f)
-                }
-                _ => Display::fmt("(", f)
-                    .and(Display::fmt(rightsubf, f))
-                    .and(Display::fmt(")", f)),
-            }),
             Formula::Imply(leftsubf, rightsubf) => match leftsubf.as_ref() {
-                Formula::Imply(_, _) => Display::fmt("(", f)
-                    .and(Display::fmt(leftsubf, f))
-                    .and(Display::fmt(") -> ", f)),
-                _ => Display::fmt(leftsubf, f).and(Display::fmt(" -> ", f)),
+                Formula::Imply(_, _) => write!(f, "({leftsubf}) -> {rightsubf}"),
+                _ => write!(f, "{leftsubf} -> {rightsubf}"),
+            },
+            Formula::Iff(leftsubf, rightsubf) => {
+                let out = match leftsubf.as_ref() {
+                    Formula::Imply(_, _) => write!(f, "({leftsubf}) <-> "),
+                    _ => write!(f, "{leftsubf} <-> "),
+                }
+                .and(match rightsubf.as_ref() {
+                    Formula::Imply(_, _) => write!(f, "({rightsubf})"),
+                    _ => write!(f, "{rightsubf}"),
+                });
+                out
             }
-            .and(Display::fmt(rightsubf, f)),
-            Formula::Iff(leftsubf, rightsubf) => match leftsubf.as_ref() {
-                Formula::Imply(_, _) => Display::fmt("(", f)
-                    .and(Display::fmt(leftsubf, f))
-                    .and(Display::fmt(") <-> ", f)),
-                _ => Display::fmt(leftsubf, f).and(Display::fmt(" <-> ", f)),
-            }
-            .and(match rightsubf.as_ref() {
-                Formula::Imply(_, _) => Display::fmt("(", f)
-                    .and(Display::fmt(rightsubf, f))
-                    .and(Display::fmt(")", f)),
-                _ => Display::fmt(rightsubf, f),
-            }),
         }
     }
 }
@@ -93,16 +86,16 @@ pub(crate) fn full_parser<S>(stream: S) -> Result<Formula, Option<(usize, Token)
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
-    parse_all(stream, formula_parser)
+    parse_entire(stream, formula_parser)
 }
 
 fn var_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)>,
 {
-    let process = |t| match t {
+    let process = |token| match token {
         Token::PROPVAR(n) => Ok(Formula::PropVar(n)),
-        _ => Err(t),
+        _ => Err(token),
     };
     parse_unit(stream, process)
 }
@@ -117,7 +110,7 @@ where
         |s| {
             parse_fst(
                 s,
-                |s2| formula_parser(s2),
+                formula_parser,
                 |s2| parse_eq(s2, &Token::RPAREN, ()),
             )
         },
@@ -128,7 +121,7 @@ fn atom_parser<'a, S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone + 'a,
 {
-    parse_para(
+    parse_any(
         stream,
         ([
             Box::new(paren_parser),
@@ -146,7 +139,7 @@ where
     parse_tup(
         stream,
         |s| parse_eq(s, &Token::NOT, ()),
-        |s| atom_parser(s),
+        atom_parser,
         |_, formula| Formula::Not(Rc::new(formula)),
     )
 }
@@ -186,7 +179,7 @@ where
     parse_tup(
         stream,
         atom_parser,
-        |s| parse_opt(s, and_parser),
+        |s| parse_option(s, and_parser),
         |f1, f2| match f2 {
             Some(f2) => Formula::And(Rc::new(f1), Rc::new(f2)),
             None => f1,
@@ -201,7 +194,7 @@ where
     parse_tup(
         stream,
         conj_parser,
-        |s| parse_opt(s, or_parser),
+        |s| parse_option(s, or_parser),
         |f1, f2| match f2 {
             Some(f2) => Formula::Or(Rc::new(f1), Rc::new(f2)),
             None => f1,
@@ -216,7 +209,7 @@ where
     parse_tup(
         stream,
         ncond_parser,
-        |s| parse_opt(s, iff_parser),
+        |s| parse_option(s, iff_parser),
         |f1, f2| match f2 {
             Some(f2) => Formula::Iff(Rc::new(f1), Rc::new(f2)),
             None => f1,
@@ -231,7 +224,7 @@ where
     parse_tup(
         stream,
         nimply_parser,
-        |s| parse_opt(s, imply_parser),
+        |s| parse_option(s, imply_parser),
         |f1, f2| match f2 {
             Some(f2) => Formula::Imply(Rc::new(f1), Rc::new(f2)),
             None => f1,

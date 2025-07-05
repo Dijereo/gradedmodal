@@ -1,30 +1,5 @@
 pub(crate) type DynParser<'a, I, O, S> = dyn FnOnce(S) -> Result<(O, S), Option<(usize, I)>> + 'a;
 
-pub(crate) trait ParserFn {
-    type Input;
-    type Output;
-    type Stream: Iterator<Item = (usize, Self::Input)>;
-
-    fn parse(&self,
-        stream: Self::Stream,
-    ) -> Result<(Self::Output, Self::Stream), Option<(usize, Self::Input)>>;
-}
-
-impl<I, O, S> ParserFn for dyn Fn(S) -> Result<(O, S), Option<(usize, I)>>
-where
-    S: Iterator<Item = (usize, I)>,
-{
-    type Input = I;
-    type Output = O;
-    type Stream = S;
-
-    fn parse(&self,
-        stream: Self::Stream,
-    ) -> Result<(Self::Output, Self::Stream), Option<(usize, Self::Input)>> {
-        self(stream)
-    }
-}
-
 pub(crate) fn parse_unit<I, O, S>(
     mut stream: S,
     process: impl FnOnce(I) -> Result<O, I>,
@@ -92,7 +67,7 @@ where
     parse_tup(stream, p1, p2, |_, out2| out2)
 }
 
-pub(crate) fn parse_para<'a, I, O, S>(
+pub(crate) fn parse_any<'a, I, O, S>(
     stream: S,
     parsers: impl Iterator<Item = Box<DynParser<'a, I, O, S>>>,
 ) -> Result<(O, S), Option<(usize, I)>>
@@ -105,11 +80,11 @@ where
         match parser(stream) {
             out @ Ok(_) => return out,
             Err(None) => {}
-            Err(att @ Some((i, _))) => {
-                best_attempt = match best_attempt {
-                    None => att,
-                    Some((j, _)) if i > j => att,
-                    _ => best_attempt,
+            Err(attempt @ Some((i, _))) => {
+                match best_attempt {
+                    Some((j, _)) if i > j => best_attempt = attempt,
+                    None => best_attempt = attempt,
+                    _ => {}
                 };
             }
         }
@@ -117,7 +92,7 @@ where
     Err(best_attempt)
 }
 
-pub(crate) fn parse_opt<I, O, S>(
+pub(crate) fn parse_option<I, O, S>(
     stream: S,
     parser: impl FnOnce(S) -> Result<(O, S), Option<(usize, I)>>,
 ) -> Result<(Option<O>, S), Option<(usize, I)>>
@@ -125,14 +100,12 @@ where
     S: Iterator<Item = (usize, I)> + Clone,
 {
     match parser(stream.clone()) {
-        Ok((out, s)) => Ok((Some(out), s)),
-        Err(_) => {
-            return Ok((None, stream));
-        }
+        Ok((out, updated_stream)) => Ok((Some(out), updated_stream)),
+        Err(_) => Ok((None, stream)),
     }
 }
 
-pub(crate) fn parse_rep<I, O, S>(
+pub(crate) fn parse_repeat<I, O, S>(
     mut stream: S,
     mut parser: impl FnMut(S) -> Result<(O, S), Option<(usize, I)>>,
 ) -> Result<(Vec<O>, S), Option<(usize, I)>>
@@ -142,8 +115,8 @@ where
     let mut outs = vec![];
     loop {
         match parser(stream.clone()) {
-            Ok((out, s)) => {
-                stream = s;
+            Ok((out, updated_stream)) => {
+                stream = updated_stream;
                 outs.push(out);
             }
             Err(_) => {
@@ -158,12 +131,12 @@ where
     S: Iterator<Item = (usize, I)>,
 {
     match stream.next() {
-        Some((i, t)) => Err(Some((i, t))),
+        val@Some(_) => Err(val),
         None => Ok(((), stream)),
     }
 }
 
-pub(crate) fn parse_all<I, O, S>(
+pub(crate) fn parse_entire<I, O, S>(
     stream: S,
     parser: impl FnOnce(S) -> Result<(O, S), Option<(usize, I)>>,
 ) -> Result<O, Option<(usize, I)>>
