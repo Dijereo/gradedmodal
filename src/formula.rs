@@ -1,7 +1,4 @@
-use std::{
-    fmt::{self, Debug, Display},
-    rc::Rc,
-};
+use std::{fmt, rc::Rc};
 
 use crate::{
     parser::{
@@ -288,12 +285,24 @@ mod tests {
 
     use super::*;
 
-    fn prop(n: Option<u8>) -> Formula {
-        Formula::PropVar(n)
+    fn prop() -> Formula {
+        Formula::PropVar(None)
+    }
+
+    fn prop_n(n: u8) -> Formula {
+        Formula::PropVar(Some(n))
     }
 
     fn not(f: Formula) -> Formula {
         Formula::Not(Rc::new(f))
+    }
+
+    fn boxm(f: Formula) -> Formula {
+        Formula::Box(Rc::new(f))
+    }
+
+    fn diamond(f: Formula) -> Formula {
+        Formula::Diamond(Rc::new(f))
     }
 
     fn and(l: Formula, r: Formula) -> Formula {
@@ -319,57 +328,64 @@ mod tests {
 
     #[test]
     fn test_parse_propvar() {
-        assert_eq!(parse_str("p"), prop(None));
-        assert_eq!(parse_str("p42"), prop(Some(42)));
+        assert_eq!(parse_str("p"), prop());
+        assert_eq!(parse_str("p42"), prop_n(42));
     }
 
     #[test]
     fn test_parse_not() {
-        assert_eq!(parse_str("~p1"), not(prop(Some(1))));
-        assert_eq!(parse_str("~~p2"), not(not(prop(Some(2)))));
+        assert_eq!(parse_str("~p1"), not(prop_n(1)));
+        assert_eq!(parse_str("~~p2"), not(not(prop_n(2))));
+    }
+
+    #[test]
+    fn test_parse_modals() {
+        assert_eq!(parse_str("<>p"), diamond(prop()));
+        assert_eq!(parse_str("[]p0"), boxm(prop_n(0)));
+        assert_eq!(
+            parse_str("<>~[]<>p2"),
+            diamond(not(boxm(diamond(prop_n(2)))))
+        );
     }
 
     #[test]
     fn test_parse_and_or() {
-        assert_eq!(parse_str("p1 & p2"), and(prop(Some(1)), prop(Some(2))));
-        assert_eq!(parse_str("p1 | p"), or(prop(Some(1)), prop(None)));
+        assert_eq!(parse_str("p1 & p2"), and(prop_n(1), prop_n(2)));
+        assert_eq!(parse_str("p1 | p"), or(prop_n(1), prop()));
         assert_eq!(
             parse_str("p1 & p2 | p"),
-            or(and(prop(Some(1)), prop(Some(2))), prop(None))
+            or(and(prop_n(1), prop_n(2)), prop())
         );
         assert_eq!(
             parse_str("p1 | p2 & p3"),
-            or(prop(Some(1)), and(prop(Some(2)), prop(Some(3))))
+            or(prop_n(1), and(prop_n(2), prop_n(3)))
         );
     }
 
     #[test]
     fn test_parse_imply_iff() {
-        assert_eq!(parse_str("p1 -> p2"), imply(prop(Some(1)), prop(Some(2))));
-        assert_eq!(parse_str("p1 <-> p2"), iff(prop(Some(1)), prop(Some(2))));
+        assert_eq!(parse_str("p1 -> p2"), imply(prop_n(1), prop_n(2)));
+        assert_eq!(parse_str("p1 <-> p2"), iff(prop_n(1), prop_n(2)));
         assert_eq!(
             parse_str("p1 -> p2 -> p3"),
-            imply(prop(Some(1)), imply(prop(Some(2)), prop(Some(3))))
+            imply(prop_n(1), imply(prop_n(2), prop_n(3)))
         );
         assert_eq!(
             parse_str("p <-> p2 <-> p3"),
-            iff(prop(None), iff(prop(Some(2)), prop(Some(3))))
+            iff(prop(), iff(prop_n(2), prop_n(3)))
         );
     }
 
     #[test]
     fn test_parse_grouping() {
-        assert_eq!(
-            parse_str("~(p1 & p2)"),
-            not(and(prop(Some(1)), prop(Some(2))))
-        );
+        assert_eq!(parse_str("~(p1 & p2)"), not(and(prop_n(1), prop_n(2))));
         assert_eq!(
             parse_str("(p1 -> p2) & p3"),
-            and(imply(prop(Some(1)), prop(Some(2))), prop(Some(3)))
+            and(imply(prop_n(1), prop_n(2)), prop_n(3))
         );
         assert_eq!(
             parse_str("p1 -> (p2 & p3)"),
-            imply(prop(Some(1)), and(prop(Some(2)), prop(Some(3))))
+            imply(prop_n(1), and(prop_n(2), prop_n(3)))
         );
     }
 
@@ -401,7 +417,14 @@ mod tests {
     #[test]
     fn test_parse_error_wrong_diamond() {
         let tokens = tokenize("p1 <> p2").unwrap();
-        assert_eq!(tokens, vec![Token::PROPVAR(Some(1)), Token::DIAMOND, Token::PROPVAR(Some(2))]);
+        assert_eq!(
+            tokens,
+            vec![
+                Token::PROPVAR(Some(1)),
+                Token::DIAMOND,
+                Token::PROPVAR(Some(2))
+            ]
+        );
         let tokens = tokens.into_iter().enumerate();
         let err = full_parser(tokens).unwrap_err();
         assert_eq!(err, Some((1, Token::DIAMOND)));
@@ -410,7 +433,10 @@ mod tests {
     #[test]
     fn test_parse_error_wrong_box() {
         let tokens = tokenize("p1 [] p2").unwrap();
-        assert_eq!(tokens, vec![Token::PROPVAR(Some(1)), Token::BOX, Token::PROPVAR(Some(2))]);
+        assert_eq!(
+            tokens,
+            vec![Token::PROPVAR(Some(1)), Token::BOX, Token::PROPVAR(Some(2))]
+        );
         let tokens = tokens.into_iter().enumerate();
         let err = full_parser(tokens).unwrap_err();
         assert_eq!(err, Some((1, Token::BOX)));

@@ -76,7 +76,8 @@ impl Tableau {
         ancestors.push(&self.formulae);
         for child in &mut self.children {
             let opened = child.set_openess_rec(ancestors);
-            if opened { // Might not want to break out early to eval entire tree
+            if opened {
+                // Might not want to break out early to eval entire tree
                 self.is_closed = Some(false);
                 println!("Opening From Child");
                 ancestors.pop();
@@ -162,7 +163,9 @@ impl Tableau {
         let (sign, f) = signedformula;
         match (f.as_ref(), sign) {
             // TODO
-            (Formula::PropVar(_) | Formula::Box(_) | Formula::Diamond(_), _) => Expansion::Sequence(vec![]),
+            (Formula::PropVar(_) | Formula::Box(_) | Formula::Diamond(_), _) => {
+                Expansion::Sequence(vec![])
+            }
             (Formula::Not(formula), true) => Expansion::Sequence(vec![(false, formula.clone())]),
             (Formula::Not(formula), false) => Expansion::Sequence(vec![(true, formula.clone())]),
             (Formula::And(formula, formula1), true) => {

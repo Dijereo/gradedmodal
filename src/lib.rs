@@ -3,11 +3,11 @@ use std::{
     rc::Rc,
 };
 
-use crate::{formula::{full_parser, Formula}, tableau::Tableau, token::tokenize};
+use crate::{formula::full_parser, signed::Tableau, token::tokenize};
 
 mod formula;
 mod parser;
-mod tableau;
+mod signed;
 mod token;
 
 pub fn run() {

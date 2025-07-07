@@ -131,7 +131,7 @@ where
     S: Iterator<Item = (usize, I)>,
 {
     match stream.next() {
-        val@Some(_) => Err(val),
+        val @ Some(_) => Err(val),
         None => Ok(((), stream)),
     }
 }
