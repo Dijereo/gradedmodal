@@ -15,6 +15,8 @@ use crate::{
 pub enum Formula {
     PropVar(Option<u8>),
     Not(Rc<Formula>),
+    Box(Rc<Formula>),
+    Diamond(Rc<Formula>),
     And(Rc<Formula>, Rc<Formula>),
     Or(Rc<Formula>, Rc<Formula>),
     Imply(Rc<Formula>, Rc<Formula>),
@@ -27,17 +29,39 @@ impl fmt::Display for Formula {
             Formula::PropVar(Some(n)) => write!(f, "p{n}"),
             Formula::PropVar(None) => write!(f, "p"),
             Formula::Not(subformula) => match subformula.as_ref() {
-                Formula::PropVar(_) | Formula::Not(_) => write!(f, "~{subformula}"),
+                Formula::PropVar(_) | Formula::Not(_) | Formula::Box(_) | Formula::Diamond(_) => {
+                    write!(f, "~{subformula}")
+                }
                 _ => write!(f, "~({subformula})"),
             },
+            Formula::Box(subformula) => match subformula.as_ref() {
+                Formula::PropVar(_) | Formula::Not(_) | Formula::Box(_) | Formula::Diamond(_) => {
+                    write!(f, "[]{subformula}")
+                }
+                _ => write!(f, "[]({subformula})"),
+            },
+            Formula::Diamond(subformula) => match subformula.as_ref() {
+                Formula::PropVar(_) | Formula::Not(_) | Formula::Box(_) | Formula::Diamond(_) => {
+                    write!(f, "<>{subformula}")
+                }
+                _ => write!(f, "<>({subformula})"),
+            },
             Formula::And(leftsubf, rightsubf) => match leftsubf.as_ref() {
-                Formula::PropVar(_) | Formula::Not(_) | Formula::And(_, _) => {
+                Formula::PropVar(_)
+                | Formula::Not(_)
+                | Formula::Box(_)
+                | Formula::Diamond(_)
+                | Formula::And(_, _) => {
                     write!(f, "{leftsubf} & ")
                 }
                 _ => write!(f, "({leftsubf}) & "),
             }
             .and(match rightsubf.as_ref() {
-                Formula::PropVar(_) | Formula::Not(_) | Formula::And(_, _) => {
+                Formula::PropVar(_)
+                | Formula::Not(_)
+                | Formula::Box(_)
+                | Formula::Diamond(_)
+                | Formula::And(_, _) => {
                     write!(f, "{rightsubf}")
                 }
                 _ => write!(f, "({rightsubf})"),
@@ -46,6 +70,8 @@ impl fmt::Display for Formula {
                 let out = match leftsubf.as_ref() {
                     Formula::PropVar(_)
                     | Formula::Not(_)
+                    | Formula::Box(_)
+                    | Formula::Diamond(_)
                     | Formula::And(_, _)
                     | Formula::Or(_, _) => {
                         write!(f, "{leftsubf} | ")
@@ -55,6 +81,8 @@ impl fmt::Display for Formula {
                 .and(match rightsubf.as_ref() {
                     Formula::PropVar(_)
                     | Formula::Not(_)
+                    | Formula::Box(_)
+                    | Formula::Diamond(_)
                     | Formula::And(_, _)
                     | Formula::Or(_, _) => {
                         write!(f, "{rightsubf}")
@@ -107,13 +135,7 @@ where
     parse_snd(
         stream,
         |s| parse_eq(s, &Token::LPAREN, ()),
-        |s| {
-            parse_fst(
-                s,
-                formula_parser,
-                |s2| parse_eq(s2, &Token::RPAREN, ()),
-            )
-        },
+        |s| parse_fst(s, formula_parser, |s2| parse_eq(s2, &Token::RPAREN, ())),
     )
 }
 
@@ -126,8 +148,10 @@ where
         ([
             Box::new(paren_parser),
             Box::new(not_parser),
+            Box::new(box_parser),
+            Box::new(diamond_parser),
             Box::new(var_parser),
-        ] as [Box<DynParser<'a, Token, Formula, S>>; 3])
+        ] as [Box<DynParser<'a, Token, Formula, S>>; 5])
             .into_iter(),
     )
 }
@@ -141,6 +165,30 @@ where
         |s| parse_eq(s, &Token::NOT, ()),
         atom_parser,
         |_, formula| Formula::Not(Rc::new(formula)),
+    )
+}
+
+fn box_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| parse_eq(s, &Token::BOX, ()),
+        atom_parser,
+        |_, formula| Formula::Box(Rc::new(formula)),
+    )
+}
+
+fn diamond_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| parse_eq(s, &Token::DIAMOND, ()),
+        atom_parser,
+        |_, formula| Formula::Diamond(Rc::new(formula)),
     )
 }
 
@@ -348,5 +396,23 @@ mod tests {
         let tokens = tokens.into_iter().enumerate();
         let err = full_parser(tokens).unwrap_err();
         assert_eq!(err, Some((1, Token::PROPVAR(None))));
+    }
+
+    #[test]
+    fn test_parse_error_wrong_diamond() {
+        let tokens = tokenize("p1 <> p2").unwrap();
+        assert_eq!(tokens, vec![Token::PROPVAR(Some(1)), Token::DIAMOND, Token::PROPVAR(Some(2))]);
+        let tokens = tokens.into_iter().enumerate();
+        let err = full_parser(tokens).unwrap_err();
+        assert_eq!(err, Some((1, Token::DIAMOND)));
+    }
+
+    #[test]
+    fn test_parse_error_wrong_box() {
+        let tokens = tokenize("p1 [] p2").unwrap();
+        assert_eq!(tokens, vec![Token::PROPVAR(Some(1)), Token::BOX, Token::PROPVAR(Some(2))]);
+        let tokens = tokens.into_iter().enumerate();
+        let err = full_parser(tokens).unwrap_err();
+        assert_eq!(err, Some((1, Token::BOX)));
     }
 }

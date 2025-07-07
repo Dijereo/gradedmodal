@@ -161,7 +161,8 @@ impl Tableau {
     fn expand_once(signedformula: &SignedFormula) -> Expansion {
         let (sign, f) = signedformula;
         match (f.as_ref(), sign) {
-            (Formula::PropVar(_), _) => Expansion::Sequence(vec![]),
+            // TODO
+            (Formula::PropVar(_) | Formula::Box(_) | Formula::Diamond(_), _) => Expansion::Sequence(vec![]),
             (Formula::Not(formula), true) => Expansion::Sequence(vec![(false, formula.clone())]),
             (Formula::Not(formula), false) => Expansion::Sequence(vec![(true, formula.clone())]),
             (Formula::And(formula, formula1), true) => {
