@@ -38,15 +38,33 @@ impl SignedTableau {
     }
 
     fn set_openess_rec<'a>(&'a mut self, ancestors: &mut Vec<&'a Vec<SignedFormula>>) -> bool {
+        for (i, (sign1, form1)) in self.formulae.iter().enumerate() {
+            if *sign1 && form1.as_ref() == &Formula::Bottom {
+                self.set_closed();
+                return false;
+            }
+            for (sign2, form2) in &self.formulae[i + 1..] {
+                // println!(
+                //     "{sign1} {} vs {sign2} {} = {}",
+                //     form1,
+                //     form2,
+                //     (*sign1 != *sign2) && form1 == form2
+                // );
+                if (*sign1 != *sign2) && form1 == form2 {
+                    self.set_closed();
+                    return false;
+                }
+            }
+        }
         for (sign1, form1) in &self.formulae {
             for &ancestor in ancestors.iter() {
                 for (sign2, form2) in ancestor {
-                    println!(
-                        "{sign1} {} vs {sign2} {} = {}",
-                        form1,
-                        form2,
-                        (*sign1 != *sign2) && form1 == form2
-                    );
+                    // println!(
+                    //     "{sign1} {} vs {sign2} {} = {}",
+                    //     form1,
+                    //     form2,
+                    //     (*sign1 != *sign2) && form1 == form2
+                    // );
                     if (*sign1 != *sign2) && form1 == form2 {
                         self.set_closed();
                         return false;
@@ -54,23 +72,9 @@ impl SignedTableau {
                 }
             }
         }
-        for (i, (sign1, form1)) in self.formulae.iter().enumerate() {
-            for (sign2, form2) in &self.formulae[i + 1..] {
-                println!(
-                    "{sign1} {} vs {sign2} {} = {}",
-                    form1,
-                    form2,
-                    (*sign1 != *sign2) && form1 == form2
-                );
-                if (*sign1 != *sign2) && form1 == form2 {
-                    self.set_closed();
-                    return false;
-                }
-            }
-        }
         if self.children.is_empty() {
             self.is_closed = Some(false);
-            println!("Opening Leaf");
+            // println!("Opening Leaf");
             return true;
         }
         ancestors.push(&self.formulae);
@@ -79,20 +83,20 @@ impl SignedTableau {
             if opened {
                 // Might not want to break out early to eval entire tree
                 self.is_closed = Some(false);
-                println!("Opening From Child");
+                // println!("Opening From Child");
                 ancestors.pop();
                 return true;
             }
         }
         ancestors.pop();
         self.is_closed = Some(true);
-        println!("All Children Closing");
+        // println!("All Children Closing");
         return false;
     }
 
     fn set_closed(&mut self) {
         self.is_closed = Some(true);
-        println!("Set SubTree Closed");
+        // println!("Set SubTree Closed");
         for child in &mut self.children {
             child.set_closed();
         }
@@ -162,8 +166,8 @@ impl SignedTableau {
     fn expand_once(signedformula: &SignedFormula) -> Expansion {
         let (sign, f) = signedformula;
         match (f.as_ref(), sign) {
-            // TODO
-            (Formula::PropVar(_) | Formula::Box(_) | Formula::Diamond(_), _) => {
+            // TODO modals
+            (Formula::Bottom | Formula::PropVar(_) | Formula::Box(_) | Formula::Diamond(_), _) => {
                 Expansion::Sequence(vec![])
             }
             (Formula::Not(formula), true) => Expansion::Sequence(vec![(false, formula.clone())]),

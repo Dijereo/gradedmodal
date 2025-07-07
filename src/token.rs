@@ -1,5 +1,6 @@
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Token {
+    BOTTOM,
     NOT,
     AND,
     OR,
@@ -54,6 +55,13 @@ pub(crate) fn tokenize(input: &str) -> Result<Vec<Token>, (usize, char)> {
                     _ => return Err((i, ch)),
                 }
             }
+            '_' => {
+                chars.next();
+                match (chars.next(), chars.next()) {
+                    (Some((_, '|')), Some((_, '_'))) => tokens.push(Token::BOTTOM),
+                    _ => return Err((i, ch)),
+                }
+            }
             '(' => {
                 tokens.push(Token::LPAREN);
                 chars.next();
@@ -98,6 +106,7 @@ mod tests {
 
     #[test]
     fn test_single_tokens() {
+        assert_eq!(tokenize("_|_").unwrap(), vec![Token::BOTTOM]);
         assert_eq!(tokenize("~").unwrap(), vec![Token::NOT]);
         assert_eq!(tokenize("&").unwrap(), vec![Token::AND]);
         assert_eq!(tokenize("|").unwrap(), vec![Token::OR]);
@@ -114,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_multiple_tokens() {
-        let input = "~ p1 & []~( p23 | p ) -> <>p4 <-> p5";
+        let input = "~ p1 & []~( p23 | p |_|_ ) -> <>p4 <-> p5";
         let expected = vec![
             Token::NOT,
             Token::PROPVAR(Some(1)),
@@ -125,6 +134,8 @@ mod tests {
             Token::PROPVAR(Some(23)),
             Token::OR,
             Token::PROPVAR(None),
+            Token::OR,
+            Token::BOTTOM,
             Token::RPAREN,
             Token::IMPLY,
             Token::DIAMOND,
@@ -154,6 +165,16 @@ mod tests {
         let input = "p1 < - > p2";
         let result = tokenize(input);
         assert_eq!(result, Err((3, '<')));
+    }
+
+    #[test]
+    fn test_incomplete_bottom() {
+        let input = "|_";
+        let result = tokenize(input);
+        assert_eq!(result, Err((1, '_')));
+        let input = "_| p";
+        let result = tokenize(input);
+        assert_eq!(result, Err((0, '_')));
     }
 
     #[test]

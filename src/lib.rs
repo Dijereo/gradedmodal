@@ -8,6 +8,7 @@ use crate::{formula::full_parser, signed::SignedTableau, token::tokenize};
 mod formula;
 mod parser;
 mod signed;
+mod tableau;
 mod token;
 
 pub fn run() {

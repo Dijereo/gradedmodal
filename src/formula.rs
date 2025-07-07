@@ -10,6 +10,7 @@ use crate::{
 
 #[derive(Debug, PartialEq)]
 pub enum Formula {
+    Bottom,
     PropVar(Option<u8>),
     Not(Rc<Formula>),
     Box(Rc<Formula>),
@@ -23,28 +24,42 @@ pub enum Formula {
 impl fmt::Display for Formula {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Formula::Bottom => write!(f, "_|_"),
             Formula::PropVar(Some(n)) => write!(f, "p{n}"),
             Formula::PropVar(None) => write!(f, "p"),
             Formula::Not(subformula) => match subformula.as_ref() {
-                Formula::PropVar(_) | Formula::Not(_) | Formula::Box(_) | Formula::Diamond(_) => {
+                Formula::Bottom
+                | Formula::PropVar(_)
+                | Formula::Not(_)
+                | Formula::Box(_)
+                | Formula::Diamond(_) => {
                     write!(f, "~{subformula}")
                 }
                 _ => write!(f, "~({subformula})"),
             },
             Formula::Box(subformula) => match subformula.as_ref() {
-                Formula::PropVar(_) | Formula::Not(_) | Formula::Box(_) | Formula::Diamond(_) => {
+                Formula::Bottom
+                | Formula::PropVar(_)
+                | Formula::Not(_)
+                | Formula::Box(_)
+                | Formula::Diamond(_) => {
                     write!(f, "[]{subformula}")
                 }
                 _ => write!(f, "[]({subformula})"),
             },
             Formula::Diamond(subformula) => match subformula.as_ref() {
-                Formula::PropVar(_) | Formula::Not(_) | Formula::Box(_) | Formula::Diamond(_) => {
+                Formula::Bottom
+                | Formula::PropVar(_)
+                | Formula::Not(_)
+                | Formula::Box(_)
+                | Formula::Diamond(_) => {
                     write!(f, "<>{subformula}")
                 }
                 _ => write!(f, "<>({subformula})"),
             },
             Formula::And(leftsubf, rightsubf) => match leftsubf.as_ref() {
-                Formula::PropVar(_)
+                Formula::Bottom
+                | Formula::PropVar(_)
                 | Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_)
@@ -54,7 +69,8 @@ impl fmt::Display for Formula {
                 _ => write!(f, "({leftsubf}) & "),
             }
             .and(match rightsubf.as_ref() {
-                Formula::PropVar(_)
+                Formula::Bottom
+                | Formula::PropVar(_)
                 | Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_)
@@ -64,19 +80,19 @@ impl fmt::Display for Formula {
                 _ => write!(f, "({rightsubf})"),
             }),
             Formula::Or(leftsubf, rightsubf) => {
-                let out = match leftsubf.as_ref() {
-                    Formula::PropVar(_)
+                match leftsubf.as_ref() {
+                    Formula::Bottom
+                    | Formula::PropVar(_)
                     | Formula::Not(_)
                     | Formula::Box(_)
                     | Formula::Diamond(_)
                     | Formula::And(_, _)
-                    | Formula::Or(_, _) => {
-                        write!(f, "{leftsubf} | ")
-                    }
-                    _ => write!(f, "({leftsubf}) | "),
+                    | Formula::Or(_, _) => write!(f, "{leftsubf} | ")?,
+                    _ => write!(f, "({leftsubf}) | ")?,
                 }
-                .and(match rightsubf.as_ref() {
-                    Formula::PropVar(_)
+                match rightsubf.as_ref() {
+                    Formula::Bottom
+                    | Formula::PropVar(_)
                     | Formula::Not(_)
                     | Formula::Box(_)
                     | Formula::Diamond(_)
@@ -85,23 +101,21 @@ impl fmt::Display for Formula {
                         write!(f, "{rightsubf}")
                     }
                     _ => write!(f, "({rightsubf})"),
-                });
-                out
+                }
             }
             Formula::Imply(leftsubf, rightsubf) => match leftsubf.as_ref() {
                 Formula::Imply(_, _) => write!(f, "({leftsubf}) -> {rightsubf}"),
                 _ => write!(f, "{leftsubf} -> {rightsubf}"),
             },
             Formula::Iff(leftsubf, rightsubf) => {
-                let out = match leftsubf.as_ref() {
-                    Formula::Imply(_, _) => write!(f, "({leftsubf}) <-> "),
-                    _ => write!(f, "{leftsubf} <-> "),
+                match leftsubf.as_ref() {
+                    Formula::Imply(_, _) => write!(f, "({leftsubf}) <-> ")?,
+                    _ => write!(f, "{leftsubf} <-> ")?,
                 }
-                .and(match rightsubf.as_ref() {
+                match rightsubf.as_ref() {
                     Formula::Imply(_, _) => write!(f, "({rightsubf})"),
                     _ => write!(f, "{rightsubf}"),
-                });
-                out
+                }
             }
         }
     }
@@ -148,7 +162,8 @@ where
             Box::new(box_parser),
             Box::new(diamond_parser),
             Box::new(var_parser),
-        ] as [Box<DynParser<'a, Token, Formula, S>>; 5])
+            Box::new(bottom_parser),
+        ] as [Box<DynParser<'a, Token, Formula, S>>; 6])
             .into_iter(),
     )
 }
@@ -187,6 +202,13 @@ where
         atom_parser,
         |_, formula| Formula::Diamond(Rc::new(formula)),
     )
+}
+
+fn bottom_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)>,
+{
+    parse_eq(stream, &Token::BOTTOM, Formula::Bottom)
 }
 
 fn imply_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
@@ -328,6 +350,7 @@ mod tests {
 
     #[test]
     fn test_parse_propvar() {
+        assert_eq!(parse_str("_|_"), Formula::Bottom);
         assert_eq!(parse_str("p"), prop());
         assert_eq!(parse_str("p42"), prop_n(42));
     }
@@ -371,8 +394,8 @@ mod tests {
             imply(prop_n(1), imply(prop_n(2), prop_n(3)))
         );
         assert_eq!(
-            parse_str("p <-> p2 <-> p3"),
-            iff(prop(), iff(prop_n(2), prop_n(3)))
+            parse_str("p <-> p2 <-> _|_"),
+            iff(prop(), iff(prop_n(2), Formula::Bottom))
         );
     }
 
@@ -380,8 +403,8 @@ mod tests {
     fn test_parse_grouping() {
         assert_eq!(parse_str("~(p1 & p2)"), not(and(prop_n(1), prop_n(2))));
         assert_eq!(
-            parse_str("(p1 -> p2) & p3"),
-            and(imply(prop_n(1), prop_n(2)), prop_n(3))
+            parse_str("(p1 -> _|_) & p3"),
+            and(imply(prop_n(1), Formula::Bottom), prop_n(3))
         );
         assert_eq!(
             parse_str("p1 -> (p2 & p3)"),
