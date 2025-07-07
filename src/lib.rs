@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{formula::full_parser, signed::Tableau, token::tokenize};
+use crate::{formula::full_parser, signed::SignedTableau, token::tokenize};
 
 mod formula;
 mod parser;
@@ -39,7 +39,7 @@ fn print_tokens() {
                     // println!();
                     // println!();
                     // println!("{}", f);
-                    let tab = Tableau::create((false, Rc::new(f)));
+                    let tab = SignedTableau::create((false, Rc::new(f)));
                     println!();
                     println!();
                     // println!("{:#?}", tab);

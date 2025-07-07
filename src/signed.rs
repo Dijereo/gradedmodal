@@ -5,10 +5,10 @@ use crate::formula::Formula;
 type SignedFormula = (bool, Rc<Formula>);
 
 #[derive(Debug)]
-pub(crate) struct Tableau {
+pub(crate) struct SignedTableau {
     is_closed: Option<bool>,
     formulae: Vec<SignedFormula>,
-    children: Vec<Tableau>,
+    children: Vec<SignedTableau>,
 }
 
 enum Expansion {
@@ -16,7 +16,7 @@ enum Expansion {
     Split(SignedFormula, SignedFormula, Vec<SignedFormula>),
 }
 
-impl Tableau {
+impl SignedTableau {
     pub(crate) fn create(signedformula: SignedFormula) -> Self {
         let mut tab = Self::new(signedformula);
         tab.expand(vec![]);
@@ -144,12 +144,12 @@ impl Tableau {
         if let Some((sf0, sf1, sfs)) = splits.pop() {
             // println!("Splitting");
             // println!("{} {}", sf0.0, sf0.1);
-            self.children.push(Tableau::new(sf0));
+            self.children.push(SignedTableau::new(sf0));
             // println!("{} {}", sf1.0, sf1.1);
-            self.children.push(Tableau::new(sf1));
+            self.children.push(SignedTableau::new(sf1));
             for sf in sfs {
                 // println!("{} {}", sf.0, sf.1);
-                self.children.push(Tableau::new(sf));
+                self.children.push(SignedTableau::new(sf));
             }
         }
         // println!();
