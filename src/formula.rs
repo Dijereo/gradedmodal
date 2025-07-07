@@ -121,6 +121,16 @@ impl fmt::Display for Formula {
     }
 }
 
+impl Formula {
+    pub(crate) fn is_negation(&self, other: &Formula) -> bool {
+        match (self, other) {
+            (Formula::Not(phi1), phi2) => phi1.as_ref() == phi2,
+            (phi1, Formula::Not(phi2)) => phi1 == phi2.as_ref(),
+            _ => false,
+        }
+    }
+}
+
 pub(crate) fn full_parser<S>(stream: S) -> Result<Formula, Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
@@ -298,8 +308,6 @@ where
         },
     )
 }
-
-// src/lib.rs
 
 #[cfg(test)]
 mod tests {

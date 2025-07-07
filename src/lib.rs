@@ -3,13 +3,14 @@ use std::{
     rc::Rc,
 };
 
-use crate::{formula::full_parser, signed::SignedTableau, token::tokenize};
+use crate::{formula::full_parser, signed::SignedTableau, tableau::ModalTableau, token::tokenize};
 
 mod formula;
 mod parser;
 mod signed;
 mod tableau;
 mod token;
+mod util;
 
 pub fn run() {
     print_tokens();
@@ -36,21 +37,27 @@ fn print_tokens() {
             let stream = tokens.into_iter().enumerate();
             match full_parser(stream) {
                 Ok(f) => {
+                    let f = Rc::new(f);
                     // println!("{:#?}", f);
                     // println!();
                     // println!();
                     // println!("{}", f);
-                    let tab = SignedTableau::create((false, Rc::new(f)));
+                    let tab = SignedTableau::create((false, f.clone()));
                     println!();
                     println!();
                     // println!("{:#?}", tab);
                     println!("{}", tab.to_tree_string());
                     // println!("{}", Formula::PropVar(Some(0)) == Formula::PropVar(None))
-                    // println!();
-                    // println!();
+                    println!();
+                    println!();
                     // tab.expand(vec![]);
                     // println!("{:#?}", tab);
                     // println!("{}", tab.to_tree_string());
+                    let tab2 = ModalTableau::create(vec![f]);
+                    println!();
+                    println!();
+                    // println!("{:#?}", tab);
+                    println!("{}", tab2);
                 }
                 Err(Some((i, tok))) => {
                     eprintln!("Error: bad token sequence '{:#?}' at index {}", tok, i)
