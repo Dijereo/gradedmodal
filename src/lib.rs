@@ -42,20 +42,20 @@ fn print_tokens() {
                     // println!();
                     // println!();
                     // println!("{}", f);
-                    let tab = SignedTableau::create((false, f.clone()));
-                    println!();
-                    println!();
+                    // let tab = SignedTableau::create((false, f.clone()));
+                    // println!();
+                    // println!();
                     // println!("{:#?}", tab);
-                    println!("{}", tab.to_tree_string());
+                    // println!("{}", tab.to_tree_string());
                     // println!("{}", Formula::PropVar(Some(0)) == Formula::PropVar(None))
-                    println!();
-                    println!();
+                    // println!();
+                    // println!();
                     // tab.expand(vec![]);
                     // println!("{:#?}", tab);
                     // println!("{}", tab.to_tree_string());
                     let tab2 = ModalTableau::create(vec![f]);
-                    println!();
-                    println!();
+                    // println!();
+                    // println!();
                     // println!("{:#?}", tab);
                     println!("{}", tab2);
                 }

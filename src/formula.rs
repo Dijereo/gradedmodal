@@ -24,7 +24,7 @@ pub enum Formula {
 impl fmt::Display for Formula {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Formula::Bottom => write!(f, "_|_"),
+            Formula::Bottom => write!(f, "⊥"),
             Formula::PropVar(Some(n)) => write!(f, "p{n}"),
             Formula::PropVar(None) => write!(f, "p"),
             Formula::Not(subformula) => match subformula.as_ref() {
