@@ -11,6 +11,7 @@ use crate::{
 #[derive(Debug, PartialEq)]
 pub enum Formula {
     Bottom,
+    Top,
     PropVar(Option<u8>),
     Not(Rc<Formula>),
     Box(Rc<Formula>),
@@ -25,6 +26,7 @@ impl fmt::Display for Formula {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Formula::Bottom => write!(f, "⊥"),
+            Formula::Top => write!(f, "⊤"),
             Formula::PropVar(Some(n)) => write!(f, "p{n}"),
             Formula::PropVar(None) => write!(f, "p"),
             Formula::Not(subformula) => match subformula.as_ref() {
@@ -33,43 +35,47 @@ impl fmt::Display for Formula {
                 | Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_) => {
-                    write!(f, "~{subformula}")
+                    write!(f, "¬{subformula}")
                 }
-                _ => write!(f, "~({subformula})"),
+                _ => write!(f, "¬({subformula})"),
             },
             Formula::Box(subformula) => match subformula.as_ref() {
                 Formula::Bottom
+                | Formula::Top
                 | Formula::PropVar(_)
                 | Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_) => {
-                    write!(f, "[]{subformula}")
+                    write!(f, "□{subformula}")
                 }
-                _ => write!(f, "[]({subformula})"),
+                _ => write!(f, "□({subformula})"),
             },
             Formula::Diamond(subformula) => match subformula.as_ref() {
                 Formula::Bottom
+                | Formula::Top
                 | Formula::PropVar(_)
                 | Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_) => {
-                    write!(f, "<>{subformula}")
+                    write!(f, "◇{subformula}")
                 }
-                _ => write!(f, "<>({subformula})"),
+                _ => write!(f, "◇({subformula})"),
             },
             Formula::And(leftsubf, rightsubf) => match leftsubf.as_ref() {
                 Formula::Bottom
+                | Formula::Top
                 | Formula::PropVar(_)
                 | Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_)
                 | Formula::And(_, _) => {
-                    write!(f, "{leftsubf} & ")
+                    write!(f, "{leftsubf} ∧ ")
                 }
-                _ => write!(f, "({leftsubf}) & "),
+                _ => write!(f, "({leftsubf}) ∧ "),
             }
             .and(match rightsubf.as_ref() {
                 Formula::Bottom
+                | Formula::Top
                 | Formula::PropVar(_)
                 | Formula::Not(_)
                 | Formula::Box(_)
@@ -82,16 +88,18 @@ impl fmt::Display for Formula {
             Formula::Or(leftsubf, rightsubf) => {
                 match leftsubf.as_ref() {
                     Formula::Bottom
+                    | Formula::Top
                     | Formula::PropVar(_)
                     | Formula::Not(_)
                     | Formula::Box(_)
                     | Formula::Diamond(_)
                     | Formula::And(_, _)
-                    | Formula::Or(_, _) => write!(f, "{leftsubf} | ")?,
-                    _ => write!(f, "({leftsubf}) | ")?,
+                    | Formula::Or(_, _) => write!(f, "{leftsubf} ∨ ")?,
+                    _ => write!(f, "({leftsubf}) ∨ ")?,
                 }
                 match rightsubf.as_ref() {
                     Formula::Bottom
+                    | Formula::Top
                     | Formula::PropVar(_)
                     | Formula::Not(_)
                     | Formula::Box(_)
@@ -104,13 +112,13 @@ impl fmt::Display for Formula {
                 }
             }
             Formula::Imply(leftsubf, rightsubf) => match leftsubf.as_ref() {
-                Formula::Imply(_, _) => write!(f, "({leftsubf}) -> {rightsubf}"),
-                _ => write!(f, "{leftsubf} -> {rightsubf}"),
+                Formula::Imply(_, _) => write!(f, "({leftsubf}) → {rightsubf}"),
+                _ => write!(f, "{leftsubf} → {rightsubf}"),
             },
             Formula::Iff(leftsubf, rightsubf) => {
                 match leftsubf.as_ref() {
-                    Formula::Imply(_, _) => write!(f, "({leftsubf}) <-> ")?,
-                    _ => write!(f, "{leftsubf} <-> ")?,
+                    Formula::Imply(_, _) => write!(f, "({leftsubf}) ↔ ")?,
+                    _ => write!(f, "{leftsubf} ↔ ")?,
                 }
                 match rightsubf.as_ref() {
                     Formula::Imply(_, _) => write!(f, "({rightsubf})"),
@@ -122,6 +130,42 @@ impl fmt::Display for Formula {
 }
 
 impl Formula {
+    pub(crate) fn is_bottom(&self) -> bool {
+        if let Formula::Bottom = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub(crate) fn not(self: &Rc<Formula>) -> Rc<Formula> {
+        Rc::new(Formula::Not(self.clone()))
+    }
+
+    pub(crate) fn and(self: &Rc<Formula>, other: &Rc<Formula>) -> Rc<Formula> {
+        Rc::new(Formula::And(self.clone(), other.clone()))
+    }
+
+    pub(crate) fn or(self: &Rc<Formula>, other: &Rc<Formula>) -> Rc<Formula> {
+        Rc::new(Formula::Or(self.clone(), other.clone()))
+    }
+
+    pub(crate) fn imply(self: &Rc<Formula>, other: &Rc<Formula>) -> Rc<Formula> {
+        Rc::new(Formula::Imply(self.clone(), other.clone()))
+    }
+
+    pub(crate) fn iff(self: &Rc<Formula>, other: &Rc<Formula>) -> Rc<Formula> {
+        Rc::new(Formula::Iff(self.clone(), other.clone()))
+    }
+
+    pub(crate) fn diamond(self: &Rc<Formula>) -> Rc<Formula> {
+        Rc::new(Formula::Diamond(self.clone()))
+    }
+
+    pub(crate) fn box_(self: &Rc<Formula>) -> Rc<Formula> {
+        Rc::new(Formula::Box(self.clone()))
+    }
+
     pub(crate) fn is_negation(&self, other: &Formula) -> bool {
         match (self, other) {
             (Formula::Not(phi1), phi2) => phi1.as_ref() == phi2,

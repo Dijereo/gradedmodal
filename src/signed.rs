@@ -39,7 +39,7 @@ impl SignedTableau {
 
     fn set_openess_rec<'a>(&'a mut self, ancestors: &mut Vec<&'a Vec<SignedFormula>>) -> bool {
         for (i, (sign1, form1)) in self.formulae.iter().enumerate() {
-            if *sign1 && form1.as_ref() == &Formula::Bottom {
+            if *sign1 && form1.is_bottom() {
                 self.set_closed();
                 return false;
             }
@@ -166,10 +166,11 @@ impl SignedTableau {
     fn expand_once(signedformula: &SignedFormula) -> Expansion {
         let (sign, f) = signedformula;
         match (f.as_ref(), sign) {
-            // TODO modals
             (Formula::Bottom | Formula::PropVar(_) | Formula::Box(_) | Formula::Diamond(_), _) => {
                 Expansion::Sequence(vec![])
             }
+            (Formula::Top, true) => Expansion::Sequence(vec![]),
+            (Formula::Top, false) => Expansion::Sequence(vec![(true, Rc::new(Formula::Bottom))]),
             (Formula::Not(formula), true) => Expansion::Sequence(vec![(false, formula.clone())]),
             (Formula::Not(formula), false) => Expansion::Sequence(vec![(true, formula.clone())]),
             (Formula::And(formula, formula1), true) => {
@@ -191,34 +192,13 @@ impl SignedTableau {
                 Expansion::Sequence(vec![(true, formula.clone()), (false, formula1.clone())])
             }
             (Formula::Iff(formula, formula1), true) => Expansion::Split(
-                (
-                    true,
-                    Rc::new(Formula::And(formula.clone(), formula1.clone())),
-                ),
-                (
-                    true,
-                    Rc::new(Formula::And(
-                        Rc::new(Formula::Not(formula.clone())),
-                        Rc::new(Formula::Not(formula1.clone())),
-                    )),
-                ),
+                (true, formula.and(formula1)),
+                (true, formula.not().and(&formula1.not())),
                 vec![],
             ),
             (Formula::Iff(formula, formula1), false) => Expansion::Split(
-                (
-                    true,
-                    Rc::new(Formula::And(
-                        formula.clone(),
-                        Rc::new(Formula::Not(formula1.clone())),
-                    )),
-                ),
-                (
-                    true,
-                    Rc::new(Formula::And(
-                        Rc::new(Formula::Not(formula.clone())),
-                        formula1.clone(),
-                    )),
-                ),
+                (true, formula.and(&formula1.not())),
+                (true, formula.not().and(formula1)),
                 vec![],
             ),
         }
