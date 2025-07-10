@@ -41,6 +41,15 @@ impl WorldTableau {
         }
     }
 
+    pub(crate) fn from_root(root: Rc<RefCell<TableauNode>>) -> Self {
+        let is_closed = root.borrow().is_closed;
+        Self {
+            is_closed,
+            root,
+            transitions: vec![],
+        }
+    }
+
     fn display_rec(&self, f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
         if self.is_closed {
             writeln!(f, "{depth}: ⊥")?;
