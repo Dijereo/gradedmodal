@@ -9,6 +9,31 @@ pub(crate) trait RuleCalc: StaticCalc {
     fn get_trans_rules(&self) -> &[&dyn TransitionRule];
     fn get_init_rules(&self) -> &[&dyn SequenceRule];
 
+    fn sat(&self, formulae: Vec<Rc<Formula>>) -> WorldTableau {
+        let mut tab = WorldTableau::from_formulae(formulae);
+        if !tab.is_closed {
+            self.init(&mut tab);
+            self.apply(&mut tab);
+        }
+        tab
+    }
+
+    fn init(&self, world: &mut WorldTableau) {
+        let mut new_formulae = vec![];
+        let root = &mut world.root.borrow_mut();
+        for formula in &root.formulae {
+            for rule in self.get_init_rules() {
+                new_formulae.extend(rule.expand(formula));
+            }
+        }
+        for new_formula in new_formulae {
+            root.add_check_dup_contra(new_formula);
+            if root.is_closed {
+                return;
+            }
+        }
+    }
+
     fn apply(&self, world: &mut WorldTableau) {
         if world.is_closed {
             return;
@@ -402,7 +427,7 @@ where
 pub(crate) struct RuleCalculus {
     pub(crate) init: &'static [&'static dyn SequenceRule],
     pub(crate) seq: &'static [&'static dyn SequenceRule],
-    pub(crate) check: &'static [&'static dyn CheckSeqRule],
+    // pub(crate) check: &'static [&'static dyn CheckSeqRule],
     pub(crate) split: &'static [&'static dyn SplitRule],
     pub(crate) trans: &'static [&'static dyn TransitionRule],
 }
@@ -410,7 +435,7 @@ pub(crate) struct RuleCalculus {
 pub(crate) const PROP_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules],
-    check: &[],
+    // check: &[],
     split: &[&PropSplitRules],
     trans: &[],
 };
@@ -418,7 +443,7 @@ pub(crate) const PROP_CALCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const K_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules],
-    check: &[],
+    // check: &[],
     split: &[&PropSplitRules],
     trans: &[&SingleWrapper(KRule)],
 };
@@ -426,7 +451,7 @@ pub(crate) const K_CALCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const T_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules, &TRule],
-    check: &[],
+    // check: &[],
     split: &[&PropSplitRules],
     trans: &[&SingleWrapper(KRule)],
 };
@@ -434,7 +459,7 @@ pub(crate) const T_CALCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const D_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules, &DRule],
-    check: &[],
+    // check: &[],
     split: &[&PropSplitRules],
     trans: &[&SingleWrapper(KRule)],
 };
@@ -442,7 +467,7 @@ pub(crate) const D_CALCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const D_PRIME_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules],
-    check: &[],
+    // check: &[],
     split: &[&PropSplitRules],
     trans: &[&OptWrapper(KDRule)],
 };
@@ -450,7 +475,7 @@ pub(crate) const D_PRIME_CALCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const K4_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules],
-    check: &[],
+    // check: &[],
     split: &[&PropSplitRules],
     trans: &[&SingleWrapper(K4Rule)],
 };
@@ -458,7 +483,7 @@ pub(crate) const K4_CALCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const K4D_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules, &DRule],
-    check: &[],
+    // check: &[],
     split: &[&PropSplitRules],
     trans: &[&SingleWrapper(K4Rule)],
 };
@@ -466,7 +491,7 @@ pub(crate) const K4D_CALCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const K45_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules],
-    check: &[],
+    // check: &[],
     split: &[&PropSplitRules],
     trans: &[&AllWrapper(_45Rule)],
 };
@@ -474,7 +499,7 @@ pub(crate) const K45_CALCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const K45D_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules],
-    check: &[],
+    // check: &[],
     split: &[&PropSplitRules],
     trans: &[&AllWrapper(_45DRule)],
 };
@@ -482,7 +507,7 @@ pub(crate) const K45D_CALCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const S4_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules, &TRule],
-    check: &[],
+    // check: &[],
     split: &[&PropSplitRules],
     trans: &[&SingleWrapper(S4Rule)],
 };
@@ -490,7 +515,7 @@ pub(crate) const S4_CALCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const S5PI_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[&PiRule],
     seq: &[&PropSeqRules, &TRule],
-    check: &[],
+    // check: &[],
     split: &[&PropSplitRules],
     trans: &[&AllWrapper(S5Rule)],
 };
@@ -498,7 +523,7 @@ pub(crate) const S5PI_CALCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const K45_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules],
-    check: &[],
+    // check: &[],
     split: &[&CutPropRules, &CutBoxRule, &CutDiamondRule],
     trans: &[&AllWrapper(_45Rule)],
 };
@@ -506,7 +531,7 @@ pub(crate) const K45_CUTCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const K45D_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules],
-    check: &[],
+    // check: &[],
     split: &[&CutPropRules, &CutBoxRule, &CutDiamondRule],
     trans: &[&AllWrapper(_45DRule)],
 };
@@ -514,7 +539,7 @@ pub(crate) const K45D_CUTCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const K4B_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules, &_5Rule],
-    check: &[&TDiamondRule],
+    // check: &[&TDiamondRule],
     split: &[&CutPropRules, &CutBoxRule, &CutDiamondRule],
     trans: &[&SingleWrapper(K4Rule)],
 };
@@ -522,7 +547,7 @@ pub(crate) const K4B_CUTCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const S4_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules, &TRule],
-    check: &[],
+    // check: &[],
     split: &[&CutPropRules, &CutDiamondRule],
     trans: &[&SingleWrapper(S4Rule)],
 };
@@ -530,7 +555,7 @@ pub(crate) const S4_CUTCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const B_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules, &TRule],
-    check: &[],
+    // check: &[],
     split: &[&CutPropRules, &CutDiamondRule, &BRule],
     trans: &[&SingleWrapper(KRule)],
 };
@@ -538,7 +563,7 @@ pub(crate) const B_CUTCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const S5_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules, &TRule, &_5Rule],
-    check: &[],
+    // check: &[],
     split: &[&CutPropRules, &CutDiamondRule],
     trans: &[&SingleWrapper(S4Rule)],
 };
@@ -546,7 +571,7 @@ pub(crate) const S5_CUTCULUS: RuleCalculus = RuleCalculus {
 pub(crate) const S5_PRIME_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
     seq: &[&PropSeqRules, &TRule],
-    check: &[],
+    // check: &[],
     split: &[&CutPropRules, &CutDiamondRule],
     trans: &[&AllWrapper(S5Rule)],
 };

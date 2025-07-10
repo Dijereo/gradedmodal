@@ -5,7 +5,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::{formula::Formula, rules::RuleCalc};
+use crate::formula::Formula;
 
 pub(crate) struct WorldTableau {
     pub(crate) is_closed: bool,
@@ -21,18 +21,7 @@ pub(crate) struct TableauNode {
 }
 
 impl WorldTableau {
-    pub(crate) fn create<R>(formulae: Vec<Rc<Formula>>, rules: &R) -> Self
-    where
-        R: RuleCalc,
-    {
-        let mut tab = Self::from_formulae(formulae);
-        if !tab.is_closed {
-            rules.apply(&mut tab);
-        }
-        tab
-    }
-
-    fn from_formulae(formulae: Vec<Rc<Formula>>) -> Self {
+    pub(crate) fn from_formulae(formulae: Vec<Rc<Formula>>) -> Self {
         let root = TableauNode::from_formulae(formulae, None);
         Self {
             is_closed: root.is_closed,
