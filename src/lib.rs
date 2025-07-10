@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{formula::full_parser, rules::T_CALCULUS, tableau::ModalTableau, token::tokenize};
+use crate::{formula::full_parser, rules::T_CALCULUS, tableau::WorldTableau, token::tokenize};
 
 mod formula;
 mod formula2;
@@ -43,7 +43,7 @@ fn print_tokens() {
             match full_parser(stream) {
                 Ok(f) => {
                     let f = Rc::new(f);
-                    let tab = ModalTableau::create(vec![f], &T_CALCULUS);
+                    let tab = WorldTableau::create(vec![f], &T_CALCULUS);
                     println!("{}", tab);
                 }
                 Err(Some((i, tok))) => {

@@ -1,68 +1,43 @@
-use std::{collections::VecDeque, fmt, rc::Rc};
-
-use crate::{
-    formula::Formula,
-    rules::{RuleCalculus, SequenceRule, SplitRule, TransitionRule},
+use std::{
+    cell::RefCell,
+    collections::VecDeque,
+    fmt,
+    rc::{Rc, Weak},
 };
 
-pub(crate) struct ModalTableau {
-    is_closed: bool,
-    world: WorldTableau,
-    transitions: Vec<ModalTableau>,
+use crate::{formula::Formula, rules::RuleCalc};
+
+pub(crate) struct WorldTableau {
+    pub(crate) is_closed: bool,
+    pub(crate) root: Rc<RefCell<TableauNode>>,
+    pub(crate) transitions: Vec<WorldTableau>,
 }
 
-struct WorldTableau {
-    is_closed: bool,
-    formulae: Vec<Rc<Formula>>,
-    children: Vec<WorldTableau>,
+pub(crate) struct TableauNode {
+    pub(crate) is_closed: bool,
+    pub(crate) formulae: Vec<Rc<Formula>>,
+    pub(crate) children: Vec<Rc<RefCell<TableauNode>>>,
+    pub(crate) parent: Option<Weak<RefCell<TableauNode>>>,
 }
 
-impl ModalTableau {
-    pub(crate) fn create(formulae: Vec<Rc<Formula>>, rules: &RuleCalculus) -> Self {
+impl WorldTableau {
+    pub(crate) fn create<R>(formulae: Vec<Rc<Formula>>, rules: &R) -> Self
+    where
+        R: RuleCalc,
+    {
         let mut tab = Self::from_formulae(formulae);
         if !tab.is_closed {
-            tab.world
-                .process_static(rules.seq, rules.split, &mut vec![], VecDeque::new());
-            tab.is_closed = tab.world.is_closed;
-        }
-        if !tab.is_closed {
-            tab.process_transitions(rules);
+            rules.apply(&mut tab);
         }
         tab
     }
 
     fn from_formulae(formulae: Vec<Rc<Formula>>) -> Self {
-        let world = WorldTableau::from_formulae(formulae, &vec![]);
+        let root = TableauNode::from_formulae(formulae, None);
         Self {
-            is_closed: world.is_closed,
-            world,
+            is_closed: root.is_closed,
+            root: Rc::new(RefCell::new(root)),
             transitions: vec![],
-        }
-    }
-
-    fn process_transitions(&mut self, rules: &RuleCalculus) {
-        if self.world.is_closed {
-            self.is_closed = true;
-            return;
-        }
-        let mut trans_worlds = vec![];
-        for rule in rules.trans {
-            trans_worlds.extend(self.world.process_transitions(*rule, &mut vec![]));
-        }
-        for mut trans_world in trans_worlds {
-            trans_world.process_static(rules.seq, rules.split, &mut vec![], VecDeque::new());
-            let mut trans_tab = ModalTableau {
-                is_closed: trans_world.is_closed,
-                world: trans_world,
-                transitions: vec![],
-            };
-            if !trans_tab.is_closed {
-                trans_tab.process_transitions(rules);
-            }
-            self.transitions.push(trans_tab);
-        }
-        if !self.transitions.is_empty() && self.transitions.iter().all(|tw| tw.is_closed) {
-            self.is_closed = true;
         }
     }
 
@@ -72,7 +47,7 @@ impl ModalTableau {
         } else {
             writeln!(f, "{depth}:")?;
         }
-        writeln!(f, "{}", self.world)?;
+        writeln!(f, "{}", self.root.borrow())?;
         for transition in &self.transitions {
             transition.display_rec(f, depth + 1)?;
         }
@@ -80,23 +55,25 @@ impl ModalTableau {
     }
 }
 
-impl fmt::Display for ModalTableau {
+impl fmt::Display for WorldTableau {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.display_rec(f, 0)
     }
 }
 
-type Split = Vec<Vec<Rc<Formula>>>;
-
-impl WorldTableau {
-    fn from_formulae(formulae: Vec<Rc<Formula>>, ancestor_formulae: &[Vec<Rc<Formula>>]) -> Self {
+impl TableauNode {
+    pub(crate) fn from_formulae(
+        formulae: Vec<Rc<Formula>>,
+        parent: Option<&Rc<RefCell<TableauNode>>>,
+    ) -> Self {
         let mut tab = Self {
             is_closed: false,
             formulae: vec![],
             children: vec![],
+            parent: parent.map(Rc::downgrade),
         };
         for new_formula in formulae {
-            tab.add_dedup_check_contra(new_formula, ancestor_formulae);
+            tab.add_check_dup_contra(new_formula);
         }
         if tab.formulae.is_empty() {
             tab.formulae.push(Rc::new(Formula::Top));
@@ -104,217 +81,64 @@ impl WorldTableau {
         tab
     }
 
-    fn process_static(
-        &mut self,
-        seq_rules: &[&dyn SequenceRule],
-        split_rules: &[&dyn SplitRule],
-        ancestor_formulae: &mut Vec<Vec<Rc<Formula>>>,
-        mut splits: VecDeque<Split>,
-    ) {
-        self.process_sequence(seq_rules, ancestor_formulae);
-        if !self.is_closed {
-            splits.extend(self.get_new_splits(split_rules));
-            self.process_splits(seq_rules, split_rules, ancestor_formulae, splits)
-        }
-    }
-
-    fn process_sequence(
-        &mut self,
-        rules: &[&dyn SequenceRule],
-        ancestor_formulae: &[Vec<Rc<Formula>>],
-    ) {
-        let mut i = 0;
-        while let Some(formula) = self.formulae.get(i) {
-            let mut new_formulae = vec![];
-            for rule in rules {
-                new_formulae.extend(rule.expand(&formula));
-            }
-            for new_formula in new_formulae {
-                self.add_dedup_check_contra(new_formula, ancestor_formulae);
-                if self.is_closed {
-                    return;
-                }
-            }
-            i += 1;
-        }
-    }
-
-    fn get_new_splits(&self, rules: &[&dyn SplitRule]) -> Vec<Vec<Vec<Rc<Formula>>>> {
-        let mut out = vec![];
+    pub(crate) fn traverse_anc_formulae(&self, map_while: &mut impl FnMut(&Rc<Formula>) -> bool) {
         for formula in &self.formulae {
-            for rule in rules {
-                let split = rule.expand(formula);
-                if !split.is_empty() {
-                    out.push(split);
-                }
+            if !map_while(formula) {
+                return;
             }
         }
-        out
+        if let Some(parent) = &self.parent {
+            if let Some(parent) = parent.upgrade() {
+                parent.borrow().traverse_anc_formulae(map_while);
+            }
+        }
     }
 
-    fn process_splits(
-        &mut self,
-        seq_rules: &[&dyn SequenceRule],
-        split_rules: &[&dyn SplitRule],
-        ancestor_formulae: &mut Vec<Vec<Rc<Formula>>>,
-        mut splits: VecDeque<Split>,
-    ) {
-        ancestor_formulae.push(self.formulae.clone());
-        if self.children.is_empty() {
-            if let Some(split) = splits.pop_front() {
-                for branch in split {
-                    let child = Self::from_formulae(branch, ancestor_formulae);
-                    self.children.push(child);
-                }
+    fn check_dup(&self, new_formula: &Rc<Formula>) -> bool {
+        let mut dup = false;
+        self.traverse_anc_formulae(&mut |formula| {
+            if new_formula == formula {
+                dup = true;
+                false
             } else {
-                return;
+                true
             }
-        }
-        let mut all_closed = true;
-        for child in &mut self.children {
-            if !child.is_closed {
-                child.process_static(seq_rules, split_rules, ancestor_formulae, splits.clone());
-                if !child.is_closed {
-                    all_closed = false;
-                }
-            }
-        }
-        if all_closed {
-            self.is_closed = true;
-        }
-        ancestor_formulae.pop();
+        });
+        dup
     }
 
-    fn add_dedup_check_contra(
-        &mut self,
-        new_formula: Rc<Formula>,
-        ancestor_formulae: &[Vec<Rc<Formula>>],
-    ) {
-        if new_formula.is_bottom() {
-            self.is_closed = true;
-        }
-        let mut add_bottom = false;
-        for ancestor in ancestor_formulae {
-            for anc_formula in ancestor {
-                if &new_formula == anc_formula {
-                    return;
-                }
-                if new_formula.is_negation(anc_formula) {
-                    self.is_closed = true;
-                    add_bottom = true;
-                }
+    fn check_contra(&self, new_formula: &Rc<Formula>) -> bool {
+        let mut contra = false;
+        self.traverse_anc_formulae(&mut |formula| {
+            if new_formula.is_negation(formula) {
+                contra = true;
+                false
+            } else {
+                true
             }
-        }
-        for self_formula in &self.formulae {
-            if &new_formula == self_formula {
-                return;
-            }
-            if new_formula.is_negation(self_formula) {
+        });
+        contra
+    }
+
+    pub(crate) fn add_check_dup_contra(&mut self, new_formula: Rc<Formula>) {
+        if !self.check_dup(&new_formula) {
+            if new_formula.is_bottom() {
+                self.formulae.push(new_formula);
                 self.is_closed = true;
-                add_bottom = true;
+            } else if self.check_contra(&new_formula) {
+                self.formulae.push(new_formula);
+                self.formulae.push(Rc::new(Formula::Bottom));
+                self.is_closed = true;
+            } else {
+                self.formulae.push(new_formula);
             }
         }
-        self.formulae.push(new_formula);
-        if add_bottom {
-            for ancestor in ancestor_formulae {
-                for anc_formula in ancestor {
-                    if anc_formula.is_bottom() {
-                        return;
-                    }
-                }
-            }
-            for self_formula in &self.formulae {
-                if self_formula.is_bottom() {
-                    return;
-                }
-            }
-            self.formulae.push(Rc::new(Formula::Bottom));
-        }
-    }
-
-    fn process_transitions(
-        &self,
-        rule: &dyn TransitionRule,
-        ancestor_formulae: &mut Vec<Vec<Rc<Formula>>>,
-    ) -> Vec<WorldTableau> {
-        let mut trans_worlds = vec![];
-        for formula in &self.formulae {
-            let mut trans_formulae = rule.try_apply(formula);
-            if trans_formulae.is_empty() {
-                continue;
-            }
-            for anc_formulae in ancestor_formulae.iter() {
-                for anc_formula in anc_formulae {
-                    trans_formulae.extend(rule.transition(anc_formula));
-                }
-            }
-            for other_formula in &self.formulae {
-                trans_formulae.extend(rule.transition(other_formula));
-            }
-            let mut trans_world = WorldTableau::from_formulae(trans_formulae, &vec![]);
-            if !trans_world.is_closed {
-                let mut trans_anc_formulae = vec![trans_world.formulae.clone()];
-                let mut closed = true;
-                for child in &self.children {
-                    if child.is_closed {
-                        continue;
-                    }
-                    let trans_child = child.process_transition_rec(rule, &mut trans_anc_formulae);
-                    closed &= trans_child.is_closed;
-                    trans_world.children.push(trans_child);
-                }
-                if closed && !self.children.is_empty() {
-                    trans_world.is_closed;
-                }
-            }
-            trans_worlds.push(trans_world);
-        }
-        ancestor_formulae.push(self.formulae.clone());
-        for child in &self.children {
-            if !child.is_closed {
-                trans_worlds.extend(child.process_transitions(rule, ancestor_formulae));
-            }
-        }
-        ancestor_formulae.pop();
-        trans_worlds
-    }
-
-    fn process_transition_rec(
-        &self,
-        rule: &dyn TransitionRule,
-        trans_anc_formulae: &mut Vec<Vec<Rc<Formula>>>,
-    ) -> Self {
-        let mut trans_formulae = vec![];
-        for formula in &self.formulae {
-            trans_formulae.extend(rule.transition(formula));
-        }
-        if trans_formulae.is_empty() {
-            trans_formulae.push(Rc::new(Formula::Top));
-        }
-        let mut trans_tab = Self::from_formulae(trans_formulae, trans_anc_formulae);
-        if !trans_tab.is_closed {
-            trans_anc_formulae.push(trans_tab.formulae.clone());
-            let mut closed = true;
-            for child in &self.children {
-                if child.is_closed {
-                    continue;
-                }
-                let trans_child = child.process_transition_rec(rule, trans_anc_formulae);
-                closed &= trans_child.is_closed;
-                trans_tab.children.push(trans_child);
-            }
-            if closed && !self.children.is_empty() {
-                trans_tab.is_closed = true;
-            }
-            trans_anc_formulae.pop();
-        }
-        trans_tab
     }
 
     fn get_depths_rec(&self, out: &mut VecDeque<usize>, depth: usize) {
         out.push_back(depth);
         for child in &self.children {
-            child.get_depths_rec(out, depth + 1);
+            child.borrow().get_depths_rec(out, depth + 1);
         }
     }
 
@@ -354,13 +178,13 @@ impl WorldTableau {
             }
         }
         for child in &self.children {
-            child.display_rec(f, depth + 1, next_depths)?
+            child.borrow().display_rec(f, depth + 1, next_depths)?
         }
         Ok(())
     }
 }
 
-impl fmt::Display for WorldTableau {
+impl fmt::Display for TableauNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut next_depths = VecDeque::new();
         self.get_depths_rec(&mut next_depths, 1);
