@@ -12,8 +12,8 @@ pub(crate) struct SignedTableau {
 }
 
 enum Expansion {
-    Sequence(Vec<SignedFormula>),
-    Split(SignedFormula, SignedFormula, Vec<SignedFormula>),
+    Linear(Vec<SignedFormula>),
+    Fork(SignedFormula, SignedFormula, Vec<SignedFormula>),
 }
 
 impl SignedTableau {
@@ -102,7 +102,7 @@ impl SignedTableau {
         }
     }
 
-    fn expand(&mut self, mut splits: Vec<(SignedFormula, SignedFormula, Vec<SignedFormula>)>) {
+    fn expand(&mut self, mut forks: Vec<(SignedFormula, SignedFormula, Vec<SignedFormula>)>) {
         // println!("Formula");
         // for (sign, f) in &self.formulae {
         // println!("{sign} {f}");
@@ -119,9 +119,9 @@ impl SignedTableau {
         let mut queue = take(&mut self.formulae);
         while let Some(sform) = queue.pop() {
             match Self::expand_once(&sform) {
-                Expansion::Sequence(mut sfs) => queue.append(&mut sfs),
-                Expansion::Split(sf0, sf1, sfs) => {
-                    splits.push((sf0, sf1, sfs));
+                Expansion::Linear(mut sfs) => queue.append(&mut sfs),
+                Expansion::Fork(sf0, sf1, sfs) => {
+                    forks.push((sf0, sf1, sfs));
                 }
             }
             processed.push(sform);
@@ -140,12 +140,12 @@ impl SignedTableau {
         // println!("{sign} {f}");
         // }
         // }
-        self.add_splits(splits);
+        self.add_forks(forks);
     }
 
-    fn add_splits(&mut self, mut splits: Vec<(SignedFormula, SignedFormula, Vec<SignedFormula>)>) {
+    fn add_forks(&mut self, mut forks: Vec<(SignedFormula, SignedFormula, Vec<SignedFormula>)>) {
         // println!("Splits Raw: {:?}", splits);
-        if let Some((sf0, sf1, sfs)) = splits.pop() {
+        if let Some((sf0, sf1, sfs)) = forks.pop() {
             // println!("Splitting");
             // println!("{} {}", sf0.0, sf0.1);
             self.children.push(SignedTableau::new(sf0));
@@ -159,44 +159,44 @@ impl SignedTableau {
         // println!();
         // println!();
         for child in &mut self.children {
-            child.expand(splits.clone());
+            child.expand(forks.clone());
         }
     }
 
     fn expand_once(signedformula: &SignedFormula) -> Expansion {
         let (sign, f) = signedformula;
         match (f.as_ref(), sign) {
-            (Formula::Bottom | Formula::PropVar(_) | Formula::Box(_) | Formula::Diamond(_), _) => {
-                Expansion::Sequence(vec![])
+            (Formula::Bottom | Formula::PropVar(..) | Formula::Box(_) | Formula::Diamond(_), _) => {
+                Expansion::Linear(vec![])
             }
-            (Formula::Top, true) => Expansion::Sequence(vec![]),
-            (Formula::Top, false) => Expansion::Sequence(vec![(true, Rc::new(Formula::Bottom))]),
-            (Formula::Not(formula), true) => Expansion::Sequence(vec![(false, formula.clone())]),
-            (Formula::Not(formula), false) => Expansion::Sequence(vec![(true, formula.clone())]),
+            (Formula::Top, true) => Expansion::Linear(vec![]),
+            (Formula::Top, false) => Expansion::Linear(vec![(true, Rc::new(Formula::Bottom))]),
+            (Formula::Not(formula), true) => Expansion::Linear(vec![(false, formula.clone())]),
+            (Formula::Not(formula), false) => Expansion::Linear(vec![(true, formula.clone())]),
             (Formula::And(formula, formula1), true) => {
-                Expansion::Sequence(vec![(true, formula.clone()), (true, formula1.clone())])
+                Expansion::Linear(vec![(true, formula.clone()), (true, formula1.clone())])
             }
             (Formula::And(formula, formula1), false) => {
-                Expansion::Split((false, formula.clone()), (false, formula1.clone()), vec![])
+                Expansion::Fork((false, formula.clone()), (false, formula1.clone()), vec![])
             }
             (Formula::Or(formula, formula1), true) => {
-                Expansion::Split((true, formula.clone()), (true, formula1.clone()), vec![])
+                Expansion::Fork((true, formula.clone()), (true, formula1.clone()), vec![])
             }
             (Formula::Or(formula, formula1), false) => {
-                Expansion::Sequence(vec![(false, formula.clone()), (false, formula1.clone())])
+                Expansion::Linear(vec![(false, formula.clone()), (false, formula1.clone())])
             }
             (Formula::Imply(formula, formula1), true) => {
-                Expansion::Split((false, formula.clone()), (true, formula1.clone()), vec![])
+                Expansion::Fork((false, formula.clone()), (true, formula1.clone()), vec![])
             }
             (Formula::Imply(formula, formula1), false) => {
-                Expansion::Sequence(vec![(true, formula.clone()), (false, formula1.clone())])
+                Expansion::Linear(vec![(true, formula.clone()), (false, formula1.clone())])
             }
-            (Formula::Iff(formula, formula1), true) => Expansion::Split(
+            (Formula::Iff(formula, formula1), true) => Expansion::Fork(
                 (true, formula.and(formula1)),
                 (true, formula.not().and(&formula1.not())),
                 vec![],
             ),
-            (Formula::Iff(formula, formula1), false) => Expansion::Split(
+            (Formula::Iff(formula, formula1), false) => Expansion::Fork(
                 (true, formula.and(&formula1.not())),
                 (true, formula.not().and(formula1)),
                 vec![],

@@ -10,7 +10,7 @@ pub(crate) enum Token {
     RPAREN,
     BOX,
     DIAMOND,
-    PROPVAR(Option<u8>),
+    PROPVAR(char, Option<u8>),
 }
 
 pub(crate) fn tokenize(input: &str) -> Result<Vec<Token>, (usize, char)> {
@@ -70,7 +70,7 @@ pub(crate) fn tokenize(input: &str) -> Result<Vec<Token>, (usize, char)> {
                 tokens.push(Token::RPAREN);
                 chars.next();
             }
-            'p' => {
+            p if p.is_ascii_lowercase() => {
                 chars.next();
                 let mut num = String::new();
                 while let Some((_, c)) = chars.peek() {
@@ -82,7 +82,7 @@ pub(crate) fn tokenize(input: &str) -> Result<Vec<Token>, (usize, char)> {
                     }
                 }
                 let n = num.parse::<u8>().ok();
-                tokens.push(Token::PROPVAR(n));
+                tokens.push(Token::PROPVAR(p, n));
             }
             '[' => {
                 chars.next();
@@ -116,32 +116,32 @@ mod tests {
         assert_eq!(tokenize(")").unwrap(), vec![Token::RPAREN]);
         assert_eq!(tokenize("<>").unwrap(), vec![Token::DIAMOND]);
         assert_eq!(tokenize("[]").unwrap(), vec![Token::BOX]);
-        assert_eq!(tokenize("p").unwrap(), vec![Token::PROPVAR(None)]);
-        assert_eq!(tokenize("p0").unwrap(), vec![Token::PROPVAR(Some(0))]);
-        assert_eq!(tokenize("p123").unwrap(), vec![Token::PROPVAR(Some(123))]);
+        assert_eq!(tokenize("p").unwrap(), vec![Token::PROPVAR('p', None)]);
+        assert_eq!(tokenize("q0").unwrap(), vec![Token::PROPVAR('q', Some(0))]);
+        assert_eq!(tokenize("x123").unwrap(), vec![Token::PROPVAR('x', Some(123))]);
     }
 
     #[test]
     fn test_multiple_tokens() {
-        let input = "~ p1 & []~( p23 | p |_|_ ) -> <>p4 <-> p5";
+        let input = "~ p1 & []~( p23 | z |_|_ ) -> <>p4 <-> o5";
         let expected = vec![
             Token::NOT,
-            Token::PROPVAR(Some(1)),
+            Token::PROPVAR('p', Some(1)),
             Token::AND,
             Token::BOX,
             Token::NOT,
             Token::LPAREN,
-            Token::PROPVAR(Some(23)),
+            Token::PROPVAR('p', Some(23)),
             Token::OR,
-            Token::PROPVAR(None),
+            Token::PROPVAR('z', None),
             Token::OR,
             Token::BOTTOM,
             Token::RPAREN,
             Token::IMPLY,
             Token::DIAMOND,
-            Token::PROPVAR(Some(4)),
+            Token::PROPVAR('p', Some(4)),
             Token::IFF,
-            Token::PROPVAR(Some(5)),
+            Token::PROPVAR('o', Some(5)),
         ];
         assert_eq!(tokenize(input).unwrap(), expected);
     }
@@ -179,8 +179,8 @@ mod tests {
 
     #[test]
     fn test_invalid_propvar() {
-        let input = "px";
+        let input = "pX";
         let result = tokenize(input);
-        assert_eq!(result, Err((1, 'x')));
+        assert_eq!(result, Err((1, 'X')));
     }
 }

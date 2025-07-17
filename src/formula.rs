@@ -6,13 +6,14 @@ use crate::{
         parse_tup, parse_unit,
     },
     token::Token,
+    util::write_subscript,
 };
 
 #[derive(Debug, PartialEq)]
 pub enum Formula {
     Bottom,
     Top,
-    PropVar(Option<u8>),
+    PropVar(char, Option<u8>),
     Not(Rc<Formula>),
     Box(Rc<Formula>),
     Diamond(Rc<Formula>),
@@ -27,11 +28,11 @@ impl fmt::Display for Formula {
         match self {
             Formula::Bottom => write!(f, "⊥"),
             Formula::Top => write!(f, "⊤"),
-            Formula::PropVar(Some(n)) => write!(f, "p{n}"),
-            Formula::PropVar(None) => write!(f, "p"),
+            Formula::PropVar(c, Some(n)) => write!(f, "{c}{n}"),
+            Formula::PropVar(c, None) => write!(f, "{c}"),
             Formula::Not(subformula) => match subformula.as_ref() {
                 Formula::Bottom
-                | Formula::PropVar(_)
+                | Formula::PropVar(..)
                 | Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_) => {
@@ -42,7 +43,7 @@ impl fmt::Display for Formula {
             Formula::Box(subformula) => match subformula.as_ref() {
                 Formula::Bottom
                 | Formula::Top
-                | Formula::PropVar(_)
+                | Formula::PropVar(..)
                 | Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_) => {
@@ -53,7 +54,7 @@ impl fmt::Display for Formula {
             Formula::Diamond(subformula) => match subformula.as_ref() {
                 Formula::Bottom
                 | Formula::Top
-                | Formula::PropVar(_)
+                | Formula::PropVar(..)
                 | Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_) => {
@@ -64,7 +65,7 @@ impl fmt::Display for Formula {
             Formula::And(leftsubf, rightsubf) => match leftsubf.as_ref() {
                 Formula::Bottom
                 | Formula::Top
-                | Formula::PropVar(_)
+                | Formula::PropVar(..)
                 | Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_)
@@ -76,7 +77,7 @@ impl fmt::Display for Formula {
             .and(match rightsubf.as_ref() {
                 Formula::Bottom
                 | Formula::Top
-                | Formula::PropVar(_)
+                | Formula::PropVar(..)
                 | Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_)
@@ -89,7 +90,7 @@ impl fmt::Display for Formula {
                 match leftsubf.as_ref() {
                     Formula::Bottom
                     | Formula::Top
-                    | Formula::PropVar(_)
+                    | Formula::PropVar(..)
                     | Formula::Not(_)
                     | Formula::Box(_)
                     | Formula::Diamond(_)
@@ -100,7 +101,7 @@ impl fmt::Display for Formula {
                 match rightsubf.as_ref() {
                     Formula::Bottom
                     | Formula::Top
-                    | Formula::PropVar(_)
+                    | Formula::PropVar(..)
                     | Formula::Not(_)
                     | Formula::Box(_)
                     | Formula::Diamond(_)
@@ -187,7 +188,7 @@ where
     S: Iterator<Item = (usize, Token)>,
 {
     let process = |token| match token {
-        Token::PROPVAR(n) => Ok(Formula::PropVar(n)),
+        Token::PROPVAR(c, n) => Ok(Formula::PropVar(c, n)),
         _ => Err(token),
     };
     parse_unit(stream, process)
@@ -359,12 +360,12 @@ mod tests {
 
     use super::*;
 
-    fn prop() -> Formula {
-        Formula::PropVar(None)
+    fn prop(c: char) -> Formula {
+        Formula::PropVar(c, None)
     }
 
-    fn prop_n(n: u8) -> Formula {
-        Formula::PropVar(Some(n))
+    fn prop_n(c: char, n: u8) -> Formula {
+        Formula::PropVar(c, Some(n))
     }
 
     fn not(f: Formula) -> Formula {
@@ -403,70 +404,73 @@ mod tests {
     #[test]
     fn test_parse_propvar() {
         assert_eq!(parse_str("_|_"), Formula::Bottom);
-        assert_eq!(parse_str("p"), prop());
-        assert_eq!(parse_str("p42"), prop_n(42));
+        assert_eq!(parse_str("p"), prop('p'));
+        assert_eq!(parse_str("p42"), prop_n('p', 42));
     }
 
     #[test]
     fn test_parse_not() {
-        assert_eq!(parse_str("~p1"), not(prop_n(1)));
-        assert_eq!(parse_str("~~p2"), not(not(prop_n(2))));
+        assert_eq!(parse_str("~q1"), not(prop_n('q', 1)));
+        assert_eq!(parse_str("~~q2"), not(not(prop_n('q', 2))));
     }
 
     #[test]
     fn test_parse_modals() {
-        assert_eq!(parse_str("<>p"), diamond(prop()));
-        assert_eq!(parse_str("[]p0"), boxm(prop_n(0)));
+        assert_eq!(parse_str("<>p"), diamond(prop('p')));
+        assert_eq!(parse_str("[]p0"), boxm(prop_n('p', 0)));
         assert_eq!(
-            parse_str("<>~[]<>p2"),
-            diamond(not(boxm(diamond(prop_n(2)))))
+            parse_str("<>~[]<>x2"),
+            diamond(not(boxm(diamond(prop_n('x', 2)))))
         );
     }
 
     #[test]
     fn test_parse_and_or() {
-        assert_eq!(parse_str("p1 & p2"), and(prop_n(1), prop_n(2)));
-        assert_eq!(parse_str("p1 | p"), or(prop_n(1), prop()));
+        assert_eq!(parse_str("x1 & y2"), and(prop_n('x', 1), prop_n('y', 2)));
+        assert_eq!(parse_str("x1 | y"), or(prop_n('x', 1), prop('y')));
         assert_eq!(
-            parse_str("p1 & p2 | p"),
-            or(and(prop_n(1), prop_n(2)), prop())
+            parse_str("x1 & y2 | z"),
+            or(and(prop_n('x', 1), prop_n('y', 2)), prop('z'))
         );
         assert_eq!(
-            parse_str("p1 | p2 & p3"),
-            or(prop_n(1), and(prop_n(2), prop_n(3)))
+            parse_str("x1 | y2 & z3"),
+            or(prop_n('x', 1), and(prop_n('y', 2), prop_n('z', 3)))
         );
     }
 
     #[test]
     fn test_parse_imply_iff() {
-        assert_eq!(parse_str("p1 -> p2"), imply(prop_n(1), prop_n(2)));
-        assert_eq!(parse_str("p1 <-> p2"), iff(prop_n(1), prop_n(2)));
+        assert_eq!(parse_str("p1 -> p2"), imply(prop_n('p', 1), prop_n('p', 2)));
+        assert_eq!(parse_str("p1 <-> p2"), iff(prop_n('p', 1), prop_n('p', 2)));
         assert_eq!(
             parse_str("p1 -> p2 -> p3"),
-            imply(prop_n(1), imply(prop_n(2), prop_n(3)))
+            imply(prop_n('p', 1), imply(prop_n('p', 2), prop_n('p', 3)))
         );
         assert_eq!(
             parse_str("p <-> p2 <-> _|_"),
-            iff(prop(), iff(prop_n(2), Formula::Bottom))
+            iff(prop('p',), iff(prop_n('p', 2), Formula::Bottom))
         );
     }
 
     #[test]
     fn test_parse_grouping() {
-        assert_eq!(parse_str("~(p1 & p2)"), not(and(prop_n(1), prop_n(2))));
+        assert_eq!(
+            parse_str("~(p1 & p2)"),
+            not(and(prop_n('p', 1), prop_n('p', 2)))
+        );
         assert_eq!(
             parse_str("(p1 -> _|_) & p3"),
-            and(imply(prop_n(1), Formula::Bottom), prop_n(3))
+            and(imply(prop_n('p', 1), Formula::Bottom), prop_n('p', 3))
         );
         assert_eq!(
             parse_str("p1 -> (p2 & p3)"),
-            imply(prop_n(1), and(prop_n(2), prop_n(3)))
+            imply(prop_n('p', 1), and(prop_n('p', 2), prop_n('p', 3)))
         );
     }
 
     #[test]
     fn test_parse_error_unexpected_token() {
-        let tokens = vec![Token::AND, Token::PROPVAR(Some(1))]
+        let tokens = vec![Token::AND, Token::PROPVAR('p', Some(1))]
             .into_iter()
             .enumerate();
         let err = full_parser(tokens).unwrap_err();
@@ -483,10 +487,13 @@ mod tests {
     #[test]
     fn test_parse_error_extra_tokens() {
         let tokens = tokenize("p1 p").unwrap();
-        assert_eq!(tokens, vec![Token::PROPVAR(Some(1)), Token::PROPVAR(None)]);
+        assert_eq!(
+            tokens,
+            vec![Token::PROPVAR('p', Some(1)), Token::PROPVAR('p', None)]
+        );
         let tokens = tokens.into_iter().enumerate();
         let err = full_parser(tokens).unwrap_err();
-        assert_eq!(err, Some((1, Token::PROPVAR(None))));
+        assert_eq!(err, Some((1, Token::PROPVAR('p', None))));
     }
 
     #[test]
@@ -495,9 +502,9 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::PROPVAR(Some(1)),
+                Token::PROPVAR('p', Some(1)),
                 Token::DIAMOND,
-                Token::PROPVAR(Some(2))
+                Token::PROPVAR('p', Some(2))
             ]
         );
         let tokens = tokens.into_iter().enumerate();
@@ -510,7 +517,11 @@ mod tests {
         let tokens = tokenize("p1 [] p2").unwrap();
         assert_eq!(
             tokens,
-            vec![Token::PROPVAR(Some(1)), Token::BOX, Token::PROPVAR(Some(2))]
+            vec![
+                Token::PROPVAR('p', Some(1)),
+                Token::BOX,
+                Token::PROPVAR('p', Some(2))
+            ]
         );
         let tokens = tokens.into_iter().enumerate();
         let err = full_parser(tokens).unwrap_err();

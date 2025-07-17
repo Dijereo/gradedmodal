@@ -7,7 +7,7 @@ use crate::{
 
 pub(crate) trait RuleCalc: StaticCalc {
     fn get_trans_rules(&self) -> &[&dyn TransitionRule];
-    fn get_init_rules(&self) -> &[&dyn SequenceRule];
+    fn get_init_rules(&self) -> &[&dyn LinearRule];
 
     fn sat(&self, formulae: Vec<Rc<Formula>>) -> WorldTableau {
         let mut tab = WorldTableau::from_formulae(formulae);
@@ -60,14 +60,14 @@ pub(crate) trait RuleCalc: StaticCalc {
     }
 }
 
-trait SeqCalc {
-    fn get_seq_rules(&self) -> &[&dyn SequenceRule];
+trait LinearCalc {
+    fn get_linear_rules(&self) -> &[&dyn LinearRule];
 
-    fn apply_seq_node(&self, node: &mut TableauNode) {
+    fn apply_linear_node(&self, node: &mut TableauNode) {
         let mut i = 0;
         while let Some(formula) = node.formulae.get(i) {
             let mut new_formulae = vec![];
-            for rule in self.get_seq_rules() {
+            for rule in self.get_linear_rules() {
                 new_formulae.extend(rule.expand(&formula));
             }
             for new_formula in new_formulae {
@@ -81,8 +81,8 @@ trait SeqCalc {
     }
 }
 
-trait StaticCalc: SeqCalc {
-    fn get_split_rules(&self) -> &[&dyn SplitRule];
+trait StaticCalc: LinearCalc {
+    fn get_fork_rules(&self) -> &[&dyn ForkRule];
 
     fn apply_world(&self, world: &mut WorldTableau) {
         self.apply_static(&world.root, VecDeque::new());
@@ -94,40 +94,40 @@ trait StaticCalc: SeqCalc {
     fn apply_static(
         &self,
         node: &Rc<RefCell<TableauNode>>,
-        mut splits: VecDeque<Vec<Vec<Rc<Formula>>>>,
+        mut forks: VecDeque<Vec<Vec<Rc<Formula>>>>,
     ) {
-        self.apply_seq_node(&mut node.borrow_mut());
+        self.apply_linear_node(&mut node.borrow_mut());
         if !node.borrow().is_closed {
-            self.add_splits(&node.borrow(), &mut splits);
-            self.apply_splits(node, splits);
+            self.add_forks(&node.borrow(), &mut forks);
+            self.apply_forks(node, forks);
         }
     }
 
-    fn add_splits(&self, node: &TableauNode, splits: &mut VecDeque<Vec<Vec<Rc<Formula>>>>) {
+    fn add_forks(&self, node: &TableauNode, forks: &mut VecDeque<Vec<Vec<Rc<Formula>>>>) {
         if node.is_closed {
             return;
         }
         for formula in &node.formulae {
-            for rule in self.get_split_rules() {
-                let split = rule.expand(formula);
-                if !split.is_empty() {
-                    splits.push_back(split);
+            for rule in self.get_fork_rules() {
+                let fork = rule.expand(formula);
+                if !fork.is_empty() {
+                    forks.push_back(fork);
                 }
             }
         }
     }
 
-    fn apply_splits(
+    fn apply_forks(
         &self,
         node: &Rc<RefCell<TableauNode>>,
-        mut splits: VecDeque<Vec<Vec<Rc<Formula>>>>,
+        mut forks: VecDeque<Vec<Vec<Rc<Formula>>>>,
     ) {
         if node.borrow().is_closed {
             return;
         }
         while node.borrow().children.is_empty() {
-            if let Some(split) = splits.pop_front() {
-                for branch in split {
+            if let Some(fork) = forks.pop_front() {
+                for branch in fork {
                     let child =
                         Rc::new(RefCell::new(TableauNode::from_formulae(branch, Some(node))));
                     node.borrow_mut().children.push(child);
@@ -141,7 +141,7 @@ trait StaticCalc: SeqCalc {
             if child.borrow().is_closed {
                 continue;
             }
-            self.apply_static(&child, splits.clone());
+            self.apply_static(&child, forks.clone());
             if !child.borrow().is_closed {
                 all_closed = false;
             }
@@ -154,15 +154,15 @@ trait StaticCalc: SeqCalc {
 
 struct PropCalc;
 
-impl SeqCalc for PropCalc {
-    fn get_seq_rules(&self) -> &[&dyn SequenceRule] {
-        &[&PropSeqRules]
+impl LinearCalc for PropCalc {
+    fn get_linear_rules(&self) -> &[&dyn LinearRule] {
+        &[&PropLinearRules]
     }
 }
 
 impl StaticCalc for PropCalc {
-    fn get_split_rules(&self) -> &[&dyn SplitRule] {
-        &[&PropSplitRules]
+    fn get_fork_rules(&self) -> &[&dyn ForkRule] {
+        &[&PropForkRules]
     }
 }
 
@@ -171,20 +171,20 @@ impl RuleCalc for PropCalc {
         &[]
     }
 
-    fn get_init_rules(&self) -> &[&dyn SequenceRule] {
+    fn get_init_rules(&self) -> &[&dyn LinearRule] {
         &[]
     }
 }
 
-impl SeqCalc for RuleCalculus {
-    fn get_seq_rules(&self) -> &[&dyn SequenceRule] {
-        self.seq
+impl LinearCalc for RuleCalculus {
+    fn get_linear_rules(&self) -> &[&dyn LinearRule] {
+        self.lin
     }
 }
 
 impl StaticCalc for RuleCalculus {
-    fn get_split_rules(&self) -> &[&dyn SplitRule] {
-        self.split
+    fn get_fork_rules(&self) -> &[&dyn ForkRule] {
+        self.fork
     }
 }
 
@@ -193,21 +193,21 @@ impl RuleCalc for RuleCalculus {
         self.trans
     }
 
-    fn get_init_rules(&self) -> &[&dyn SequenceRule] {
+    fn get_init_rules(&self) -> &[&dyn LinearRule] {
         self.init
     }
 }
 
-pub(crate) trait SequenceRule {
+pub(crate) trait LinearRule {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>>;
 }
 
-pub(crate) trait CheckSeqRule {
+pub(crate) trait CheckedLinearRule {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>>;
     fn check(&self) -> bool;
 }
 
-pub(crate) trait SplitRule {
+pub(crate) trait ForkRule {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Vec<Rc<Formula>>>;
 }
 
@@ -425,159 +425,159 @@ where
 }
 
 pub(crate) struct RuleCalculus {
-    pub(crate) init: &'static [&'static dyn SequenceRule],
-    pub(crate) seq: &'static [&'static dyn SequenceRule],
+    pub(crate) init: &'static [&'static dyn LinearRule],
+    pub(crate) lin: &'static [&'static dyn LinearRule],
     // pub(crate) check: &'static [&'static dyn CheckSeqRule],
-    pub(crate) split: &'static [&'static dyn SplitRule],
+    pub(crate) fork: &'static [&'static dyn ForkRule],
     pub(crate) trans: &'static [&'static dyn TransitionRule],
 }
 
 pub(crate) const PROP_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules],
+    lin: &[&PropLinearRules],
     // check: &[],
-    split: &[&PropSplitRules],
+    fork: &[&PropForkRules],
     trans: &[],
 };
 
 pub(crate) const K_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules],
+    lin: &[&PropLinearRules],
     // check: &[],
-    split: &[&PropSplitRules],
+    fork: &[&PropForkRules],
     trans: &[&SingleWrapper(KRule)],
 };
 
 pub(crate) const T_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules, &TRule],
+    lin: &[&PropLinearRules, &TRule],
     // check: &[],
-    split: &[&PropSplitRules],
+    fork: &[&PropForkRules],
     trans: &[&SingleWrapper(KRule)],
 };
 
 pub(crate) const D_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules, &DRule],
+    lin: &[&PropLinearRules, &DRule],
     // check: &[],
-    split: &[&PropSplitRules],
+    fork: &[&PropForkRules],
     trans: &[&SingleWrapper(KRule)],
 };
 
 pub(crate) const D_PRIME_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules],
+    lin: &[&PropLinearRules],
     // check: &[],
-    split: &[&PropSplitRules],
+    fork: &[&PropForkRules],
     trans: &[&OptWrapper(KDRule)],
 };
 
 pub(crate) const K4_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules],
+    lin: &[&PropLinearRules],
     // check: &[],
-    split: &[&PropSplitRules],
+    fork: &[&PropForkRules],
     trans: &[&SingleWrapper(K4Rule)],
 };
 
 pub(crate) const K4D_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules, &DRule],
+    lin: &[&PropLinearRules, &DRule],
     // check: &[],
-    split: &[&PropSplitRules],
+    fork: &[&PropForkRules],
     trans: &[&SingleWrapper(K4Rule)],
 };
 
 pub(crate) const K45_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules],
+    lin: &[&PropLinearRules],
     // check: &[],
-    split: &[&PropSplitRules],
+    fork: &[&PropForkRules],
     trans: &[&AllWrapper(_45Rule)],
 };
 
 pub(crate) const K45D_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules],
+    lin: &[&PropLinearRules],
     // check: &[],
-    split: &[&PropSplitRules],
+    fork: &[&PropForkRules],
     trans: &[&AllWrapper(_45DRule)],
 };
 
 pub(crate) const S4_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules, &TRule],
+    lin: &[&PropLinearRules, &TRule],
     // check: &[],
-    split: &[&PropSplitRules],
+    fork: &[&PropForkRules],
     trans: &[&SingleWrapper(S4Rule)],
 };
 
 pub(crate) const S5PI_CALCULUS: RuleCalculus = RuleCalculus {
     init: &[&PiRule],
-    seq: &[&PropSeqRules, &TRule],
+    lin: &[&PropLinearRules, &TRule],
     // check: &[],
-    split: &[&PropSplitRules],
+    fork: &[&PropForkRules],
     trans: &[&AllWrapper(S5Rule)],
 };
 
 pub(crate) const K45_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules],
+    lin: &[&PropLinearRules],
     // check: &[],
-    split: &[&CutPropRules, &CutBoxRule, &CutDiamondRule],
+    fork: &[&CutPropRules, &CutBoxRule, &CutDiamondRule],
     trans: &[&AllWrapper(_45Rule)],
 };
 
 pub(crate) const K45D_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules],
+    lin: &[&PropLinearRules],
     // check: &[],
-    split: &[&CutPropRules, &CutBoxRule, &CutDiamondRule],
+    fork: &[&CutPropRules, &CutBoxRule, &CutDiamondRule],
     trans: &[&AllWrapper(_45DRule)],
 };
 
 pub(crate) const K4B_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules, &_5Rule],
+    lin: &[&PropLinearRules, &_5Rule],
     // check: &[&TDiamondRule],
-    split: &[&CutPropRules, &CutBoxRule, &CutDiamondRule],
+    fork: &[&CutPropRules, &CutBoxRule, &CutDiamondRule],
     trans: &[&SingleWrapper(K4Rule)],
 };
 
 pub(crate) const S4_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules, &TRule],
+    lin: &[&PropLinearRules, &TRule],
     // check: &[],
-    split: &[&CutPropRules, &CutDiamondRule],
+    fork: &[&CutPropRules, &CutDiamondRule],
     trans: &[&SingleWrapper(S4Rule)],
 };
 
 pub(crate) const B_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules, &TRule],
+    lin: &[&PropLinearRules, &TRule],
     // check: &[],
-    split: &[&CutPropRules, &CutDiamondRule, &BRule],
+    fork: &[&CutPropRules, &CutDiamondRule, &BRule],
     trans: &[&SingleWrapper(KRule)],
 };
 
 pub(crate) const S5_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules, &TRule, &_5Rule],
+    lin: &[&PropLinearRules, &TRule, &_5Rule],
     // check: &[],
-    split: &[&CutPropRules, &CutDiamondRule],
+    fork: &[&CutPropRules, &CutDiamondRule],
     trans: &[&SingleWrapper(S4Rule)],
 };
 
 pub(crate) const S5_PRIME_CUTCULUS: RuleCalculus = RuleCalculus {
     init: &[],
-    seq: &[&PropSeqRules, &TRule],
+    lin: &[&PropLinearRules, &TRule],
     // check: &[],
-    split: &[&CutPropRules, &CutDiamondRule],
+    fork: &[&CutPropRules, &CutDiamondRule],
     trans: &[&AllWrapper(S5Rule)],
 };
 
-struct PropSeqRules;
-struct PropSplitRules;
+struct PropLinearRules;
+struct PropForkRules;
 struct KRule;
 struct TRule;
 struct DRule;
@@ -595,12 +595,12 @@ struct CutDiamondRule;
 struct CutPropRules;
 struct PiRule;
 
-impl SequenceRule for PropSeqRules {
+impl LinearRule for PropLinearRules {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>> {
         match formula.as_ref() {
             Formula::Bottom
             | Formula::Top
-            | Formula::PropVar(_)
+            | Formula::PropVar(..)
             | Formula::Box(_)
             | Formula::Diamond(_)
             | Formula::Or(_, _)
@@ -614,12 +614,12 @@ impl SequenceRule for PropSeqRules {
     }
 }
 
-impl PropSeqRules {
+impl PropLinearRules {
     fn expand_not(phi: &Formula) -> Vec<Rc<Formula>> {
         match phi {
             Formula::Bottom
             | Formula::Top
-            | Formula::PropVar(_)
+            | Formula::PropVar(..)
             | Formula::And(_, _)
             | Formula::Iff(_, _) => vec![],
             Formula::Not(psi) => vec![psi.clone()],
@@ -631,16 +631,16 @@ impl PropSeqRules {
     }
 }
 
-impl SplitRule for PropSplitRules {
+impl ForkRule for PropForkRules {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Vec<Rc<Formula>>> {
         match formula.as_ref() {
             Formula::Bottom
             | Formula::Top
-            | Formula::PropVar(_)
+            | Formula::PropVar(..)
             | Formula::Box(_)
             | Formula::Diamond(_)
             | Formula::And(_, _) => vec![],
-            Formula::Not(phi) => Self::expand_split_not(phi),
+            Formula::Not(phi) => Self::expand_fork_not(phi),
             Formula::Or(phi1, phi2) => vec![vec![phi1.clone()], vec![phi2.clone()]],
             Formula::Imply(phi1, phi2) => vec![vec![phi1.not()], vec![phi2.clone()]],
             Formula::Iff(phi1, phi2) => vec![
@@ -651,12 +651,12 @@ impl SplitRule for PropSplitRules {
     }
 }
 
-impl PropSplitRules {
-    fn expand_split_not(phi: &Formula) -> Vec<Vec<Rc<Formula>>> {
+impl PropForkRules {
+    fn expand_fork_not(phi: &Formula) -> Vec<Vec<Rc<Formula>>> {
         match phi {
             Formula::Bottom
             | Formula::Top
-            | Formula::PropVar(_)
+            | Formula::PropVar(..)
             | Formula::Not(_)
             | Formula::Box(_)
             | Formula::Diamond(_)
@@ -687,7 +687,7 @@ impl SingleTransRule for KRule {
     }
 }
 
-impl SequenceRule for TRule {
+impl LinearRule for TRule {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>> {
         match formula.as_ref() {
             Formula::Box(phi) => vec![phi.clone()],
@@ -696,7 +696,7 @@ impl SequenceRule for TRule {
     }
 }
 
-impl SequenceRule for DRule {
+impl LinearRule for DRule {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>> {
         match formula.as_ref() {
             Formula::Box(phi) => vec![phi.diamond()],
@@ -771,7 +771,7 @@ impl AllTransRule for _45DRule {
     }
 }
 
-impl SplitRule for BRule {
+impl ForkRule for BRule {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Vec<Rc<Formula>>> {
         match formula.as_ref() {
             Formula::Diamond(phi) => vec![vec![phi.not()], vec![phi.clone(), formula.box_()]],
@@ -780,7 +780,7 @@ impl SplitRule for BRule {
     }
 }
 
-impl CheckSeqRule for TDiamondRule {
+impl CheckedLinearRule for TDiamondRule {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>> {
         match formula.as_ref() {
             Formula::Box(phi) => vec![phi.clone()],
@@ -793,7 +793,7 @@ impl CheckSeqRule for TDiamondRule {
     }
 }
 
-impl SequenceRule for _5Rule {
+impl LinearRule for _5Rule {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>> {
         match formula.as_ref() {
             Formula::Diamond(_) => vec![formula.box_()],
@@ -816,7 +816,7 @@ impl AllTransRule for S5Rule {
     }
 }
 
-impl SplitRule for CutBoxRule {
+impl ForkRule for CutBoxRule {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Vec<Rc<Formula>>> {
         match formula.as_ref() {
             Formula::Box(phi) => vec![vec![phi.clone()], vec![phi.not()]],
@@ -825,7 +825,7 @@ impl SplitRule for CutBoxRule {
     }
 }
 
-impl SplitRule for CutDiamondRule {
+impl ForkRule for CutDiamondRule {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Vec<Rc<Formula>>> {
         match formula.as_ref() {
             Formula::Diamond(phi) => vec![vec![phi.clone()], vec![phi.not()]],
@@ -834,22 +834,22 @@ impl SplitRule for CutDiamondRule {
     }
 }
 
-impl SequenceRule for PiRule {
+impl LinearRule for PiRule {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>> {
         vec![formula.diamond()]
     }
 }
 
-impl SplitRule for CutPropRules {
+impl ForkRule for CutPropRules {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Vec<Rc<Formula>>> {
         match formula.as_ref() {
             Formula::Bottom
             | Formula::Top
-            | Formula::PropVar(_)
+            | Formula::PropVar(..)
             | Formula::Box(_)
             | Formula::Diamond(_)
             | Formula::And(_, _) => vec![],
-            Formula::Not(phi) => Self::expand_split_not(phi),
+            Formula::Not(phi) => Self::fork_not(phi),
             Formula::Or(phi1, phi2) => {
                 vec![
                     vec![phi1.clone(), phi2.not()],
@@ -871,11 +871,11 @@ impl SplitRule for CutPropRules {
 }
 
 impl CutPropRules {
-    fn expand_split_not(phi: &Formula) -> Vec<Vec<Rc<Formula>>> {
+    fn fork_not(phi: &Formula) -> Vec<Vec<Rc<Formula>>> {
         match phi {
             Formula::Bottom
             | Formula::Top
-            | Formula::PropVar(_)
+            | Formula::PropVar(..)
             | Formula::Not(_)
             | Formula::Box(_)
             | Formula::Diamond(_)
