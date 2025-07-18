@@ -166,11 +166,17 @@ impl SignedTableau {
     fn expand_once(signedformula: &SignedFormula) -> Expansion {
         let (sign, f) = signedformula;
         match (f.as_ref(), sign) {
-            (Formula::Bottom | Formula::PropVar(..) | Formula::Box(_) | Formula::Diamond(_), _) => {
-                Expansion::Linear(vec![])
-            }
+            (
+                Formula::Bottom
+                | Formula::PropVar(..)
+                | Formula::Box(_)
+                | Formula::Diamond(_)
+                | Formula::DiamondGe(..)
+                | Formula::DiamondLe(..),
+                _,
+            ) => Expansion::Linear(vec![]),
             (Formula::Top, true) => Expansion::Linear(vec![]),
-            (Formula::Top, false) => Expansion::Linear(vec![(true, Rc::new(Formula::Bottom))]),
+            (Formula::Top, false) => Expansion::Linear(vec![(true, Formula::bottom())]),
             (Formula::Not(formula), true) => Expansion::Linear(vec![(false, formula.clone())]),
             (Formula::Not(formula), false) => Expansion::Linear(vec![(true, formula.clone())]),
             (Formula::And(formula, formula1), true) => {

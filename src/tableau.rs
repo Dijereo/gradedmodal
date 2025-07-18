@@ -125,7 +125,7 @@ impl TableauNode {
                 self.is_closed = true;
             } else if self.check_contra(&new_formula) {
                 self.formulae.push(new_formula);
-                self.formulae.push(Rc::new(Formula::Bottom));
+                self.formulae.push(Formula::bottom());
                 self.is_closed = true;
             } else {
                 self.formulae.push(new_formula);

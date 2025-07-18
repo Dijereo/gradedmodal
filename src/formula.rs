@@ -6,17 +6,18 @@ use crate::{
         parse_tup, parse_unit,
     },
     token::Token,
-    util::write_subscript,
 };
 
 #[derive(Debug, PartialEq)]
-pub enum Formula {
+pub(crate) enum Formula {
     Bottom,
     Top,
     PropVar(char, Option<u8>),
     Not(Rc<Formula>),
     Box(Rc<Formula>),
     Diamond(Rc<Formula>),
+    DiamondGe(u32, Rc<Formula>), // Invariant: .0: u32 cannot be zero
+    DiamondLe(u32, Rc<Formula>),
     And(Rc<Formula>, Rc<Formula>),
     Or(Rc<Formula>, Rc<Formula>),
     Imply(Rc<Formula>, Rc<Formula>),
@@ -35,7 +36,9 @@ impl fmt::Display for Formula {
                 | Formula::PropVar(..)
                 | Formula::Not(_)
                 | Formula::Box(_)
-                | Formula::Diamond(_) => {
+                | Formula::Diamond(_)
+                | Formula::DiamondGe(..)
+                | Formula::DiamondLe(..) => {
                     write!(f, "¬{subformula}")
                 }
                 _ => write!(f, "¬({subformula})"),
@@ -46,7 +49,9 @@ impl fmt::Display for Formula {
                 | Formula::PropVar(..)
                 | Formula::Not(_)
                 | Formula::Box(_)
-                | Formula::Diamond(_) => {
+                | Formula::Diamond(_)
+                | Formula::DiamondGe(..)
+                | Formula::DiamondLe(..) => {
                     write!(f, "□{subformula}")
                 }
                 _ => write!(f, "□({subformula})"),
@@ -57,35 +62,67 @@ impl fmt::Display for Formula {
                 | Formula::PropVar(..)
                 | Formula::Not(_)
                 | Formula::Box(_)
-                | Formula::Diamond(_) => {
+                | Formula::Diamond(_)
+                | Formula::DiamondGe(..)
+                | Formula::DiamondLe(..) => {
                     write!(f, "◇{subformula}")
                 }
                 _ => write!(f, "◇({subformula})"),
             },
-            Formula::And(leftsubf, rightsubf) => match leftsubf.as_ref() {
-                Formula::Bottom
-                | Formula::Top
-                | Formula::PropVar(..)
-                | Formula::Not(_)
+            Formula::DiamondGe(count, subformula) => match subformula.as_ref() {
+                Formula::Bottom | Formula::Top | Formula::PropVar(..) => {
+                    write!(f, "◇≥{count} {subformula}")
+                }
+                Formula::Not(_)
                 | Formula::Box(_)
                 | Formula::Diamond(_)
-                | Formula::And(_, _) => {
-                    write!(f, "{leftsubf} ∧ ")
+                | Formula::DiamondGe(..)
+                | Formula::DiamondLe(..) => {
+                    write!(f, "◇≥{count}{subformula}")
                 }
-                _ => write!(f, "({leftsubf}) ∧ "),
+                _ => write!(f, "◇≥{count}({subformula})"),
+            },
+            Formula::DiamondLe(count, subformula) => match subformula.as_ref() {
+                Formula::Bottom | Formula::Top | Formula::PropVar(..) => {
+                    write!(f, "◇≤{count} {subformula}")
+                }
+                Formula::Not(_)
+                | Formula::Box(_)
+                | Formula::Diamond(_)
+                | Formula::DiamondGe(..)
+                | Formula::DiamondLe(..) => {
+                    write!(f, "◇≤{count}{subformula}")
+                }
+                _ => write!(f, "◇≤{count}({subformula})"),
+            },
+            Formula::And(leftsubf, rightsubf) => {
+                match leftsubf.as_ref() {
+                    Formula::Bottom
+                    | Formula::Top
+                    | Formula::PropVar(..)
+                    | Formula::Not(_)
+                    | Formula::Box(_)
+                    | Formula::Diamond(_)
+                    | Formula::DiamondGe(..)
+                    | Formula::DiamondLe(..)
+                    | Formula::And(_, _) => write!(f, "{leftsubf} ∧ ")?,
+                    _ => write!(f, "({leftsubf}) ∧ ")?,
+                }
+                match rightsubf.as_ref() {
+                    Formula::Bottom
+                    | Formula::Top
+                    | Formula::PropVar(..)
+                    | Formula::Not(_)
+                    | Formula::Box(_)
+                    | Formula::Diamond(_)
+                    | Formula::DiamondGe(..)
+                    | Formula::DiamondLe(..)
+                    | Formula::And(_, _) => {
+                        write!(f, "{rightsubf}")
+                    }
+                    _ => write!(f, "({rightsubf})"),
+                }
             }
-            .and(match rightsubf.as_ref() {
-                Formula::Bottom
-                | Formula::Top
-                | Formula::PropVar(..)
-                | Formula::Not(_)
-                | Formula::Box(_)
-                | Formula::Diamond(_)
-                | Formula::And(_, _) => {
-                    write!(f, "{rightsubf}")
-                }
-                _ => write!(f, "({rightsubf})"),
-            }),
             Formula::Or(leftsubf, rightsubf) => {
                 match leftsubf.as_ref() {
                     Formula::Bottom
@@ -94,6 +131,8 @@ impl fmt::Display for Formula {
                     | Formula::Not(_)
                     | Formula::Box(_)
                     | Formula::Diamond(_)
+                    | Formula::DiamondGe(..)
+                    | Formula::DiamondLe(..)
                     | Formula::And(_, _)
                     | Formula::Or(_, _) => write!(f, "{leftsubf} ∨ ")?,
                     _ => write!(f, "({leftsubf}) ∨ ")?,
@@ -105,6 +144,8 @@ impl fmt::Display for Formula {
                     | Formula::Not(_)
                     | Formula::Box(_)
                     | Formula::Diamond(_)
+                    | Formula::DiamondGe(..)
+                    | Formula::DiamondLe(..)
                     | Formula::And(_, _)
                     | Formula::Or(_, _) => {
                         write!(f, "{rightsubf}")
@@ -139,6 +180,10 @@ impl Formula {
         }
     }
 
+    pub(crate) fn bottom() -> Rc<Formula> {
+        Rc::new(Formula::Bottom)
+    }
+
     pub(crate) fn not(self: &Rc<Formula>) -> Rc<Formula> {
         Rc::new(Formula::Not(self.clone()))
     }
@@ -161,6 +206,22 @@ impl Formula {
 
     pub(crate) fn diamond(self: &Rc<Formula>) -> Rc<Formula> {
         Rc::new(Formula::Diamond(self.clone()))
+    }
+
+    pub(crate) fn dmge(self: &Rc<Formula>, count: u32) -> Rc<Formula> {
+        if count == 0 {
+            Rc::new(Formula::Top)
+        } else {
+            Rc::new(Formula::DiamondGe(count, self.clone()))
+        }
+    }
+
+    pub(crate) fn dmle(self: &Rc<Formula>, count: u32) -> Rc<Formula> {
+        if count == 0 {
+            self.not().box_()
+        } else {
+            Rc::new(Formula::DiamondLe(count, self.clone()))
+        }
     }
 
     pub(crate) fn box_(self: &Rc<Formula>) -> Rc<Formula> {

@@ -578,6 +578,7 @@ pub(crate) const S5_PRIME_CUTCULUS: RuleCalculus = RuleCalculus {
 
 struct PropLinearRules;
 struct PropForkRules;
+struct PropKERules;
 struct KRule;
 struct TRule;
 struct DRule;
@@ -603,6 +604,8 @@ impl LinearRule for PropLinearRules {
             | Formula::PropVar(..)
             | Formula::Box(_)
             | Formula::Diamond(_)
+            | Formula::DiamondGe(..)
+            | Formula::DiamondLe(..)
             | Formula::Or(_, _)
             | Formula::Imply(_, _)
             | Formula::Iff(_, _) => vec![],
@@ -625,6 +628,8 @@ impl PropLinearRules {
             Formula::Not(psi) => vec![psi.clone()],
             Formula::Box(psi) => vec![psi.not().diamond()],
             Formula::Diamond(psi) => vec![psi.not().box_()],
+            Formula::DiamondGe(count, psi) => vec![psi.dmle(count - 1)],
+            Formula::DiamondLe(count, psi) => vec![psi.dmge(count + 1)],
             Formula::Or(psi1, psi2) => vec![psi1.not().and(&psi2.not())],
             Formula::Imply(psi1, psi2) => vec![psi1.clone(), psi2.not()],
         }
@@ -639,6 +644,8 @@ impl ForkRule for PropForkRules {
             | Formula::PropVar(..)
             | Formula::Box(_)
             | Formula::Diamond(_)
+            | Formula::DiamondGe(..)
+            | Formula::DiamondLe(..)
             | Formula::And(_, _) => vec![],
             Formula::Not(phi) => Self::expand_fork_not(phi),
             Formula::Or(phi1, phi2) => vec![vec![phi1.clone()], vec![phi2.clone()]],
@@ -660,9 +667,55 @@ impl PropForkRules {
             | Formula::Not(_)
             | Formula::Box(_)
             | Formula::Diamond(_)
+            | Formula::DiamondGe(..)
+            | Formula::DiamondLe(..)
             | Formula::Or(_, _)
             | Formula::Imply(_, _) => vec![],
             Formula::And(psi1, psi2) => vec![vec![psi1.not()], vec![psi2.not()]],
+            Formula::Iff(psi1, psi2) => vec![
+                vec![psi1.clone(), psi2.not()],
+                vec![psi1.not(), psi2.clone()],
+            ],
+        }
+    }
+}
+
+impl ForkRule for PropKERules {
+    fn expand(&self, formula: &Rc<Formula>) -> Vec<Vec<Rc<Formula>>> {
+        match formula.as_ref() {
+            Formula::Bottom
+            | Formula::Top
+            | Formula::PropVar(..)
+            | Formula::Box(_)
+            | Formula::Diamond(_)
+            | Formula::DiamondGe(..)
+            | Formula::DiamondLe(..)
+            | Formula::And(_, _) => vec![],
+            Formula::Not(phi) => Self::expand_fork_not(phi),
+            Formula::Or(phi1, phi2) => vec![vec![phi1.clone()], vec![phi1.not(), phi2.clone()]],
+            Formula::Imply(phi1, phi2) => vec![vec![phi1.not()], vec![phi1.clone(), phi2.clone()]],
+            Formula::Iff(phi1, phi2) => vec![
+                vec![phi1.clone(), phi2.clone()],
+                vec![phi1.not(), phi2.not()],
+            ],
+        }
+    }
+}
+
+impl PropKERules {
+    fn expand_fork_not(phi: &Formula) -> Vec<Vec<Rc<Formula>>> {
+        match phi {
+            Formula::Bottom
+            | Formula::Top
+            | Formula::PropVar(..)
+            | Formula::Not(_)
+            | Formula::Box(_)
+            | Formula::Diamond(_)
+            | Formula::DiamondGe(..)
+            | Formula::DiamondLe(..)
+            | Formula::Or(_, _)
+            | Formula::Imply(_, _) => vec![],
+            Formula::And(psi1, psi2) => vec![vec![psi1.not()], vec![psi1.clone(), psi2.not()]],
             Formula::Iff(psi1, psi2) => vec![
                 vec![psi1.clone(), psi2.not()],
                 vec![psi1.not(), psi2.clone()],
@@ -848,6 +901,8 @@ impl ForkRule for CutPropRules {
             | Formula::PropVar(..)
             | Formula::Box(_)
             | Formula::Diamond(_)
+            | Formula::DiamondGe(..)
+            | Formula::DiamondLe(..)
             | Formula::And(_, _) => vec![],
             Formula::Not(phi) => Self::fork_not(phi),
             Formula::Or(phi1, phi2) => {
@@ -879,6 +934,8 @@ impl CutPropRules {
             | Formula::Not(_)
             | Formula::Box(_)
             | Formula::Diamond(_)
+            | Formula::DiamondGe(..)
+            | Formula::DiamondLe(..)
             | Formula::Or(_, _)
             | Formula::Imply(_, _) => vec![],
             Formula::And(psi1, psi2) => vec![

@@ -1,0 +1,33 @@
+initialize formulae in node:
+// already done
+
+apply static rules to node:
+expand conjunctions
+stop if contradiction
+save disjunctions
+if disjunction is sat ignore
+else if disjunction is resolved expand other branch
+else if disjunction is contradiction stop
+else rotate
+until all rotated
+fork one disjunction (maybe using ke rule?)
+recurse
+(implement backjumping?)
+save open branches with modals
+yield open branch with no modals
+after yielded all modalless branches yield from branches with modals
+stop when all branches yielded
+
+
+sat graded:
+apply static rules
+iter over open branches
+for each open branch
+set up transition worlds tableaux
+recurse check sat
+set up ilp for stat transitions
+return if found solution
+
+
+ke:
+keep track of formulae that are added just for contradiction but not split further

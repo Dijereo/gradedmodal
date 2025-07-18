@@ -10,12 +10,14 @@ use crate::{
 };
 
 mod formula;
-mod formula2;
+// mod formula2;
 mod parser;
-mod parser2;
+// mod parser2;
 mod rules;
+mod rules3;
 mod signed;
 mod tableau;
+mod tableau2;
 mod token;
 mod util;
 
