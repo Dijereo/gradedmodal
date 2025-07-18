@@ -7,15 +7,15 @@ use std::{
 
 use crate::formula::Formula;
 
-struct Branch {
-    id: usize,
-    node: Rc<RefCell<TableauNode2>>,
+pub(crate) struct TabChild {
+    pub(crate) branchid: usize,
+    pub(crate) node: Rc<RefCell<TableauNode2>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct Conflict {
-    fork: usize,
-    branch: usize,
+    forkid: usize,
+    branchid: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -28,7 +28,7 @@ pub(crate) struct TableauNode2 {
     pub(crate) is_closed: bool,
     pub(crate) formulae: Vec<Label>,
     pub(crate) forkid: Option<usize>,
-    pub(crate) children: Vec<Branch>,
+    pub(crate) children: Vec<TabChild>,
     pub(crate) parent: Weak<RefCell<TableauNode2>>,
 }
 
@@ -125,6 +125,21 @@ impl TableauNode2 {
         } else {
             self.formulae.push(new_label);
             DupContra::Ok
+        }
+    }
+
+    pub(crate) fn get_open_leaves(
+        tab: &Rc<RefCell<TableauNode2>>,
+        leaves: &mut Vec<Rc<RefCell<TableauNode2>>>,
+    ) {
+        if tab.borrow().is_closed {
+            return;
+        } else if tab.borrow().children.len() == 0 {
+            leaves.push(tab.clone());
+        } else {
+            for child in &tab.borrow().children {
+                Self::get_open_leaves(&child.node, leaves);
+            }
         }
     }
 
