@@ -1,8 +1,8 @@
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use std::{cell::RefCell, collections::VecDeque, mem::take, ops::DerefMut, rc::Rc};
 
 use crate::{
     formula::Formula,
-    tableau2::{Conflict, DupContra, Label, TabChild, TableauNode2},
+    tableau2::{Conflict, DupContra, Label, TabBranch, TabChildren, TableauNode2},
 };
 
 struct PropLinear;
@@ -30,6 +30,7 @@ struct Fork {
 pub(crate) struct GradedKCalc {
     // leaves_backlog: VecDeque<Rc<RefCell<TableauNode2>>>,
     forks: Vec<Fork>,
+    choices: Vec<Vec<(usize, usize)>>,
 }
 
 struct GradedTransit {
@@ -47,50 +48,39 @@ impl GradedKCalc {
                 conflictset: vec![],
             })
             .collect();
-        let mut calc = Self { forks: vec![] };
+        let mut calc = Self {
+            forks: vec![],
+            choices: vec![],
+        };
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(labels, None)));
         if !tab.borrow().is_closed {
-            calc.init(&mut tab.borrow_mut());
-            calc.apply(&tab);
+            calc.init(&tab);
+            calc.apply(&tab, VecDeque::new());
         }
         tab
     }
 
-    fn init(&self, tab: &mut TableauNode2) {
+    fn init(&self, tab: &Rc<RefCell<TableauNode2>>) {
         // todo!()
     }
 
-    fn apply(&mut self, tab: &Rc<RefCell<TableauNode2>>) {
+    fn apply(&mut self, tab: &Rc<RefCell<TableauNode2>>, forks: VecDeque<Fork>) {
         if tab.borrow().is_closed {
             return;
         }
         self.expand_static(tab, VecDeque::new());
+        if tab.borrow().is_closed {
+            return;
+        }
         let mut open_leaves = Vec::new();
         TableauNode2::get_open_leaves(tab, &mut open_leaves);
         for leaf in open_leaves {
-            let transit = GradedTransit::create(&leaf);
+            if let Some(tab) = GradedTransit::create(&leaf) {
+                leaf.borrow_mut().is_closed |= tab.borrow().is_closed;
+                leaf.borrow_mut().children = TabChildren::Transition(tab);
+            }
         }
-        todo!()
-
-        // if tab.is_closed {
-        //     return;
-        // }
         // todo!()
-        // self.apply_trans(world);
-    }
-
-    fn expand_paral_worlds(&mut self, tab: &Rc<RefCell<TableauNode2>>, mut forks: VecDeque<Fork>) {
-        if !tab.borrow().is_closed {
-            todo!()
-        }
-        self.expand_static(tab, VecDeque::new());
-        let mut open_leaves = Vec::new();
-        TableauNode2::get_open_leaves(tab, &mut open_leaves);
-        for leaf in open_leaves {
-            let transit = GradedTransit::create(&leaf);
-        }
-        // tab
-        todo!()
     }
 
     fn expand_static(&mut self, tab: &Rc<RefCell<TableauNode2>>, mut forks: VecDeque<Fork>) {
@@ -99,11 +89,13 @@ impl GradedKCalc {
             return;
         }
         self.add_forks(&tab.borrow(), &mut forks);
+        self.choices.push(vec![]);
         self.resolve_forks(&mut tab.borrow_mut(), &mut forks);
         if tab.borrow().is_closed {
             return;
         }
-        self.apply_forks(tab, forks)
+        self.apply_forks(tab, forks);
+        self.choices.pop();
     }
 
     fn expand_linear(&self, tab: &mut TableauNode2) {
@@ -151,7 +143,7 @@ impl GradedKCalc {
         }
     }
 
-    fn resolve_forks(&self, tab: &mut TableauNode2, forks: &mut VecDeque<Fork>) {
+    fn resolve_forks(&mut self, tab: &mut TableauNode2, forks: &mut VecDeque<Fork>) {
         let mut unresolved = VecDeque::new();
         while let Some(mut fork) = forks.pop_front() {
             let mut conflictset = vec![];
@@ -195,6 +187,10 @@ impl GradedKCalc {
                 return;
             } else if fork.branches.len() == 1 {
                 let branch = fork.branches.pop().expect("Checked in if statement above");
+                self.choices
+                    .last_mut()
+                    .expect("Should have pushed in expand static method")
+                    .push((fork.id, branch.id));
                 for label in branch.labels {
                     let confs = tab.add_check_dup_contra(Label {
                         formula: label.formula,
@@ -213,31 +209,46 @@ impl GradedKCalc {
     }
 
     fn apply_forks(&mut self, tab: &Rc<RefCell<TableauNode2>>, mut forks: VecDeque<Fork>) {
-        while tab.borrow().children.is_empty() {
+        loop {
+            match &tab.borrow().children {
+                TabChildren::Transition(_) => return,
+                TabChildren::Fork { branches, .. } if !branches.is_empty() => break,
+                _ => {}
+            };
             if let Some(fork) = forks.pop_front() {
                 for branch in fork.branches {
-                    tab.borrow_mut().forkid = Some(fork.id);
+                    if let TabChildren::Fork { id: forkid, .. } = &mut tab.borrow_mut().children {
+                        *forkid = Some(fork.id);
+                    }
                     let child = Rc::new(RefCell::new(TableauNode2::from_formulae(
                         branch.labels,
                         Some(tab),
                     )));
-                    tab.borrow_mut().children.push(TabChild {
-                        branchid: branch.id,
-                        node: child,
-                    });
+                    if let TabChildren::Fork { branches, .. } = &mut tab.borrow_mut().children {
+                        branches.push(TabBranch {
+                            branchid: branch.id,
+                            node: child,
+                        });
+                    }
+                    self.choices
+                        .last_mut()
+                        .expect("Should have pushed in expand static method")
+                        .push((fork.id, branch.id));
                 }
             } else {
                 return;
             }
         }
         let mut all_closed = true;
-        for child in &tab.borrow().children {
-            if child.node.borrow().is_closed {
-                continue;
-            }
-            self.expand_static(&child.node, forks.clone());
-            if !child.node.borrow().is_closed {
-                all_closed = false;
+        if let TabChildren::Fork { branches, .. } = &tab.borrow().children {
+            for branch in branches.iter() {
+                if branch.node.borrow().is_closed {
+                    continue;
+                }
+                self.expand_static(&branch.node, forks.clone());
+                if !branch.node.borrow().is_closed {
+                    all_closed = false;
+                }
             }
         }
         if all_closed {
@@ -247,7 +258,7 @@ impl GradedKCalc {
 }
 
 impl GradedTransit {
-    fn create(leaf: &Rc<RefCell<TableauNode2>>) -> Self {
+    fn create(leaf: &Rc<RefCell<TableauNode2>>) -> Option<Rc<RefCell<TableauNode2>>> {
         let mut transit = Self {
             boxed: vec![],
             diamge: vec![],
@@ -258,10 +269,9 @@ impl GradedTransit {
             true
         });
         if transit.diamge.is_empty() {
-            return transit;
+            return None;
         }
-
-        todo!()
+        Some(transit.setup_paral_worlds())
     }
 
     fn store_formula(&mut self, formula: &Rc<Formula>) {
@@ -281,7 +291,7 @@ impl GradedTransit {
         }
     }
 
-    fn setup_paral_worlds(self) {
+    fn setup_paral_worlds(self) -> Rc<RefCell<TableauNode2>> {
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(
             self.boxed
                 .into_iter()
@@ -293,7 +303,7 @@ impl GradedTransit {
             None,
         )));
         if tab.borrow().is_closed {
-            return;
+            return tab;
         }
         let forks = VecDeque::from_iter(
             self.diamge
@@ -303,20 +313,30 @@ impl GradedTransit {
                 .map(|(id, (c, f))| Fork {
                     id,
                     fktype: ForkType::ParallelWorlds,
-                    branches: vec![Branch {
-                        id: 0,
-                        labels: vec![Label {
-                            formula: f.clone(),
-                            conflictset: vec![],
-                        }],
-                    }],
+                    branches: vec![
+                        Branch {
+                            id: 0,
+                            labels: vec![Label {
+                                formula: f.clone(),
+                                conflictset: vec![],
+                            }],
+                        },
+                        Branch {
+                            id: 0,
+                            labels: vec![Label {
+                                formula: f.not(),
+                                conflictset: vec![],
+                            }],
+                        },
+                    ],
                 }),
         );
         let mut calc = GradedKCalc {
             forks: forks.iter().cloned().collect(),
+            choices: vec![],
         };
-        calc.expand_paral_worlds(&tab, forks);
-        todo!()
+        calc.apply(&tab, forks);
+        tab
     }
 }
 

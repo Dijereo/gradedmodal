@@ -4,7 +4,10 @@ use std::{
 };
 
 use crate::{
-    formula::full_parser, rules::{RuleCalc, K_CALCULUS, S4_CALCULUS, T_CALCULUS}, rules3::GradedKCalc, token::tokenize
+    formula::full_parser,
+    rules::{K_CALCULUS, RuleCalc, S4_CALCULUS, T_CALCULUS},
+    rules3::GradedKCalc,
+    token::tokenize,
 };
 
 mod formula;
@@ -40,6 +43,7 @@ pub fn run() {
                 match full_parser(stream) {
                     Ok(f) => {
                         let f = Rc::new(f);
+                        println!("{}", f);
                         // let tab = S4_CALCULUS.sat(vec![f]);
                         let tab = GradedKCalc::sat(vec![f]);
                         println!("{}", tab.borrow());
