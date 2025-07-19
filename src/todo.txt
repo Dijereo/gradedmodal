@@ -3,4 +3,13 @@ fix conflict sets correctness
 implement use of ocnflict set backjumping
 add better branch pruning
 add ke rule and add non-forking to label
+check uniqueness and supersets
 make resolution rules get displayed
+add dppl, tt, merging, lemma learning, analytic cut
+prioritize certain branches, certain forks
+invert branchids for diamond le
+change transit choices / paraworlds to tree
+if no le formulae then set all ge to true
+ilp
+build model
+only transit if choice not already made

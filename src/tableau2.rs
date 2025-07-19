@@ -2,17 +2,18 @@ use std::{
     cell::RefCell,
     collections::VecDeque,
     fmt,
+    ops::Deref,
     rc::{Rc, Weak},
 };
 
-use crate::formula::Formula;
+use crate::{formula::Formula, rules3::GradedTransit};
 
 pub(crate) enum TabChildren {
     Fork {
         id: Option<usize>,
         branches: Vec<TabBranch>,
     },
-    Transition(Rc<RefCell<TableauNode2>>),
+    Transition(Rc<RefCell<TableauNode2>>, GradedTransit),
 }
 
 pub(crate) struct TabBranch {
@@ -35,6 +36,7 @@ pub(crate) struct Label {
 pub(crate) struct TableauNode2 {
     pub(crate) is_closed: bool,
     pub(crate) formulae: Vec<Label>,
+    pub(crate) choices: Vec<(usize, usize)>,
     pub(crate) children: TabChildren,
     pub(crate) parent: Weak<RefCell<TableauNode2>>,
 }
@@ -47,6 +49,7 @@ impl TableauNode2 {
         let mut tab = Self {
             is_closed: false,
             formulae: vec![],
+            choices: vec![],
             children: TabChildren::Fork {
                 id: None,
                 branches: vec![],
@@ -140,21 +143,28 @@ impl TableauNode2 {
     pub(crate) fn get_open_leaves(
         tab: &Rc<RefCell<TableauNode2>>,
         leaves: &mut Vec<Rc<RefCell<TableauNode2>>>,
+        include_seeds: bool,
     ) {
         if tab.borrow().is_closed {
             return;
-        } else if let TabChildren::Fork {
-            branches: children, ..
-        } = &tab.borrow().children
-        {
-            if children.len() == 0 {
-                leaves.push(tab.clone());
-            } else {
-                for child in children {
-                    Self::get_open_leaves(&child.node, leaves);
-                }
-            }
         }
+        if let TabChildren::Fork { branches, .. } = &tab.borrow().children {
+            if branches.len() == 0 {
+                leaves.push(tab.clone());
+            }
+            for child in branches {
+                Self::get_open_leaves(&child.node, leaves, include_seeds);
+            }
+        } else if include_seeds {
+            leaves.push(tab.clone());
+        }
+    }
+
+    pub(crate) fn get_choices(tab: &Rc<RefCell<TableauNode2>>, choices: &mut Vec<(usize, usize)>) {
+        if let Some(parent) = tab.borrow().parent.upgrade() {
+            Self::get_choices(&parent, choices);
+        }
+        choices.extend_from_slice(&tab.borrow().choices)
     }
 
     fn get_depths_rec(&self, out: &mut VecDeque<usize>, depth: usize) {
@@ -165,25 +175,27 @@ impl TableauNode2 {
                     branch.node.borrow().get_depths_rec(out, depth + 1);
                 }
             }
-            TabChildren::Transition(_) => out.push_back(depth + 1),
+            TabChildren::Transition(..) => out.push_back(depth + 1),
         }
     }
 
     fn display_root(
-        &self,
+        this: &Rc<RefCell<Self>>,
         f: &mut fmt::Formatter<'_>,
         rooti: usize,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
     ) -> fmt::Result {
+        let thisref = this.borrow();
         let mut next_depths = VecDeque::new();
-        self.get_depths_rec(&mut next_depths, 1);
-        if self.is_closed {
+        thisref.get_depths_rec(&mut next_depths, 1);
+        if thisref.is_closed {
             writeln!(f, "{rooti}: ⊥")?;
         } else {
             writeln!(f, "{rooti}:")?;
         }
-        self.display_rec(
+        Self::display_rec(
+            this,
             f,
             next_depths
                 .pop_front()
@@ -195,23 +207,24 @@ impl TableauNode2 {
     }
 
     fn display_rec(
-        &self,
+        this: &Rc<RefCell<Self>>,
         f: &mut fmt::Formatter<'_>,
         depth: usize,
         next_depths: &mut VecDeque<usize>,
         curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
+        seeds: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
     ) -> fmt::Result {
+        let thisref = this.borrow();
         let next_depth = next_depths.pop_front();
         if depth > 1 {
             write!(f, "{:indent$}|-+ ", "", indent = depth * 2 - 4)?
         } else if depth == 1 {
             write!(f, "+ ")?
         }
-        if let Some(label) = self.formulae.first() {
+        if let Some(label) = thisref.formulae.first() {
             writeln!(f, "{}", label.formula)?
         }
-        for label in &self.formulae[1..] {
+        for label in &thisref.formulae[1..] {
             if let Some(next_depth) = next_depth {
                 if next_depth > 1 {
                     writeln!(
@@ -232,20 +245,15 @@ impl TableauNode2 {
                 writeln!(f, "{:indent$}{}", "", label.formula, indent = 2 * depth)?
             }
         }
-        match &self.children {
+        match &thisref.children {
             TabChildren::Fork { branches, .. } => {
                 for branch in branches {
-                    branch
-                        .node
-                        .borrow()
-                        .display_rec(f, depth + 1, next_depths, curri, roots)?
+                    Self::display_rec(&branch.node, f, depth + 1, next_depths, curri, seeds)?
                 }
             }
-            TabChildren::Transition(child) => {
-                child
-                    .borrow()
-                    .display_trans(f, depth + 1, next_depths, *curri)?;
-                roots.push_back((*curri, child.clone()));
+            TabChildren::Transition(..) => {
+                Self::display_trans(f, depth + 1, next_depths, *curri)?;
+                seeds.push_back((*curri, this.clone()));
                 *curri += 1;
             }
         }
@@ -253,7 +261,6 @@ impl TableauNode2 {
     }
 
     fn display_trans(
-        &self,
         f: &mut fmt::Formatter<'_>,
         depth: usize,
         next_depths: &mut VecDeque<usize>,
@@ -268,13 +275,20 @@ impl TableauNode2 {
     }
 }
 
-impl fmt::Display for TableauNode2 {
+pub(crate) struct DisplayTableau(pub(crate) Rc<RefCell<TableauNode2>>);
+
+impl fmt::Display for DisplayTableau {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut i = 1;
-        let mut roots = VecDeque::new();
-        self.display_root(f, 0, &mut i, &mut roots)?;
-        while let Some((rooti, root)) = roots.pop_front() {
-            root.borrow().display_root(f, rooti, &mut i, &mut roots)?;
+        let mut seeds = VecDeque::new();
+        TableauNode2::display_root(&self.0, f, 0, &mut i, &mut seeds)?;
+        while let Some((seedi, seed)) = seeds.pop_front() {
+            writeln!(f)?;
+            if let TabChildren::Transition(root, transit) = &seed.borrow().children {
+                TableauNode2::display_root(root, f, seedi, &mut i, &mut seeds)?;
+                writeln!(f)?;
+                writeln!(f, "{transit}")?;
+            }
         }
         Ok(())
     }

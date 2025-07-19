@@ -7,6 +7,7 @@ use crate::{
     formula::full_parser,
     rules::{K_CALCULUS, RuleCalc, S4_CALCULUS, T_CALCULUS},
     rules3::GradedKCalc,
+    tableau2::DisplayTableau,
     token::tokenize,
 };
 
@@ -44,9 +45,10 @@ pub fn run() {
                     Ok(f) => {
                         let f = Rc::new(f);
                         println!("{}", f);
+                        println!();
                         // let tab = S4_CALCULUS.sat(vec![f]);
-                        let tab = GradedKCalc::sat(vec![f]);
-                        println!("{}", tab.borrow());
+                        let tab = DisplayTableau(GradedKCalc::sat(vec![f]));
+                        println!("{}", tab);
                     }
                     Err(Some((i, tok))) => {
                         eprintln!("Error: bad token sequence '{:#?}' at index {}", tok, i)

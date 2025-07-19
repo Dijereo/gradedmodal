@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::VecDeque, mem::take, ops::DerefMut, rc::Rc};
+use std::{cell::RefCell, collections::VecDeque, fmt, mem::take, ops::DerefMut, rc::Rc};
 
 use crate::{
     formula::Formula,
@@ -30,13 +30,13 @@ struct Fork {
 pub(crate) struct GradedKCalc {
     // leaves_backlog: VecDeque<Rc<RefCell<TableauNode2>>>,
     forks: Vec<Fork>,
-    choices: Vec<Vec<(usize, usize)>>,
 }
 
-struct GradedTransit {
+pub(crate) struct GradedTransit {
     boxed: Vec<Rc<Formula>>,
     diamge: Vec<(u32, Rc<Formula>)>,
     diamle: Vec<(u32, Rc<Formula>)>,
+    para_worlds: Vec<(Rc<RefCell<TableauNode2>>, Vec<(usize, usize)>)>,
 }
 
 impl GradedKCalc {
@@ -48,10 +48,7 @@ impl GradedKCalc {
                 conflictset: vec![],
             })
             .collect();
-        let mut calc = Self {
-            forks: vec![],
-            choices: vec![],
-        };
+        let mut calc = Self { forks: vec![] };
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(labels, None)));
         if !tab.borrow().is_closed {
             calc.init(&tab);
@@ -68,16 +65,16 @@ impl GradedKCalc {
         if tab.borrow().is_closed {
             return;
         }
-        self.expand_static(tab, VecDeque::new());
+        self.expand_static(tab, forks);
         if tab.borrow().is_closed {
             return;
         }
         let mut open_leaves = Vec::new();
-        TableauNode2::get_open_leaves(tab, &mut open_leaves);
+        TableauNode2::get_open_leaves(tab, &mut open_leaves, false);
         for leaf in open_leaves {
-            if let Some(tab) = GradedTransit::create(&leaf) {
-                leaf.borrow_mut().is_closed |= tab.borrow().is_closed;
-                leaf.borrow_mut().children = TabChildren::Transition(tab);
+            if let Some((trans_tab, transit)) = GradedTransit::create(&leaf) {
+                leaf.borrow_mut().is_closed |= trans_tab.borrow().is_closed;
+                leaf.borrow_mut().children = TabChildren::Transition(trans_tab, transit);
             }
         }
         // todo!()
@@ -89,13 +86,11 @@ impl GradedKCalc {
             return;
         }
         self.add_forks(&tab.borrow(), &mut forks);
-        self.choices.push(vec![]);
         self.resolve_forks(&mut tab.borrow_mut(), &mut forks);
         if tab.borrow().is_closed {
             return;
         }
         self.apply_forks(tab, forks);
-        self.choices.pop();
     }
 
     fn expand_linear(&self, tab: &mut TableauNode2) {
@@ -187,10 +182,7 @@ impl GradedKCalc {
                 return;
             } else if fork.branches.len() == 1 {
                 let branch = fork.branches.pop().expect("Checked in if statement above");
-                self.choices
-                    .last_mut()
-                    .expect("Should have pushed in expand static method")
-                    .push((fork.id, branch.id));
+                tab.choices.push((fork.id, branch.id));
                 for label in branch.labels {
                     let confs = tab.add_check_dup_contra(Label {
                         formula: label.formula,
@@ -211,7 +203,7 @@ impl GradedKCalc {
     fn apply_forks(&mut self, tab: &Rc<RefCell<TableauNode2>>, mut forks: VecDeque<Fork>) {
         loop {
             match &tab.borrow().children {
-                TabChildren::Transition(_) => return,
+                TabChildren::Transition(..) => return,
                 TabChildren::Fork { branches, .. } if !branches.is_empty() => break,
                 _ => {}
             };
@@ -224,16 +216,13 @@ impl GradedKCalc {
                         branch.labels,
                         Some(tab),
                     )));
+                    child.borrow_mut().choices.push((fork.id, branch.id));
                     if let TabChildren::Fork { branches, .. } = &mut tab.borrow_mut().children {
                         branches.push(TabBranch {
                             branchid: branch.id,
                             node: child,
                         });
                     }
-                    self.choices
-                        .last_mut()
-                        .expect("Should have pushed in expand static method")
-                        .push((fork.id, branch.id));
                 }
             } else {
                 return;
@@ -258,11 +247,12 @@ impl GradedKCalc {
 }
 
 impl GradedTransit {
-    fn create(leaf: &Rc<RefCell<TableauNode2>>) -> Option<Rc<RefCell<TableauNode2>>> {
+    fn create(leaf: &Rc<RefCell<TableauNode2>>) -> Option<(Rc<RefCell<TableauNode2>>, Self)> {
         let mut transit = Self {
             boxed: vec![],
             diamge: vec![],
             diamle: vec![],
+            para_worlds: vec![],
         };
         leaf.borrow().traverse_anc_formulae(&mut |label| {
             transit.store_formula(&label.formula);
@@ -271,7 +261,46 @@ impl GradedTransit {
         if transit.diamge.is_empty() {
             return None;
         }
-        Some(transit.setup_paral_worlds())
+        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(
+            transit
+                .boxed
+                .iter()
+                .map(|f| Label {
+                    formula: f.clone(),
+                    conflictset: vec![],
+                })
+                .collect(),
+            None,
+        )));
+        if tab.borrow().is_closed {
+            return Some((tab, transit));
+        }
+        let forks = transit.get_forks();
+        let mut calc = GradedKCalc {
+            forks: forks.iter().cloned().collect(),
+        };
+        calc.apply(&tab, forks);
+        let mut seeds = vec![];
+        TableauNode2::get_open_leaves(&tab, &mut seeds, true);
+        for seed in seeds {
+            if seed.borrow().is_closed {
+                continue;
+            }
+            let mut choices = vec![];
+            TableauNode2::get_choices(&seed, &mut choices);
+            // println!("Choice {:?}", choices);
+            choices.sort_unstable();
+            choices.truncate(transit.diamge.len() + transit.diamle.len());
+            transit.para_worlds.push((seed, choices));
+        }
+        transit
+            .para_worlds
+            .sort_unstable_by(|(_, ch1), (_, ch2)| ch1.cmp(ch2));
+        transit
+            .para_worlds
+            .dedup_by(|(_, ch1), (_, ch2)| ch1 == ch2);
+        return Some((tab, transit));
+        todo!()
     }
 
     fn store_formula(&mut self, formula: &Rc<Formula>) {
@@ -291,21 +320,8 @@ impl GradedTransit {
         }
     }
 
-    fn setup_paral_worlds(self) -> Rc<RefCell<TableauNode2>> {
-        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(
-            self.boxed
-                .into_iter()
-                .map(|f| Label {
-                    formula: f,
-                    conflictset: vec![],
-                })
-                .collect(),
-            None,
-        )));
-        if tab.borrow().is_closed {
-            return tab;
-        }
-        let forks = VecDeque::from_iter(
+    fn get_forks(&self) -> VecDeque<Fork> {
+        VecDeque::from_iter(
             self.diamge
                 .iter()
                 .chain(self.diamle.iter())
@@ -322,7 +338,7 @@ impl GradedTransit {
                             }],
                         },
                         Branch {
-                            id: 0,
+                            id: 1,
                             labels: vec![Label {
                                 formula: f.not(),
                                 conflictset: vec![],
@@ -330,13 +346,29 @@ impl GradedTransit {
                         },
                     ],
                 }),
-        );
-        let mut calc = GradedKCalc {
-            forks: forks.iter().cloned().collect(),
-            choices: vec![],
-        };
-        calc.apply(&tab, forks);
-        tab
+        )
+    }
+}
+
+impl fmt::Display for GradedTransit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, (c, phi)) in self.diamge.iter().enumerate() {
+            writeln!(f, "({i}) ≥{c}: {phi}")?;
+        }
+        for ((c, phi), i) in self.diamle.iter().zip(self.diamge.len()..) {
+            writeln!(f, "({i}) ≤{c}: {phi}")?;
+        }
+        for phi in self.boxed.iter() {
+            writeln!(f, "□: {phi}")?;
+        }
+        for (i, (_leaf, choice)) in self.para_worlds.iter().enumerate() {
+            write!(f, "w{i}: ")?;
+            for (forkid, branchid) in choice {
+                write!(f, "{}{forkid} ", if *branchid == 0 { "" } else { "¬" })?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
     }
 }
 

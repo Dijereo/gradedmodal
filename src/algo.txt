@@ -11,6 +11,7 @@ else if disjunction is contradiction stop
 else rotate
 until all rotated
 fork one disjunction (maybe using ke rule?)
+(maybe use dpll / tt style?)
 recurse
 (implement backjumping?)
 save open branches with modals
