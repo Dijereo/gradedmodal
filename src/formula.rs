@@ -12,7 +12,7 @@ use crate::{
 pub(crate) enum Formula {
     Bottom,
     Top,
-    PropVar(char, Option<u8>),
+    PropVar(char, Option<u32>),
     Not(Rc<Formula>),
     Box(Rc<Formula>),
     Diamond(Rc<Formula>),
@@ -246,13 +246,26 @@ where
 
 fn var_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
 where
-    S: Iterator<Item = (usize, Token)>,
+    S: Iterator<Item = (usize, Token)> + Clone,
 {
-    let process = |token| match token {
-        Token::PROPVAR(c, n) => Ok(Formula::PropVar(c, n)),
-        _ => Err(token),
-    };
-    parse_unit(stream, process)
+    parse_tup(
+        stream,
+        |s| {
+            parse_unit(s, |token| match token {
+                Token::PROPVAR(c) => Ok(c),
+                _ => Err(token),
+            })
+        },
+        |s| {
+            parse_option(s, |s2| {
+                parse_unit(s2, |token| match token {
+                    Token::NUM(n) => Ok(n),
+                    _ => Err(token),
+                })
+            })
+        },
+        |c, n| Formula::PropVar(c, n),
+    )
 }
 
 fn paren_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
@@ -277,9 +290,11 @@ where
             Box::new(not_parser),
             Box::new(box_parser),
             Box::new(diamond_parser),
+            Box::new(dmge_parser),
+            Box::new(dmle_parser),
             Box::new(var_parser),
             Box::new(bottom_parser),
-        ] as [Box<DynParser<'a, Token, Formula, S>>; 6])
+        ] as [Box<DynParser<'a, Token, Formula, S>>; 8])
             .into_iter(),
     )
 }
@@ -317,6 +332,64 @@ where
         |s| parse_eq(s, &Token::DIAMOND, ()),
         atom_parser,
         |_, formula| Formula::Diamond(Rc::new(formula)),
+    )
+}
+
+fn dmge_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| {
+            parse_snd(
+                s,
+                |s2| parse_eq(s2, &Token::DIAMOND, ()),
+                |s2| {
+                    parse_snd(
+                        s2,
+                        |s3| parse_eq(s3, &Token::GTE, ()),
+                        |s3| {
+                            parse_unit(s3, |token| match token {
+                                Token::NUM(n) => Ok(n),
+                                _ => Err(token),
+                            })
+                        },
+                    )
+                },
+            )
+        },
+        atom_parser,
+        |n, formula| Formula::DiamondGe(n, Rc::new(formula)),
+    )
+}
+
+fn dmle_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| {
+            parse_snd(
+                s,
+                |s2| parse_eq(s2, &Token::DIAMOND, ()),
+                |s2| {
+                    parse_snd(
+                        s2,
+                        |s3| parse_eq(s3, &Token::LTE, ()),
+                        |s3| {
+                            parse_unit(s3, |token| match token {
+                                Token::NUM(n) => Ok(n),
+                                _ => Err(token),
+                            })
+                        },
+                    )
+                },
+            )
+        },
+        atom_parser,
+        |n, formula| Formula::DiamondLe(n, Rc::new(formula)),
     )
 }
 
@@ -425,7 +498,7 @@ mod tests {
         Formula::PropVar(c, None)
     }
 
-    fn prop_n(c: char, n: u8) -> Formula {
+    fn prop_n(c: char, n: u32) -> Formula {
         Formula::PropVar(c, Some(n))
     }
 
@@ -531,7 +604,7 @@ mod tests {
 
     #[test]
     fn test_parse_error_unexpected_token() {
-        let tokens = vec![Token::AND, Token::PROPVAR('p', Some(1))]
+        let tokens = vec![Token::AND, Token::PROPVAR('p'), Token::NUM(1)]
             .into_iter()
             .enumerate();
         let err = full_parser(tokens).unwrap_err();
@@ -550,11 +623,11 @@ mod tests {
         let tokens = tokenize("p1 p").unwrap();
         assert_eq!(
             tokens,
-            vec![Token::PROPVAR('p', Some(1)), Token::PROPVAR('p', None)]
+            vec![Token::PROPVAR('p'), Token::NUM(1), Token::PROPVAR('p')]
         );
         let tokens = tokens.into_iter().enumerate();
         let err = full_parser(tokens).unwrap_err();
-        assert_eq!(err, Some((1, Token::PROPVAR('p', None))));
+        assert_eq!(err, Some((2, Token::PROPVAR('p'))));
     }
 
     #[test]
@@ -563,14 +636,16 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::PROPVAR('p', Some(1)),
+                Token::PROPVAR('p'),
+                Token::NUM(1),
                 Token::DIAMOND,
-                Token::PROPVAR('p', Some(2))
+                Token::PROPVAR('p'),
+                Token::NUM(2)
             ]
         );
         let tokens = tokens.into_iter().enumerate();
         let err = full_parser(tokens).unwrap_err();
-        assert_eq!(err, Some((1, Token::DIAMOND)));
+        assert_eq!(err, Some((2, Token::DIAMOND)));
     }
 
     #[test]
@@ -579,13 +654,15 @@ mod tests {
         assert_eq!(
             tokens,
             vec![
-                Token::PROPVAR('p', Some(1)),
+                Token::PROPVAR('p'),
+                Token::NUM(1),
                 Token::BOX,
-                Token::PROPVAR('p', Some(2))
+                Token::PROPVAR('p'),
+                Token::NUM(2)
             ]
         );
         let tokens = tokens.into_iter().enumerate();
         let err = full_parser(tokens).unwrap_err();
-        assert_eq!(err, Some((1, Token::BOX)));
+        assert_eq!(err, Some((2, Token::BOX)));
     }
 }
