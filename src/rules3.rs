@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::VecDeque, fmt, mem::take, ops::DerefMut, rc::Rc};
+use std::{cell::RefCell, collections::VecDeque, fmt, rc::Rc};
 
 use crate::{
     formula::Formula,

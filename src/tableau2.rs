@@ -2,7 +2,6 @@ use std::{
     cell::RefCell,
     collections::VecDeque,
     fmt,
-    ops::Deref,
     rc::{Rc, Weak},
 };
 

@@ -13,6 +13,7 @@ use crate::{
 
 mod formula;
 // mod formula2;
+mod ilp;
 mod parser;
 // mod parser2;
 mod rules;
