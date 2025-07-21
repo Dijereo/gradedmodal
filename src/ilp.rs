@@ -57,7 +57,7 @@ fn write_cip(
     Ok(())
 }
 
-pub(crate) fn check_feasibility(transit: &GradedTransit) -> Option<Vec<u32>> {
+pub(crate) fn check_feasibility(transit: &mut GradedTransit) {
     let mut exprs = Vec::from_iter(
         transit
             .diamge
@@ -87,8 +87,12 @@ pub(crate) fn check_feasibility(transit: &GradedTransit) -> Option<Vec<u32>> {
     for constr in constrs {
         model.add_constraint(constr);
     }
-    let solution = model.solve().ok()?;
-    Some(vars.into_iter().map(|v| solution.value(v) as u32).collect())
+    match model.solve() {
+        Ok(solution) => {
+            transit.solution = Some(vars.into_iter().map(|v| solution.value(v) as u32).collect())
+        }
+        Err(_) => {}
+    }
 
     // let _ = model.add_constraint(constraint!())
 

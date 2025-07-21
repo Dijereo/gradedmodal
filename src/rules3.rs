@@ -79,6 +79,8 @@ impl GradedKCalc {
                 leaf.borrow_mut().is_closed |= trans_tab.borrow().is_closed;
                 feasible |= transit.solution.is_some();
                 leaf.borrow_mut().children = TabChildren::Transition(trans_tab, transit);
+            } else {
+                feasible = true;
             }
         }
         feasible
@@ -307,7 +309,7 @@ impl GradedTransit {
         transit
             .para_worlds
             .dedup_by(|(_, ch1), (_, ch2)| ch1 == ch2);
-        transit.solution = check_feasibility(&transit);
+        check_feasibility(&mut transit);
         Some((tab, transit))
     }
 
@@ -341,14 +343,14 @@ impl GradedTransit {
                         Branch {
                             id: 0,
                             labels: vec![Label {
-                                formula: f.clone(),
+                                formula: f.not(),
                                 conflictset: vec![],
                             }],
                         },
                         Branch {
                             id: 1,
                             labels: vec![Label {
-                                formula: f.not(),
+                                formula: f.clone(),
                                 conflictset: vec![],
                             }],
                         },
@@ -372,7 +374,7 @@ impl fmt::Display for GradedTransit {
         for (i, (_leaf, choice)) in self.para_worlds.iter().enumerate() {
             write!(f, "w{i}: ")?;
             for (forkid, branchid) in choice {
-                write!(f, "{}{forkid} ", if *branchid == 0 { "" } else { "¬" })?;
+                write!(f, "{}{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
             }
             writeln!(f)?;
         }
