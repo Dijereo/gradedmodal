@@ -3,7 +3,7 @@ use std::{cell::RefCell, collections::VecDeque, fmt, rc::Rc};
 use crate::{
     formula::Formula,
     ilp::check_feasibility,
-    tableau2::{Conflict, DupContra, Label, TabBranch, TabChildren, TableauNode2},
+    tableau2::{DupContra, Label, TabBranch, TabChildren, TableauNode2},
 };
 
 struct PropLinear;
@@ -33,12 +33,22 @@ pub(crate) struct GradedKCalc {
     forks: Vec<Fork>,
 }
 
+pub(crate) enum Feasibility {
+    NoTransition,
+    Feasible,
+    Contradiction,
+    NoSolution,
+    Unfeasible,
+}
+
 pub(crate) struct GradedTransit {
     pub(crate) boxed: Vec<Rc<Formula>>,
     pub(crate) diamge: Vec<(u32, Rc<Formula>)>,
     pub(crate) diamle: Vec<(u32, Rc<Formula>)>,
-    pub(crate) para_worlds: Vec<(Rc<RefCell<TableauNode2>>, Vec<(usize, usize)>)>,
+    pub(crate) para_worlds: Vec<Vec<(usize, usize)>>,
+    pub(crate) outcome: Feasibility,
     pub(crate) solution: Option<Vec<u32>>,
+    pub(crate) root: Option<Rc<RefCell<TableauNode2>>>,
 }
 
 impl GradedKCalc {
@@ -55,6 +65,7 @@ impl GradedKCalc {
         if !tab.borrow().is_closed {
             calc.init(&tab);
             calc.apply(&tab, VecDeque::new());
+            //todo get return value
         }
         tab
     }
@@ -75,13 +86,19 @@ impl GradedKCalc {
         let mut feasible = false;
         TableauNode2::get_open_leaves(tab, &mut open_leaves, false);
         for leaf in open_leaves {
-            if let Some((trans_tab, transit)) = GradedTransit::create(&leaf) {
-                leaf.borrow_mut().is_closed |= trans_tab.borrow().is_closed;
-                feasible |= transit.solution.is_some();
-                leaf.borrow_mut().children = TabChildren::Transition(trans_tab, transit);
-            } else {
-                feasible = true;
+            let transit = GradedTransit::create(&leaf);
+            match transit.outcome {
+                Feasibility::NoTransition => {
+                    feasible = true;
+                }
+                Feasibility::Feasible => {
+                    feasible = true;
+                }
+                Feasibility::Contradiction => todo!(),
+                Feasibility::NoSolution => todo!(),
+                Feasibility::Unfeasible => todo!(),
             }
+            leaf.borrow_mut().children = TabChildren::Transition(transit);
         }
         feasible
     }
@@ -253,20 +270,22 @@ impl GradedKCalc {
 }
 
 impl GradedTransit {
-    fn create(leaf: &Rc<RefCell<TableauNode2>>) -> Option<(Rc<RefCell<TableauNode2>>, Self)> {
+    fn create(leaf: &Rc<RefCell<TableauNode2>>) -> GradedTransit {
         let mut transit = Self {
             boxed: vec![],
             diamge: vec![],
             diamle: vec![],
             para_worlds: vec![],
+            outcome: Feasibility::NoTransition,
             solution: None,
+            root: None,
         };
         leaf.borrow().traverse_anc_formulae(&mut |label| {
             transit.store_formula(&label.formula);
             true
         });
         if transit.diamge.is_empty() {
-            return None;
+            return transit;
         }
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(
             transit
@@ -280,18 +299,27 @@ impl GradedTransit {
             None,
         )));
         if tab.borrow().is_closed {
-            return Some((tab, transit));
+            transit.outcome = Feasibility::Contradiction;
+            transit.root = Some(tab);
+            return transit;
         }
         let forks = transit.get_forks();
         let mut calc = GradedKCalc {
             forks: forks.iter().cloned().collect(),
         };
         let feasible = calc.apply(&tab, forks);
-        if tab.borrow().is_closed || !feasible {
-            return Some((tab, transit));
+        if tab.borrow().is_closed {
+            transit.root = Some(tab);
+            transit.outcome = Feasibility::Contradiction;
+            return transit;
+        } else if !feasible {
+            transit.root = Some(tab);
+            transit.outcome = Feasibility::Unfeasible;
+            return transit;
         }
         let mut seeds = vec![];
         TableauNode2::get_open_leaves(&tab, &mut seeds, true);
+        transit.root = Some(tab);
         for seed in seeds {
             if seed.borrow().is_closed {
                 continue;
@@ -301,16 +329,12 @@ impl GradedTransit {
             // println!("Choice {:?}", choices);
             choices.sort_unstable();
             choices.truncate(transit.diamge.len() + transit.diamle.len());
-            transit.para_worlds.push((seed, choices));
+            transit.para_worlds.push(choices);
         }
-        transit
-            .para_worlds
-            .sort_unstable_by(|(_, ch1), (_, ch2)| ch1.cmp(ch2));
-        transit
-            .para_worlds
-            .dedup_by(|(_, ch1), (_, ch2)| ch1 == ch2);
+        transit.para_worlds.sort_unstable_by(Vec::cmp);
+        transit.para_worlds.dedup_by(|ch1, ch2| ch1 == ch2);
         check_feasibility(&mut transit);
-        Some((tab, transit))
+        transit
     }
 
     fn store_formula(&mut self, formula: &Rc<Formula>) {
@@ -358,10 +382,8 @@ impl GradedTransit {
                 }),
         )
     }
-}
 
-impl fmt::Display for GradedTransit {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    pub(crate) fn display_modals(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (i, (c, phi)) in self.diamge.iter().enumerate() {
             writeln!(f, "({i}) ≥{c}: {phi}")?;
         }
@@ -371,22 +393,7 @@ impl fmt::Display for GradedTransit {
         for phi in self.boxed.iter() {
             writeln!(f, "□: {phi}")?;
         }
-        for (i, (_leaf, choice)) in self.para_worlds.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        match &self.solution {
-            Some(values) => {
-                for (i, val) in values.iter().enumerate() {
-                    write!(f, "{val} w{i} ")?;
-                }
-                writeln!(f)
-            }
-            None => writeln!(f, "No solution"),
-        }
+        Ok(())
     }
 }
 

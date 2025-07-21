@@ -71,7 +71,7 @@ if ~tab opens, stmt is sat
 
 
 ∻⋚±
-
+∅ ⨉ ✓
 
 <formula> ::= <bicond> (" -> " <bicond>)*
 <bicond> ::= <disj> (" <-> " <disj>)*

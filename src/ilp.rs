@@ -1,6 +1,4 @@
-use good_lp::{
-    Expression, ProblemVariables, ResolutionError, Solution, SolverModel, solvers, variable,
-};
+use good_lp::{Expression, ProblemVariables, Solution, SolverModel, solvers, variable};
 use std::{
     collections::HashSet,
     fs::File,
@@ -8,7 +6,7 @@ use std::{
     u32,
 };
 
-use crate::rules3::GradedTransit;
+use crate::rules3::{Feasibility, GradedTransit};
 
 fn write_cip(
     ge_constraints: Vec<(u32, Vec<usize>)>,
@@ -65,7 +63,7 @@ pub(crate) fn check_feasibility(transit: &mut GradedTransit) {
             .map(|(c, _)| (*c, true, vec![]))
             .chain(transit.diamle.iter().map(|(c, _)| (*c, false, vec![]))),
     );
-    for (i, (_, world)) in transit.para_worlds.iter().enumerate() {
+    for (i, world) in transit.para_worlds.iter().enumerate() {
         for (forkid, branchid) in world {
             if *branchid == 1 {
                 exprs[*forkid].2.push(i)
@@ -89,45 +87,11 @@ pub(crate) fn check_feasibility(transit: &mut GradedTransit) {
     }
     match model.solve() {
         Ok(solution) => {
-            transit.solution = Some(vars.into_iter().map(|v| solution.value(v) as u32).collect())
+            transit.outcome = Feasibility::Feasible;
+            transit.solution = Some(vars.into_iter().map(|v| solution.value(v) as u32).collect());
         }
-        Err(_) => {}
+        Err(_) => {
+            transit.outcome = Feasibility::NoSolution;
+        }
     }
-
-    // let _ = model.add_constraint(constraint!())
-
-    // // Create integer variables x0, x1, ..., xn
-    // let x: Vec<Variable> = (0..num_vars)
-    //     .map(|_| vars.add_integer_variable().min(0).max(1)) // or use .integer() for unbounded ints
-    //     .collect();
-
-    // // Start building the model
-    // let mut model = vars.minimise(0).using(ScipSolver); // dummy objective
-
-    // for (i, (c, indices)) in constraints.into_iter().enumerate() {
-    //     let expr: Expression = indices.into_iter().map(|j| x[j]).sum();
-
-    //     if i < switch_index {
-    //         model = model.with(expr.geq(c as f64));
-    //     } else {
-    //         model = model.with(expr.leq(c as f64));
-    //     }
-    // }
-
-    // // Solve the model
-    // match model.solve() {
-    //     Ok(_) => true,   // Feasible
-    //     Err(_) => false, // Infeasible or error
-    // }
 }
-
-// fn main() {
-//     // Example: x0 + x1 ≥ 1, x2 + x3 ≤ 1
-//     let constraints = vec![
-//         (1, vec![0, 1]), // ≥
-//         (1, vec![2, 3]), // ≤
-//     ];
-
-//     let feasible = check_feasibility(constraints, 1, 4);
-//     println!("Feasible? {}", feasible);
-// }

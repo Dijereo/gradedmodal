@@ -29,6 +29,22 @@ recurse check sat
 set up ilp for stat transitions
 return if found solution
 
+types of unfeasible:
+no diam gte: NotTransitionable
+all nondet choices are contradictions: Contradiciton
+subtransitions are unfeasible: Unfeasible
+no ilp solution: No Graded Solution
+
+
+types of nodes:
+root
+shoot
+branch
+leaf
+stub
+fruit
+seed
+
 
 ke:
 keep track of formulae that are added just for contradiction but not split further

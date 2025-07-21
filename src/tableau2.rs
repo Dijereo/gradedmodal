@@ -5,14 +5,17 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::{formula::Formula, rules3::GradedTransit};
+use crate::{
+    formula::Formula,
+    rules3::{Feasibility, GradedTransit},
+};
 
 pub(crate) enum TabChildren {
     Fork {
         id: Option<usize>,
         branches: Vec<TabBranch>,
     },
-    Transition(Rc<RefCell<TableauNode2>>, GradedTransit),
+    Transition(GradedTransit),
 }
 
 pub(crate) struct TabBranch {
@@ -178,7 +181,7 @@ impl TableauNode2 {
         }
     }
 
-    fn display_root(
+    pub(crate) fn display_root(
         this: &Rc<RefCell<Self>>,
         f: &mut fmt::Formatter<'_>,
         rooti: usize,
@@ -250,8 +253,8 @@ impl TableauNode2 {
                     Self::display_rec(&branch.node, f, depth + 1, next_depths, curri, seeds)?
                 }
             }
-            TabChildren::Transition(..) => {
-                Self::display_trans(f, depth + 1, next_depths, *curri)?;
+            TabChildren::Transition(transit) => {
+                Self::display_transition(f, transit, depth + 1, next_depths, *curri)?;
                 seeds.push_back((*curri, this.clone()));
                 *curri += 1;
             }
@@ -259,17 +262,72 @@ impl TableauNode2 {
         Ok(())
     }
 
-    fn display_trans(
+    fn display_transition(
         f: &mut fmt::Formatter<'_>,
+        transit: &GradedTransit,
         depth: usize,
         next_depths: &mut VecDeque<usize>,
         rooti: usize,
     ) -> fmt::Result {
         let _next_depth = next_depths.pop_front();
+        let specchar = match transit.outcome {
+            Feasibility::NoTransition => "✓",
+            Feasibility::Feasible => ">",
+            Feasibility::Contradiction => "⊥",
+            Feasibility::NoSolution => "∅",
+            Feasibility::Unfeasible => "⨉",
+        };
         if depth > 1 {
-            writeln!(f, "{:indent$}|-> {rooti}", "", indent = depth * 2 - 4)
+            writeln!(
+                f,
+                "{:indent$}|-{specchar} {rooti}",
+                "",
+                indent = depth * 2 - 4
+            )
         } else {
-            writeln!(f, "> {rooti}")
+            writeln!(f, "{specchar} {rooti}")
+        }
+    }
+
+    fn display_transit(
+        transit: &GradedTransit,
+        f: &mut fmt::Formatter<'_>,
+        rooti: usize,
+        curri: &mut usize,
+        roots: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
+    ) -> fmt::Result {
+        match transit.outcome {
+            Feasibility::NoTransition => {
+                writeln!(f, "No transition needed")?;
+                writeln!(f)?;
+                return transit.display_modals(f);
+            }
+            Feasibility::Feasible => writeln!(f, "Feasible")?,
+            Feasibility::Contradiction => writeln!(f, "Contradiction")?,
+            Feasibility::NoSolution => writeln!(f, "No Solution")?,
+            Feasibility::Unfeasible => writeln!(f, "Unfeasible")?,
+        }
+        let root = if let Some(root) = &transit.root {
+            root
+        } else {
+            return Ok(());
+        };
+        TableauNode2::display_root(root, f, rooti, curri, roots)?;
+        for (i, choice) in transit.para_worlds.iter().enumerate() {
+            write!(f, "w{i}: ")?;
+            for (forkid, branchid) in choice {
+                write!(f, "{}{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
+            }
+            writeln!(f)?;
+        }
+        match &transit.solution {
+            Some(values) => {
+                for (i, val) in values.iter().enumerate() {
+                    write!(f, "{val} w{i} ")?;
+                }
+                writeln!(f)
+            }
+            None => writeln!(f, "No solution"),
         }
     }
 }
@@ -283,10 +341,9 @@ impl fmt::Display for DisplayTableau {
         TableauNode2::display_root(&self.0, f, 0, &mut i, &mut seeds)?;
         while let Some((seedi, seed)) = seeds.pop_front() {
             writeln!(f)?;
-            if let TabChildren::Transition(root, transit) = &seed.borrow().children {
-                TableauNode2::display_root(root, f, seedi, &mut i, &mut seeds)?;
+            if let TabChildren::Transition(transit) = &seed.borrow().children {
                 writeln!(f)?;
-                writeln!(f, "{transit}")?;
+                TableauNode2::display_transit(transit, f, seedi, &mut i, &mut seeds)?;
             }
         }
         Ok(())
