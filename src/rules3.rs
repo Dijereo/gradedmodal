@@ -2,6 +2,7 @@ use std::{cell::RefCell, collections::VecDeque, fmt, rc::Rc};
 
 use crate::{
     formula::Formula,
+    ilp::check_feasibility,
     tableau2::{Conflict, DupContra, Label, TabBranch, TabChildren, TableauNode2},
 };
 
@@ -33,10 +34,11 @@ pub(crate) struct GradedKCalc {
 }
 
 pub(crate) struct GradedTransit {
-    boxed: Vec<Rc<Formula>>,
-    diamge: Vec<(u32, Rc<Formula>)>,
-    diamle: Vec<(u32, Rc<Formula>)>,
-    para_worlds: Vec<(Rc<RefCell<TableauNode2>>, Vec<(usize, usize)>)>,
+    pub(crate) boxed: Vec<Rc<Formula>>,
+    pub(crate) diamge: Vec<(u32, Rc<Formula>)>,
+    pub(crate) diamle: Vec<(u32, Rc<Formula>)>,
+    pub(crate) para_worlds: Vec<(Rc<RefCell<TableauNode2>>, Vec<(usize, usize)>)>,
+    pub(crate) solution: Option<Vec<u32>>,
 }
 
 impl GradedKCalc {
@@ -61,23 +63,25 @@ impl GradedKCalc {
         // todo!()
     }
 
-    fn apply(&mut self, tab: &Rc<RefCell<TableauNode2>>, forks: VecDeque<Fork>) {
+    fn apply(&mut self, tab: &Rc<RefCell<TableauNode2>>, forks: VecDeque<Fork>) -> bool {
         if tab.borrow().is_closed {
-            return;
+            return false;
         }
         self.expand_static(tab, forks);
         if tab.borrow().is_closed {
-            return;
+            return false;
         }
         let mut open_leaves = Vec::new();
+        let mut feasible = false;
         TableauNode2::get_open_leaves(tab, &mut open_leaves, false);
         for leaf in open_leaves {
             if let Some((trans_tab, transit)) = GradedTransit::create(&leaf) {
                 leaf.borrow_mut().is_closed |= trans_tab.borrow().is_closed;
+                feasible |= transit.solution.is_some();
                 leaf.borrow_mut().children = TabChildren::Transition(trans_tab, transit);
             }
         }
-        // todo!()
+        feasible
     }
 
     fn expand_static(&mut self, tab: &Rc<RefCell<TableauNode2>>, mut forks: VecDeque<Fork>) {
@@ -253,6 +257,7 @@ impl GradedTransit {
             diamge: vec![],
             diamle: vec![],
             para_worlds: vec![],
+            solution: None,
         };
         leaf.borrow().traverse_anc_formulae(&mut |label| {
             transit.store_formula(&label.formula);
@@ -279,7 +284,10 @@ impl GradedTransit {
         let mut calc = GradedKCalc {
             forks: forks.iter().cloned().collect(),
         };
-        calc.apply(&tab, forks);
+        let feasible = calc.apply(&tab, forks);
+        if tab.borrow().is_closed || !feasible {
+            return Some((tab, transit));
+        }
         let mut seeds = vec![];
         TableauNode2::get_open_leaves(&tab, &mut seeds, true);
         for seed in seeds {
@@ -299,8 +307,8 @@ impl GradedTransit {
         transit
             .para_worlds
             .dedup_by(|(_, ch1), (_, ch2)| ch1 == ch2);
-        return Some((tab, transit));
-        todo!()
+        transit.solution = check_feasibility(&transit);
+        Some((tab, transit))
     }
 
     fn store_formula(&mut self, formula: &Rc<Formula>) {
@@ -368,7 +376,15 @@ impl fmt::Display for GradedTransit {
             }
             writeln!(f)?;
         }
-        Ok(())
+        match &self.solution {
+            Some(values) => {
+                for (i, val) in values.iter().enumerate() {
+                    write!(f, "{val} w{i} ")?;
+                }
+                writeln!(f)
+            }
+            None => writeln!(f, "No solution"),
+        }
     }
 }
 
