@@ -88,15 +88,10 @@ impl GradedKCalc {
         for leaf in open_leaves {
             let transit = GradedTransit::create(&leaf);
             match transit.outcome {
-                Feasibility::NoTransition => {
+                Feasibility::NoTransition | Feasibility::Feasible => {
                     feasible = true;
                 }
-                Feasibility::Feasible => {
-                    feasible = true;
-                }
-                Feasibility::Contradiction => todo!(),
-                Feasibility::NoSolution => todo!(),
-                Feasibility::Unfeasible => todo!(),
+                _ => {}
             }
             leaf.borrow_mut().children = TabChildren::Transition(transit);
         }
@@ -383,12 +378,16 @@ impl GradedTransit {
         )
     }
 
+    pub(crate) fn is_empty(&self) -> bool {
+        self.boxed.is_empty() && self.diamge.is_empty() && self.diamle.is_empty()
+    }
+
     pub(crate) fn display_modals(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (i, (c, phi)) in self.diamge.iter().enumerate() {
-            writeln!(f, "({i}) ≥{c}: {phi}")?;
+            writeln!(f, "(≥{c}): φ{i} := {phi}")?;
         }
         for ((c, phi), i) in self.diamle.iter().zip(self.diamge.len()..) {
-            writeln!(f, "({i}) ≤{c}: {phi}")?;
+            writeln!(f, "(≤{c}): φ{i} := {phi}")?;
         }
         for phi in self.boxed.iter() {
             writeln!(f, "□: {phi}")?;

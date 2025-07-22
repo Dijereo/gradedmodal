@@ -150,15 +150,20 @@ impl TableauNode2 {
         if tab.borrow().is_closed {
             return;
         }
-        if let TabChildren::Fork { branches, .. } = &tab.borrow().children {
-            if branches.len() == 0 {
-                leaves.push(tab.clone());
+        match &tab.borrow().children {
+            TabChildren::Fork { branches, .. } => {
+                if branches.len() == 0 {
+                    leaves.push(tab.clone());
+                }
+                for child in branches {
+                    Self::get_open_leaves(&child.node, leaves, include_seeds);
+                }
             }
-            for child in branches {
-                Self::get_open_leaves(&child.node, leaves, include_seeds);
-            }
-        } else if include_seeds {
-            leaves.push(tab.clone());
+            TabChildren::Transition(transit) if include_seeds => match transit.outcome {
+                Feasibility::NoTransition | Feasibility::Feasible => leaves.push(tab.clone()),
+                Feasibility::Contradiction | Feasibility::NoSolution | Feasibility::Unfeasible => {}
+            },
+            TabChildren::Transition(_) => {}
         }
     }
 
@@ -184,18 +189,12 @@ impl TableauNode2 {
     pub(crate) fn display_root(
         this: &Rc<RefCell<Self>>,
         f: &mut fmt::Formatter<'_>,
-        rooti: usize,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
     ) -> fmt::Result {
         let thisref = this.borrow();
         let mut next_depths = VecDeque::new();
         thisref.get_depths_rec(&mut next_depths, 1);
-        if thisref.is_closed {
-            writeln!(f, "{rooti}: ⊥")?;
-        } else {
-            writeln!(f, "{rooti}:")?;
-        }
         Self::display_rec(
             this,
             f,
@@ -271,8 +270,8 @@ impl TableauNode2 {
     ) -> fmt::Result {
         let _next_depth = next_depths.pop_front();
         let specchar = match transit.outcome {
-            Feasibility::NoTransition => "✓",
-            Feasibility::Feasible => ">",
+            Feasibility::NoTransition if transit.is_empty() => return Ok(()),
+            Feasibility::NoTransition | Feasibility::Feasible => "✓",
             Feasibility::Contradiction => "⊥",
             Feasibility::NoSolution => "∅",
             Feasibility::Unfeasible => "⨉",
@@ -280,12 +279,12 @@ impl TableauNode2 {
         if depth > 1 {
             writeln!(
                 f,
-                "{:indent$}|-{specchar} {rooti}",
+                "{:indent$}|-> {rooti} {specchar}",
                 "",
                 indent = depth * 2 - 4
             )
         } else {
-            writeln!(f, "{specchar} {rooti}")
+            writeln!(f, "{rooti} {specchar}")
         }
     }
 
@@ -296,39 +295,48 @@ impl TableauNode2 {
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
     ) -> fmt::Result {
+        if transit.is_empty() {
+            return Ok(());
+        }
+        writeln!(f)?;
+        writeln!(f, "{rooti}:")?;
+        transit.display_modals(f)?;
         match transit.outcome {
             Feasibility::NoTransition => {
                 writeln!(f, "No transition needed")?;
-                writeln!(f)?;
-                return transit.display_modals(f);
+                return writeln!(f);
             }
             Feasibility::Feasible => writeln!(f, "Feasible")?,
             Feasibility::Contradiction => writeln!(f, "Contradiction")?,
             Feasibility::NoSolution => writeln!(f, "No Solution")?,
             Feasibility::Unfeasible => writeln!(f, "Unfeasible")?,
         }
+        writeln!(f)?;
         let root = if let Some(root) = &transit.root {
             root
         } else {
             return Ok(());
         };
-        TableauNode2::display_root(root, f, rooti, curri, roots)?;
+        TableauNode2::display_root(root, f, curri, roots)?;
+        writeln!(f)?;
         for (i, choice) in transit.para_worlds.iter().enumerate() {
             write!(f, "w{i}: ")?;
             for (forkid, branchid) in choice {
-                write!(f, "{}{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
+                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
             }
             writeln!(f)?;
         }
         match &transit.solution {
             Some(values) => {
+                write!(f, "Solution: ")?;
                 for (i, val) in values.iter().enumerate() {
-                    write!(f, "{val} w{i} ")?;
+                    write!(f, "{val}*w{i} ")?;
                 }
-                writeln!(f)
+                writeln!(f)?;
             }
-            None => writeln!(f, "No solution"),
+            None => writeln!(f, "No solution")?,
         }
+        writeln!(f)
     }
 }
 
@@ -338,11 +346,16 @@ impl fmt::Display for DisplayTableau {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut i = 1;
         let mut seeds = VecDeque::new();
-        TableauNode2::display_root(&self.0, f, 0, &mut i, &mut seeds)?;
+        if self.0.borrow().is_closed {
+            writeln!(f, "0: ⊥")?;
+        } else {
+            writeln!(f, "0:")?;
+        }
+        TableauNode2::display_root(&self.0, f, &mut i, &mut seeds)?;
+        writeln!(f)?;
+        writeln!(f)?;
         while let Some((seedi, seed)) = seeds.pop_front() {
-            writeln!(f)?;
             if let TabChildren::Transition(transit) = &seed.borrow().children {
-                writeln!(f)?;
                 TableauNode2::display_transit(transit, f, seedi, &mut i, &mut seeds)?;
             }
         }

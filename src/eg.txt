@@ -8,6 +8,7 @@
 (p -> p0) -> (p -> ~p0) -> ~p
 
 ~p & ~p0 | p & ~p1| p &p1| p0&~p2| p0&p2
+~(~p & ~p0 | p & ~p1| p &p1| p0&~p2| p0&p2)
 
 ((p -> (p0 -> p1)) -> ((p -> p0) -> (p -> p1)))
 ~((p -> (p0 -> p1)) -> ((p -> p0) -> (p -> p1)))
@@ -72,6 +73,7 @@ if ~tab opens, stmt is sat
 
 ∻⋚±
 ∅ ⨉ ✓
+φ
 
 <formula> ::= <bicond> (" -> " <bicond>)*
 <bicond> ::= <disj> (" <-> " <disj>)*
@@ -81,3 +83,8 @@ if ~tab opens, stmt is sat
 <box> ::= "[]" <atom>
 <atom> ::= "(" <formula> ")" | [p-q] [0-3]? | " _|_ " | "~" <atom> | <box> | <diamond>
 <num> ::= [1-9] [0-9]?
+
+resolution, contradiction, branching
+no solution, unfeasible, contradiction, feasible
+
+~p & ~q & ((~(p | q) -> ~<>(p0 -> q0 -> p0) & <>>=3 p0 & <><=15 q0) | [](p1 | q1) & <><=10 (p1 -> q1) & <>>=12 ~p1 & <>>=8 q1 | []~<>p2 & <><=4<>p2 & <><><=6(p2 <-> q2))
