@@ -15,7 +15,7 @@ mod dnf;
 mod formula;
 // mod formula2;
 mod ilp;
-mod md1nf;
+mod depth1;
 mod parser;
 // mod parser2;
 mod rules;
