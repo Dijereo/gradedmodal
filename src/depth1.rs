@@ -15,6 +15,33 @@ enum Depth1F {
     Le(usize, u32, Box<Depth1F>),
 }
 
+impl From<Rc<Formula>> for Depth1F {
+    fn from(value: Rc<Formula>) -> Self {
+        let mut d1f = value.init_depth1();
+        d1f.unnest();
+        d1f
+    }
+}
+
+impl From<Depth1F> for Rc<Formula> {
+    fn from(value: Depth1F) -> Self {
+        match value {
+            Depth1F::Bool(false) => Formula::bottom(),
+            Depth1F::Bool(true) => Formula::top(),
+            Depth1F::Var(true, p) => Rc::new(Formula::PropVar(p, None)),
+            Depth1F::Var(false, p) => Rc::new(Formula::PropVar(p, None)).not(),
+            Depth1F::VarI(false, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))),
+            Depth1F::VarI(true, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))).not(),
+            Depth1F::Disj(_, phi0, phi1) => Rc::<Formula>::from(*phi0).or(&(*phi1).into()),
+            Depth1F::Conj(_, phi0, phi1) => Rc::<Formula>::from(*phi0).and(&(*phi1).into()),
+            Depth1F::Dm(_, phi) => Rc::<Formula>::from(*phi).diamond(),
+            Depth1F::Bx(_, phi) => Rc::<Formula>::from(*phi).box_(),
+            Depth1F::Ge(_, c, phi) => Rc::<Formula>::from(*phi).dmge(c),
+            Depth1F::Le(_, c, phi) => Rc::<Formula>::from(*phi).dmle(c),
+        }
+    }
+}
+
 impl Depth1F {
     fn depth(&self) -> usize {
         match self {
@@ -34,7 +61,10 @@ impl Depth1F {
             Depth1F::Disj(d, phi0, phi1) | Depth1F::Conj(d, phi0, phi1) => {
                 *d = max(phi0.depth(), phi1.depth());
             }
-            Depth1F::Dm(d, phi) | Depth1F::Bx(d, phi) | Depth1F::Ge(d, _, phi) | Depth1F::Le(d, _, phi) => {
+            Depth1F::Dm(d, phi)
+            | Depth1F::Bx(d, phi)
+            | Depth1F::Ge(d, _, phi)
+            | Depth1F::Le(d, _, phi) => {
                 *d = phi.depth() + 1;
             }
         }
@@ -223,7 +253,9 @@ impl Depth1F {
             Depth1F::Var(_, _) | Depth1F::VarI(_, _, _) | Depth1F::Bool(_) => {
                 unreachable!("Function should only be called on nested modals")
             }
-            Depth1F::Dm(..) | Depth1F::Bx(..) | Depth1F::Ge(..) | Depth1F::Le(..) => CutStatus::Neither,
+            Depth1F::Dm(..) | Depth1F::Bx(..) | Depth1F::Ge(..) | Depth1F::Le(..) => {
+                CutStatus::Neither
+            }
             Depth1F::Disj(_, phi0, phi1) => {
                 if phi1.depth() == 0 {
                     mem::swap(phi0.as_mut(), phi1.as_mut());
@@ -330,4 +362,11 @@ enum CutStatus {
     Disj(Depth1F),
     Conj(Depth1F),
     Both(Depth1F, Depth1F),
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_parse_propvar() {}
 }
