@@ -63,7 +63,7 @@ impl TableauNode2 {
         }
         if tab.formulae.is_empty() {
             tab.formulae.push(Label {
-                formula: Rc::new(Formula::Top),
+                formula: Formula::top(),
                 conflictset: vec![],
             });
         }

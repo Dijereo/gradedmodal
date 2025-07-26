@@ -48,3 +48,15 @@ seed
 
 ke:
 keep track of formulae that are added just for contradiction but not split further
+
+static calc: given starting formulae, iterate through open disjunctions, sorted by modal depth
+- utilise backjumping
+
+transit: given formulae, produce list of viable parallel worlds
+- recursively check each is open
+- utilise backjumping
+- utilise better constraining
+
+tableauview: contains data to display tableau and sat model
+
+

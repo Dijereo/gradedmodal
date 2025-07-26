@@ -74,7 +74,7 @@ impl TableauNode {
             tab.add_check_dup_contra(new_formula);
         }
         if tab.formulae.is_empty() {
-            tab.formulae.push(Rc::new(Formula::Top));
+            tab.formulae.push(Formula::top());
         }
         tab
     }

@@ -11,9 +11,11 @@ use crate::{
     token::tokenize,
 };
 
+mod dnf;
 mod formula;
 // mod formula2;
 mod ilp;
+mod md1nf;
 mod parser;
 // mod parser2;
 mod rules;

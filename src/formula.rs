@@ -180,6 +180,10 @@ impl Formula {
         }
     }
 
+    pub(crate) fn top() -> Rc<Formula> {
+        Rc::new(Formula::Top)
+    }
+
     pub(crate) fn bottom() -> Rc<Formula> {
         Rc::new(Formula::Bottom)
     }
@@ -210,7 +214,7 @@ impl Formula {
 
     pub(crate) fn dmge(self: &Rc<Formula>, count: u32) -> Rc<Formula> {
         if count == 0 {
-            Rc::new(Formula::Top)
+            Formula::top()
         } else {
             Rc::new(Formula::DiamondGe(count, self.clone()))
         }

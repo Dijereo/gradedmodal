@@ -409,6 +409,7 @@ impl PropLinear {
             | Formula::Or(_, _)
             | Formula::Imply(_, _)
             | Formula::Iff(_, _) => vec![],
+            Formula::And(phi1, phi2) => vec![phi1.clone(), phi2.clone()],
             Formula::Not(phi) => match phi.as_ref() {
                 Formula::Bottom
                 | Formula::Top
@@ -423,9 +424,6 @@ impl PropLinear {
                 Formula::Or(psi1, psi2) => vec![psi1.not(), psi2.not()],
                 Formula::Imply(psi1, psi2) => vec![psi1.clone(), psi2.not()],
             },
-            Formula::And(phi1, phi2) => {
-                vec![phi1.clone(), phi2.clone()]
-            }
         }
     }
 }

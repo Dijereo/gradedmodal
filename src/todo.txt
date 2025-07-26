@@ -14,3 +14,5 @@ if no le formulae then set all ge to true
 ilp
 build model
 only transit if choice not already made
+docker
+interface
