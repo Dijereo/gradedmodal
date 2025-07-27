@@ -16,6 +16,8 @@
 (p -> p1) -> (p -> ~p1) -> ~p
 ~((p -> p1) -> (p -> ~p1) -> ~p)
 
+~((p <-> p1) <-> ~(p <-> ~p1) <-> ~p)
+
 ((p -> p0) & (p0 -> p1)) -> (p -> p1)
 ~(((p -> p0) & (p0 -> p1)) -> (p -> p1))
 ((p | p0) & ~(p & p0)) -> (p -> ~p0)
@@ -88,6 +90,18 @@ resolution, contradiction, branching
 no solution, unfeasible, contradiction, feasible
 
 ~p & ~q & ((~(p | q) -> ~<>(p0 -> q0 -> p0) & <>>=3 p0 & <><=15 q0) | [](p1 | q1) & <><=10 (p1 -> q1) & <>>=12 ~p1 & <>>=8 q1 | []~<>p2 & <><=4<>p2 & <><><=6(p2 <-> q2))
+((~p -> ~<>p0 & <>>=3 p0 & <><=15 q0) | []p1 & <><=10 p1 & <>>=12 ~p1 & <>>=8 q1 | []~<>p2 & <><=4<>p2 & <><><=6 p2)
+[][] _|_ -> <><=5 [][](<>p3 & [] _|_ & <><=3 [][] _|_) | ((q2 <-> []<>~q2 | ~<>[]q) -> <> _|_ -> ([] _|_) | []p0 & <> _|_ & <>>=47 <>>=64 ~q0) & [] _|_  | []p <-> <>[]q3
+
+[](p0 | p1 & (p2 | p3 & []p4 & <>p5 & <>>=2 p6 & <><=3 p7)) &
+<>(p10 | p11 & (p21 | p31 & []p41 & <>p51 & <>>=4<><=5 p71)) |
+<>>=6(p20 | p12 & (p22 | p32 & []p42 & <>(<>>=7 p62 & <><=8 p72))) & 
+<><=9(p30 | p13 & (p23 | p33 & [](<>p53 & <>>=10 p63 & <><=11 p73)))
+
+[](p0 | p1 | p2 | p3 | []p4 | <>p5 | <>>=2 p6 | <><=3 p7) &
+<>(p10 & p11 & p21 & p31 & []p41 & <>p51 & <>>=4<><=5 p71) |
+<>>=6(p20 & p12 & (p22 | p32 | []p42 | <>(<>>=7 p62 | <><=8 p72))) & 
+<><=9(p30 | p13 & (p23 | p33)) | <><=9(p30 | p13 & p23) & <>>=12 p73 | <><=9(p30 | p13 & p23) & <><=9 p63 | <><=9(p30 | p13 & p23) & []~p53
 
 T0: K D T
 K1: B 4 5
@@ -98,22 +112,21 @@ K+: D45 B45 S5
 K: anything
 KD: each node connects to another node or itself
 KT: each node connects to itself
-KB: each connection has a back connection
+KB: each connection has a back connection; i.e. an undirected graph
+KDB: same as KB but every node has at least one connections (possibly to itself)
+KTB: same as KB but every node connects to itself
 K4: each node connects directly to all its descendants
-K5: each partition is some source nodes connecting to some nodes of a fully connected cluster
-KDB: same as KB but no nodes with no connections
-KD4: same as K4 but no nodes with no connections
-KD5: same as K5 but no nodes with no connections
-KTB: same as KDB but with each node connecting to itself
-S4:  same as KD4 but with each node connecting to itself
-K45: same as K5 but each source node connects to the entire cluster
-KD45: same as K45 but no nodes with no connections
-KB45: each partition is a fully connected cluster or a single node that may connect to itself
-S5: same as KB45 but each single node cluster connects to itself
+KD4: same as K4 but every node has at least one connections (possibly to itself)
+S4: same as K4 but every node connects to itself
+K5: each partition is a complete clique and possibly some source nodes connecting to some nodes of the clique
+KD5: same as K5 but every node has at least one connections (possibly to itself)
+K45: same as K5 but every source node connects to the entire clique
+KD45: same as K45 but every node has at least one connections (possibly to itself)
+KB45: each partition is a complete clique or a single node that may or may not connect to itself
+S5: same as KB45 but every node connects to itself
 
-K, 
-KD,
-KT,
-KB, KDB, KTB,
-K4, KD4, S4,
-K5, KD5, K45, KD45, KB45, S5
+K, KD;
+KT;
+KB, KDB; KTB;
+K4, KD4; S4;
+K5, KD5; K45, KD45; KB45, S5

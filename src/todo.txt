@@ -16,3 +16,6 @@ build model
 only transit if choice not already made
 docker
 interface
+depth1 algo should use rc vs box when changes are no longer needed
+generalize depth1 algo to multiple nestings
+add unit tests for depth1 algo

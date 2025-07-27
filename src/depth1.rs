@@ -3,7 +3,7 @@ use std::{cmp::max, mem, rc::Rc};
 use crate::formula::Formula;
 
 #[derive(Clone, Debug)]
-enum Depth1F {
+pub(crate) enum Depth1F {
     Bool(bool),
     Var(bool, char),
     VarI(bool, char, usize),
@@ -18,6 +18,7 @@ enum Depth1F {
 impl From<Rc<Formula>> for Depth1F {
     fn from(value: Rc<Formula>) -> Self {
         let mut d1f = value.init_depth1();
+        println!("{}", Rc::<Formula>::from(d1f.clone()));
         d1f.unnest();
         d1f
     }
@@ -30,8 +31,8 @@ impl From<Depth1F> for Rc<Formula> {
             Depth1F::Bool(true) => Formula::top(),
             Depth1F::Var(true, p) => Rc::new(Formula::PropVar(p, None)),
             Depth1F::Var(false, p) => Rc::new(Formula::PropVar(p, None)).not(),
-            Depth1F::VarI(false, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))),
-            Depth1F::VarI(true, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))).not(),
+            Depth1F::VarI(true, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))),
+            Depth1F::VarI(false, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))).not(),
             Depth1F::Disj(_, phi0, phi1) => Rc::<Formula>::from(*phi0).or(&(*phi1).into()),
             Depth1F::Conj(_, phi0, phi1) => Rc::<Formula>::from(*phi0).and(&(*phi1).into()),
             Depth1F::Dm(_, phi) => Rc::<Formula>::from(*phi).diamond(),
@@ -336,6 +337,7 @@ impl Formula {
     }
 
     fn init_neg_depth1(self: &Rc<Formula>) -> Depth1F {
+        // println!("Init Neg: {self}");
         match self.as_ref() {
             Formula::Bottom => Depth1F::Bool(true),
             Formula::Top => Depth1F::Bool(false),

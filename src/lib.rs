@@ -4,7 +4,8 @@ use std::{
 };
 
 use crate::{
-    formula::full_parser,
+    depth1::Depth1F,
+    formula::{Formula, full_parser},
     rules::{K_CALCULUS, RuleCalc, S4_CALCULUS, T_CALCULUS},
     rules3::GradedKCalc,
     tableau2::DisplayTableau,
@@ -14,8 +15,8 @@ use crate::{
 mod dnf;
 mod formula;
 // mod formula2;
-mod ilp;
 mod depth1;
+mod ilp;
 mod parser;
 // mod parser2;
 mod rules;
@@ -48,10 +49,12 @@ pub fn run() {
                     Ok(f) => {
                         let f = Rc::new(f);
                         println!("{}", f);
+                        let f = Rc::<Formula>::from(Depth1F::from(f));
+                        println!("{}", f);
                         println!();
                         // let tab = S4_CALCULUS.sat(vec![f]);
-                        let tab = DisplayTableau(GradedKCalc::sat(vec![f]));
-                        println!("{}", tab);
+                        // let tab = DisplayTableau(GradedKCalc::sat(vec![f]));
+                        // println!("{}", tab);
                     }
                     Err(Some((i, tok))) => {
                         eprintln!("Error: bad token sequence '{:#?}' at index {}", tok, i)
