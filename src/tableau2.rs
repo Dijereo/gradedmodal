@@ -46,7 +46,7 @@ pub(crate) struct TableauNode2 {
 impl TableauNode2 {
     pub(crate) fn from_formulae(
         labels: Vec<Label>,
-        parent: Option<&Rc<RefCell<TableauNode2>>>,
+        parent: Option<&Rc<RefCell<Self>>>,
     ) -> Self {
         let mut tab = Self {
             is_closed: false,
@@ -143,8 +143,8 @@ impl TableauNode2 {
     }
 
     pub(crate) fn get_open_leaves(
-        tab: &Rc<RefCell<TableauNode2>>,
-        leaves: &mut Vec<Rc<RefCell<TableauNode2>>>,
+        tab: &Rc<RefCell<Self>>,
+        leaves: &mut Vec<Rc<RefCell<Self>>>,
         include_seeds: bool,
     ) {
         if tab.borrow().is_closed {
@@ -167,7 +167,7 @@ impl TableauNode2 {
         }
     }
 
-    pub(crate) fn get_choices(tab: &Rc<RefCell<TableauNode2>>, choices: &mut Vec<(usize, usize)>) {
+    pub(crate) fn get_choices(tab: &Rc<RefCell<Self>>, choices: &mut Vec<(usize, usize)>) {
         if let Some(parent) = tab.borrow().parent.upgrade() {
             Self::get_choices(&parent, choices);
         }

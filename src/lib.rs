@@ -48,13 +48,13 @@ pub fn run() {
                 match full_parser(stream) {
                     Ok(f) => {
                         let f = Rc::new(f);
-                        println!("{}", f);
-                        let f = Rc::<Formula>::from(Depth1F::from(f));
+                        // println!("{}", f);
+                        // let f = Rc::<Formula>::from(Depth1F::from(f));
                         println!("{}", f);
                         println!();
                         // let tab = S4_CALCULUS.sat(vec![f]);
-                        // let tab = DisplayTableau(GradedKCalc::sat(vec![f]));
-                        // println!("{}", tab);
+                        let tab = DisplayTableau(GradedKCalc::sat(vec![f], true));
+                        println!("{}", tab);
                     }
                     Err(Some((i, tok))) => {
                         eprintln!("Error: bad token sequence '{:#?}' at index {}", tok, i)

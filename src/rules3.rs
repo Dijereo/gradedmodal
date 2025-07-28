@@ -30,6 +30,7 @@ struct Fork {
 
 pub(crate) struct GradedKCalc {
     // leaves_backlog: VecDeque<Rc<RefCell<TableauNode2>>>,
+    serial: bool,
     forks: Vec<Fork>,
 }
 
@@ -42,6 +43,7 @@ pub(crate) enum Feasibility {
 }
 
 pub(crate) struct GradedTransit {
+    pub(crate) serial: bool,
     pub(crate) boxed: Vec<Rc<Formula>>,
     pub(crate) diamge: Vec<(u32, Rc<Formula>)>,
     pub(crate) diamle: Vec<(u32, Rc<Formula>)>,
@@ -52,7 +54,7 @@ pub(crate) struct GradedTransit {
 }
 
 impl GradedKCalc {
-    pub(crate) fn sat(formulae: Vec<Rc<Formula>>) -> Rc<RefCell<TableauNode2>> {
+    pub(crate) fn sat(formulae: Vec<Rc<Formula>>, serial: bool) -> Rc<RefCell<TableauNode2>> {
         let labels = formulae
             .into_iter()
             .map(|f| Label {
@@ -60,7 +62,7 @@ impl GradedKCalc {
                 conflictset: vec![],
             })
             .collect();
-        let mut calc = Self { forks: vec![] };
+        let mut calc = Self { serial, forks: vec![] };
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(labels, None)));
         if !tab.borrow().is_closed {
             calc.init(&tab);
@@ -86,7 +88,7 @@ impl GradedKCalc {
         let mut feasible = false;
         TableauNode2::get_open_leaves(tab, &mut open_leaves, false);
         for leaf in open_leaves {
-            let transit = GradedTransit::create(&leaf);
+            let transit = GradedTransit::create(&leaf, self.serial);
             match transit.outcome {
                 Feasibility::NoTransition | Feasibility::Feasible => {
                     feasible = true;
@@ -265,8 +267,9 @@ impl GradedKCalc {
 }
 
 impl GradedTransit {
-    fn create(leaf: &Rc<RefCell<TableauNode2>>) -> GradedTransit {
+    fn create(leaf: &Rc<RefCell<TableauNode2>>, serial: bool) -> GradedTransit {
         let mut transit = Self {
+            serial,
             boxed: vec![],
             diamge: vec![],
             diamle: vec![],
@@ -279,6 +282,9 @@ impl GradedTransit {
             transit.store_formula(&label.formula);
             true
         });
+        if transit.serial && transit.diamge.is_empty() && !transit.is_empty() {
+            transit.diamge.push((1, Formula::top()));
+        }
         if transit.diamge.is_empty() {
             return transit;
         }
@@ -300,6 +306,7 @@ impl GradedTransit {
         }
         let forks = transit.get_forks();
         let mut calc = GradedKCalc {
+            serial: transit.serial,
             forks: forks.iter().cloned().collect(),
         };
         let feasible = calc.apply(&tab, forks);

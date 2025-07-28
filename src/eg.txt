@@ -103,12 +103,6 @@ no solution, unfeasible, contradiction, feasible
 <>>=6(p20 & p12 & (p22 | p32 | []p42 | <>(<>>=7 p62 | <><=8 p72))) & 
 <><=9(p30 | p13 & (p23 | p33)) | <><=9(p30 | p13 & p23) & <>>=12 p73 | <><=9(p30 | p13 & p23) & <><=9 p63 | <><=9(p30 | p13 & p23) & []~p53
 
-T0: K D T
-K1: B 4 5
-D1: DB D4 D5
-K2: TB S4 45
-K+: D45 B45 S5
-
 K: anything
 KD: each node connects to another node or itself
 KT: each node connects to itself
@@ -125,8 +119,8 @@ KD45: same as K45 but every node has at least one connections (possibly to itsel
 KB45: each partition is a complete clique or a single node that may or may not connect to itself
 S5: same as KB45 but every node connects to itself
 
-K, KD;
-KT;
-KB, KDB; KTB;
-K4, KD4; S4;
-K5, KD5; K45, KD45; KB45, S5
+K, D;
+T;
+KB, DB; B;
+K4, D4; S4;
+K5, D5; K45, D45; KB5, S5
