@@ -1,0 +1,62 @@
+initialize formulae in node:
+// already done
+
+apply static rules to node:
+expand conjunctions
+stop if contradiction
+save disjunctions
+if disjunction is sat ignore
+else if disjunction is resolved expand other branch
+else if disjunction is contradiction stop
+else rotate
+until all rotated
+fork one disjunction (maybe using ke rule?)
+(maybe use dpll / tt style?)
+recurse
+(implement backjumping?)
+save open branches with modals
+yield open branch with no modals
+after yielded all modalless branches yield from branches with modals
+stop when all branches yielded
+
+
+sat graded:
+apply static rules
+iter over open branches
+for each open branch
+set up transition worlds tableaux
+recurse check sat
+set up ilp for stat transitions
+return if found solution
+
+types of unfeasible:
+no diam gte: NotTransitionable
+all nondet choices are contradictions: Contradiciton
+subtransitions are unfeasible: Unfeasible
+no ilp solution: No Graded Solution
+
+
+types of nodes:
+root
+shoot
+branch
+leaf
+stub
+fruit
+seed
+
+
+ke:
+keep track of formulae that are added just for contradiction but not split further
+
+static calc: given starting formulae, iterate through open disjunctions, sorted by modal depth
+- utilise backjumping
+
+transit: given formulae, produce list of viable parallel worlds
+- recursively check each is open
+- utilise backjumping
+- utilise better constraining
+
+tableauview: contains data to display tableau and sat model
+
+
