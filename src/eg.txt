@@ -1,0 +1,126 @@
+
+
+
+
+~((p3 & p) -> ((p0 | ~p7) <-> (p1 & (p5 -> p))))
+~(p3 & p -> p0 | ~p7 <-> p1 & (p5 -> p))
+
+(p -> p0) -> (p -> ~p0) -> ~p
+
+~p & ~p0 | p & ~p1| p &p1| p0&~p2| p0&p2
+~(~p & ~p0 | p & ~p1| p &p1| p0&~p2| p0&p2)
+
+((p -> (p0 -> p1)) -> ((p -> p0) -> (p -> p1)))
+~((p -> (p0 -> p1)) -> ((p -> p0) -> (p -> p1)))
+
+(p -> p1) -> (p -> ~p1) -> ~p
+~((p -> p1) -> (p -> ~p1) -> ~p)
+
+~((p <-> p1) <-> ~(p <-> ~p1) <-> ~p)
+
+((p -> p0) & (p0 -> p1)) -> (p -> p1)
+~(((p -> p0) & (p0 -> p1)) -> (p -> p1))
+((p | p0) & ~(p & p0)) -> (p -> ~p0)
+~(((p | p0) & ~(p & p0)) -> (p -> ~p0))
+(p & ~p) | (p0 & ~p0)
+~((p & ~p) | (p0 & ~p0))
+(p | p0) & (p | ~p0) & (~p | p1) & (~p | ~p1)
+
+
+[]~(p & ~p0) & []p &~[]p0
+
+[](p & ~[]p)
+
+[]p & ~(p & ~[]p0) & ~[](p & p0)
+
+([]p & ~p & <>(~p | ~p0) | []p & []p0 & <>(~p | ~p0))
+
+
+(p & ~p) | p
+
+[]p & <>p0 & []p1 & <>p2
+
+p10
+
+<>[](~p & ((p1 & (<>(p & p3) & p2 & p | p & p) & p) | []p | p | <>p1 | []p2) & p1) | <>~(p & p1 & p & p) & []p2 & []p1 | p2
+_|_  <-> [][] _|_  &  _|_  -> <><=5 [][]((q2 <->  _|_  |  _|_  &  _|_ ) &  _|_  & (<>( _|_  <-> (p3)) | p) & [] _|_  & <><=3 [][] _|_  &  _|_ ) | p & ((q2 |  _|_  & p1 <->  _|_  -> q3 & []<>~q2 | ~<>[]q) -> q &  _|_  & <> _|_  -> ([] _|_ ) | q & []p0 & <>(( _|_  &  _|_ )) & <>>=47 <>>=64 ~( _|_  -> q0)) & [] _|_  | []p <-> <>[]q3
+
+
+~([]([]p -> p))
+[]([]p -> p)
+([]p->p)&([]p->[][]p)
+
+([]p -> p) & ([]p -> [][]p)
+
+~(([]p -> p) & ([]p -> [][]p))
+
+~([]p -> p & [][]p)
+
+~([](p & q) <-> []p & []q)
+
+~(<>(p | q) <-> <>p | <>q)
+~([]_|_ <-> _|_)
+
+~([]p -> [][][]p)
+
+
+
+
+if tab closes, stmt is valid
+if tab opens, stmt is not valid
+if ~tab closes, stmt is not sat
+if ~tab opens, stmt is sat
+
+
+
+∻⋚±
+∅ ⨉ ✓
+φ
+
+<formula> ::= <bicond> (" -> " <bicond>)*
+<bicond> ::= <disj> (" <-> " <disj>)*
+<disj> ::= <conj> (" | " <conj>)*
+<conj> ::= <atom> (" & " <atom>)*
+<diamond> ::= "<>" (("<=" | ">=") <num> " ")? <atom>
+<box> ::= "[]" <atom>
+<atom> ::= "(" <formula> ")" | [p-q] [0-3]? | " _|_ " | "~" <atom> | <box> | <diamond>
+<num> ::= [1-9] [0-9]?
+
+resolution, contradiction, branching
+no solution, unfeasible, contradiction, feasible
+
+~p & ~q & ((~(p | q) -> ~<>(p0 -> q0 -> p0) & <>>=3 p0 & <><=15 q0) | [](p1 | q1) & <><=10 (p1 -> q1) & <>>=12 ~p1 & <>>=8 q1 | []~<>p2 & <><=4<>p2 & <><><=6(p2 <-> q2))
+((~p -> ~<>p0 & <>>=3 p0 & <><=15 q0) | []p1 & <><=10 p1 & <>>=12 ~p1 & <>>=8 q1 | []~<>p2 & <><=4<>p2 & <><><=6 p2)
+[][] _|_ -> <><=5 [][](<>p3 & [] _|_ & <><=3 [][] _|_) | ((q2 <-> []<>~q2 | ~<>[]q) -> <> _|_ -> ([] _|_) | []p0 & <> _|_ & <>>=47 <>>=64 ~q0) & [] _|_  | []p <-> <>[]q3
+
+[](p0 | p1 & (p2 | p3 & []p4 & <>p5 & <>>=2 p6 & <><=3 p7)) &
+<>(p10 | p11 & (p21 | p31 & []p41 & <>p51 & <>>=4<><=5 p71)) |
+<>>=6(p20 | p12 & (p22 | p32 & []p42 & <>(<>>=7 p62 & <><=8 p72))) & 
+<><=9(p30 | p13 & (p23 | p33 & [](<>p53 & <>>=10 p63 & <><=11 p73)))
+
+[](p0 | p1 | p2 | p3 | []p4 | <>p5 | <>>=2 p6 | <><=3 p7) &
+<>(p10 & p11 & p21 & p31 & []p41 & <>p51 & <>>=4<><=5 p71) |
+<>>=6(p20 & p12 & (p22 | p32 | []p42 | <>(<>>=7 p62 | <><=8 p72))) & 
+<><=9(p30 | p13 & (p23 | p33)) | <><=9(p30 | p13 & p23) & <>>=12 p73 | <><=9(p30 | p13 & p23) & <><=9 p63 | <><=9(p30 | p13 & p23) & []~p53
+
+K: anything
+KD: each node connects to another node or itself
+KT: each node connects to itself
+KB: each connection has a back connection; i.e. an undirected graph
+KDB: same as KB but every node has at least one connections (possibly to itself)
+KTB: same as KB but every node connects to itself
+K4: each node connects directly to all its descendants
+KD4: same as K4 but every node has at least one connections (possibly to itself)
+S4: same as K4 but every node connects to itself
+K5: each partition is a complete clique and possibly some source nodes connecting to some nodes of the clique
+KD5: same as K5 but every node has at least one connections (possibly to itself)
+K45: same as K5 but every source node connects to the entire clique
+KD45: same as K45 but every node has at least one connections (possibly to itself)
+KB45: each partition is a complete clique or a single node that may or may not connect to itself
+S5: same as KB45 but every node connects to itself
+
+K, D;
+T;
+KB, DB; B;
+K4, D4; S4;
+K5, D5; K45, D45; KB5, S5
