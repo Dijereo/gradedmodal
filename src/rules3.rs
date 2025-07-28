@@ -1,11 +1,16 @@
 use std::{cell::RefCell, collections::VecDeque, fmt, mem, rc::Rc};
 
 use crate::{
-    depth1::Depth1F, formula::Formula, frame::FrameCondition, ilp::check_feasibility, tableau2::{DupContra, Label, TabBranch, TabChildren, TableauNode2}
+    depth1::Depth1F,
+    formula::Formula,
+    frame::FrameCondition,
+    ilp::check_feasibility,
+    tableau2::{DupContra, Label, TabBranch, TabChildren, TableauNode2},
 };
 
 struct PropLinear;
 struct PropFork;
+struct TLinear;
 
 #[derive(Clone, Debug)]
 enum ForkType {
@@ -125,7 +130,11 @@ impl GradedKCalc {
     fn expand_linear(&self, tab: &mut TableauNode2) {
         let mut i = 0;
         while let Some(label) = tab.formulae.get(i).cloned() {
-            for new_formula in PropLinear.expand(&label.formula) {
+            let mut new_formulae = PropLinear.expand(&label.formula);
+            if self.framecond.reflexive() {
+                new_formulae.extend(TLinear.expand(&label.formula));
+            }
+            for new_formula in new_formulae {
                 tab.add_check_dup_contra(Label {
                     formula: new_formula,
                     conflictset: label.conflictset.clone(),
@@ -478,6 +487,25 @@ impl PropFork {
                 vec![phi1.clone(), phi2.clone()],
                 vec![phi1.not(), phi2.not()],
             ],
+        }
+    }
+}
+
+impl TLinear {
+    fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>> {
+        match formula.as_ref() {
+            Formula::Box(phi) => vec![phi.diamond()],
+            Formula::Bottom
+            | Formula::Top
+            | Formula::PropVar(..)
+            | Formula::Diamond(_)
+            | Formula::DiamondGe(..)
+            | Formula::DiamondLe(..)
+            | Formula::Not(_)
+            | Formula::Or(_, _)
+            | Formula::And(..)
+            | Formula::Imply(_, _)
+            | Formula::Iff(_, _) => vec![],
         }
     }
 }
