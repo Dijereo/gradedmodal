@@ -1,9 +1,7 @@
-use std::{cell::RefCell, collections::VecDeque, fmt, rc::Rc};
+use std::{cell::RefCell, collections::VecDeque, fmt, mem, rc::Rc};
 
 use crate::{
-    formula::Formula,
-    ilp::check_feasibility,
-    tableau2::{DupContra, Label, TabBranch, TabChildren, TableauNode2},
+    depth1::Depth1F, formula::Formula, frame::FrameCondition, ilp::check_feasibility, tableau2::{DupContra, Label, TabBranch, TabChildren, TableauNode2}
 };
 
 struct PropLinear;
@@ -30,7 +28,7 @@ struct Fork {
 
 pub(crate) struct GradedKCalc {
     // leaves_backlog: VecDeque<Rc<RefCell<TableauNode2>>>,
-    serial: bool,
+    framecond: FrameCondition,
     forks: Vec<Fork>,
 }
 
@@ -43,7 +41,7 @@ pub(crate) enum Feasibility {
 }
 
 pub(crate) struct GradedTransit {
-    pub(crate) serial: bool,
+    pub(crate) framecond: FrameCondition,
     pub(crate) boxed: Vec<Rc<Formula>>,
     pub(crate) diamge: Vec<(u32, Rc<Formula>)>,
     pub(crate) diamle: Vec<(u32, Rc<Formula>)>,
@@ -54,7 +52,15 @@ pub(crate) struct GradedTransit {
 }
 
 impl GradedKCalc {
-    pub(crate) fn sat(formulae: Vec<Rc<Formula>>, serial: bool) -> Rc<RefCell<TableauNode2>> {
+    pub(crate) fn sat(
+        mut formulae: Vec<Rc<Formula>>,
+        framecond: FrameCondition,
+    ) -> Rc<RefCell<TableauNode2>> {
+        if framecond.luminal() {
+            for f in formulae.iter_mut() {
+                *f = Depth1F::from(f.clone()).into();
+            }
+        }
         let labels = formulae
             .into_iter()
             .map(|f| Label {
@@ -62,7 +68,10 @@ impl GradedKCalc {
                 conflictset: vec![],
             })
             .collect();
-        let mut calc = Self { serial, forks: vec![] };
+        let mut calc = Self {
+            framecond,
+            forks: vec![],
+        };
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(labels, None)));
         if !tab.borrow().is_closed {
             calc.init(&tab);
@@ -88,7 +97,7 @@ impl GradedKCalc {
         let mut feasible = false;
         TableauNode2::get_open_leaves(tab, &mut open_leaves, false);
         for leaf in open_leaves {
-            let transit = GradedTransit::create(&leaf, self.serial);
+            let transit = GradedTransit::create(&leaf, self.framecond);
             match transit.outcome {
                 Feasibility::NoTransition | Feasibility::Feasible => {
                     feasible = true;
@@ -267,9 +276,9 @@ impl GradedKCalc {
 }
 
 impl GradedTransit {
-    fn create(leaf: &Rc<RefCell<TableauNode2>>, serial: bool) -> GradedTransit {
+    fn create(leaf: &Rc<RefCell<TableauNode2>>, framecond: FrameCondition) -> GradedTransit {
         let mut transit = Self {
-            serial,
+            framecond,
             boxed: vec![],
             diamge: vec![],
             diamle: vec![],
@@ -282,7 +291,7 @@ impl GradedTransit {
             transit.store_formula(&label.formula);
             true
         });
-        if transit.serial && transit.diamge.is_empty() && !transit.is_empty() {
+        if transit.framecond.serial() && transit.diamge.is_empty() && !transit.is_empty() {
             transit.diamge.push((1, Formula::top()));
         }
         if transit.diamge.is_empty() {
@@ -306,7 +315,7 @@ impl GradedTransit {
         }
         let forks = transit.get_forks();
         let mut calc = GradedKCalc {
-            serial: transit.serial,
+            framecond: transit.framecond,
             forks: forks.iter().cloned().collect(),
         };
         let feasible = calc.apply(&tab, forks);

@@ -6,16 +6,18 @@ use std::{
 use crate::{
     depth1::Depth1F,
     formula::{Formula, full_parser},
+    frame::FrameCondition,
     rules::{K_CALCULUS, RuleCalc, S4_CALCULUS, T_CALCULUS},
     rules3::GradedKCalc,
     tableau2::DisplayTableau,
     token::tokenize,
 };
 
+mod depth1;
 mod dnf;
 mod formula;
 // mod formula2;
-mod depth1;
+mod frame;
 mod ilp;
 mod parser;
 // mod parser2;
@@ -53,7 +55,7 @@ pub fn run() {
                         println!("{}", f);
                         println!();
                         // let tab = S4_CALCULUS.sat(vec![f]);
-                        let tab = DisplayTableau(GradedKCalc::sat(vec![f], true));
+                        let tab = DisplayTableau(GradedKCalc::sat(vec![f], FrameCondition::D45));
                         println!("{}", tab);
                     }
                     Err(Some((i, tok))) => {
