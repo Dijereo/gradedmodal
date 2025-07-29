@@ -44,10 +44,7 @@ pub(crate) struct TableauNode2 {
 }
 
 impl TableauNode2 {
-    pub(crate) fn from_formulae(
-        labels: Vec<Label>,
-        parent: Option<&Rc<RefCell<Self>>>,
-    ) -> Self {
+    pub(crate) fn from_formulae(labels: Vec<Label>, parent: Option<&Rc<RefCell<Self>>>) -> Self {
         let mut tab = Self {
             is_closed: false,
             formulae: vec![],
@@ -77,7 +74,9 @@ impl TableauNode2 {
             }
         }
         if let Some(parent) = &self.parent.upgrade() {
-            parent.borrow().traverse_anc_formulae(map_while);
+            if let TabChildren::Fork { .. } = parent.borrow().children {
+                parent.borrow().traverse_anc_formulae(map_while);
+            }
         }
     }
 
@@ -326,11 +325,22 @@ impl TableauNode2 {
             }
             writeln!(f)?;
         }
+        for (i, choice) in transit.reflexion.para_worlds.iter().enumerate() {
+            write!(f, "w{i}: ")?;
+            for (forkid, branchid) in choice {
+                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
+            }
+            writeln!(f)?;
+        }
         match &transit.solution {
-            Some(values) => {
+            Some((values, reflxvals)) => {
                 write!(f, "Solution: ")?;
                 for (i, val) in values.iter().enumerate() {
                     write!(f, "{val}*w{i} ")?;
+                }
+                writeln!(f)?;
+                for (i, val) in reflxvals.iter().enumerate() {
+                    write!(f, "{val}*u{i} ")?;
                 }
                 writeln!(f)?;
             }

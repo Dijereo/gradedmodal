@@ -51,9 +51,15 @@ pub(crate) struct GradedTransit {
     pub(crate) diamge: Vec<(u32, Rc<Formula>)>,
     pub(crate) diamle: Vec<(u32, Rc<Formula>)>,
     pub(crate) para_worlds: Vec<Vec<(usize, usize)>>,
+    pub(crate) reflexion: Reflexion,
     pub(crate) outcome: Feasibility,
-    pub(crate) solution: Option<Vec<u32>>,
+    pub(crate) solution: Option<(Vec<u32>, Vec<u32>)>,
     pub(crate) root: Option<Rc<RefCell<TableauNode2>>>,
+}
+
+pub(crate) struct Reflexion {
+    pub(crate) labels: Vec<Label>,
+    pub(crate) para_worlds: Vec<Vec<(usize, usize)>>,
 }
 
 impl GradedKCalc {
@@ -292,6 +298,7 @@ impl GradedTransit {
             diamge: vec![],
             diamle: vec![],
             para_worlds: vec![],
+            reflexion: Reflexion::new(leaf),
             outcome: Feasibility::NoTransition,
             solution: None,
             root: None,
@@ -349,10 +356,18 @@ impl GradedTransit {
             // println!("Choice {:?}", choices);
             choices.sort_unstable();
             choices.truncate(transit.diamge.len() + transit.diamle.len());
+            if transit.framecond.cliqued() {
+                transit.reflexion.reflect(&seed, &choices);
+            }
             transit.para_worlds.push(choices);
         }
         transit.para_worlds.sort_unstable_by(Vec::cmp);
         transit.para_worlds.dedup_by(|ch1, ch2| ch1 == ch2);
+        transit.reflexion.para_worlds.sort_unstable_by(Vec::cmp);
+        transit
+            .reflexion
+            .para_worlds
+            .dedup_by(|ch1, ch2| ch1 == ch2);
         check_feasibility(&mut transit);
         transit
     }
@@ -418,6 +433,37 @@ impl GradedTransit {
             writeln!(f, "□: {phi}")?;
         }
         Ok(())
+    }
+}
+
+impl Reflexion {
+    fn new(leaf: &Rc<RefCell<TableauNode2>>) -> Self {
+        let mut labels = vec![];
+        leaf.borrow().traverse_anc_formulae(&mut |label| {
+            labels.push(label.clone());
+            true
+        });
+        Self {
+            labels,
+            para_worlds: vec![],
+        }
+    }
+
+    fn reflect(&mut self, seed: &Rc<RefCell<TableauNode2>>, choices: &Vec<(usize, usize)>) {
+        let mut labels = self.labels.clone();
+        seed.borrow().traverse_anc_formulae(&mut |f| {
+            labels.push(f.clone());
+            true
+        });
+        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(labels, None)));
+        let mut calc = GradedKCalc {
+            framecond: FrameCondition::K,
+            forks: vec![],
+        };
+        let feasible = calc.apply(&tab, VecDeque::new());
+        if feasible {
+            self.para_worlds.push(choices.clone());
+        }
     }
 }
 

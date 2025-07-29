@@ -20,3 +20,4 @@ generalize depth1 algo to multiple nestings
 add unit tests for depth1 algo
 change frame conditions to const generics
 add comments/docs
+display reflexion tableaux

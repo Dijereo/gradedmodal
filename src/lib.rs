@@ -30,7 +30,27 @@ mod token;
 mod util;
 
 pub fn run() {
+    let mut framecond = FrameCondition::K;
     loop {
+        print!("Choose Frame Class: ");
+        io::stdout().flush().unwrap();
+        let mut input = String::new();
+        if io::stdin().read_line(&mut input).is_err() {
+            eprintln!("Failed to read input");
+            return;
+        }
+
+        framecond = match input.trim().to_uppercase().as_str() {
+            "K" => FrameCondition::K,
+            "D" => FrameCondition::D,
+            "K45" => FrameCondition::K45,
+            "D45" => FrameCondition::D45,
+            "KB5" => FrameCondition::KB45,
+            "S5" => FrameCondition::S5,
+            _ => framecond,
+        };
+        println!("Chosen Frame Class: {:?}", framecond);
+
         print!("Enter a formula: ");
         io::stdout().flush().unwrap();
         let mut input = String::new();
@@ -55,7 +75,7 @@ pub fn run() {
                         println!("{}", f);
                         println!();
                         // let tab = S4_CALCULUS.sat(vec![f]);
-                        let tab = DisplayTableau(GradedKCalc::sat(vec![f], FrameCondition::K));
+                        let tab = DisplayTableau(GradedKCalc::sat(vec![f], framecond));
                         println!("{}", tab);
                     }
                     Err(Some((i, tok))) => {

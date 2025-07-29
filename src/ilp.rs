@@ -60,8 +60,13 @@ pub(crate) fn check_feasibility(transit: &mut GradedTransit) {
         transit
             .diamge
             .iter()
-            .map(|(c, _)| (*c, true, vec![]))
-            .chain(transit.diamle.iter().map(|(c, _)| (*c, false, vec![]))),
+            .map(|(c, _)| (*c, true, vec![], vec![]))
+            .chain(
+                transit
+                    .diamle
+                    .iter()
+                    .map(|(c, _)| (*c, false, vec![], vec![])),
+            ),
     );
     for (i, world) in transit.para_worlds.iter().enumerate() {
         for (forkid, branchid) in world {
@@ -70,25 +75,48 @@ pub(crate) fn check_feasibility(transit: &mut GradedTransit) {
             }
         }
     }
+    for (i, world) in transit.reflexion.para_worlds.iter().enumerate() {
+        for (forkid, branchid) in world {
+            if *branchid == 1 {
+                exprs[*forkid].3.push(i)
+            }
+        }
+    }
     let mut problem = ProblemVariables::new();
     let vars = problem.add_vector(variable().integer().min(0), transit.para_worlds.len());
-    let constrs = exprs.into_iter().map(|(count, sense, worlds)| {
-        let expr = worlds.into_iter().map(|i| &vars[i]).sum::<Expression>();
-        if sense {
-            expr.geq(count as f64)
-        } else {
-            expr.leq(count)
-        }
-    });
+    let reflxvars = problem.add_vector(variable().binary(), transit.reflexion.para_worlds.len());
+    let constrs = exprs
+        .into_iter()
+        .map(|(count, sense, worlds, reflxworlds)| {
+            let expr = worlds.into_iter().map(|i| &vars[i]).sum::<Expression>()
+                + reflxworlds
+                    .into_iter()
+                    .map(|i| &reflxvars[i])
+                    .sum::<Expression>();
+            if sense {
+                expr.geq(count as f64)
+            } else {
+                expr.leq(count)
+            }
+        });
     // let objective = 0;
     let mut model = solvers::scip::scip(problem.minimise(vars.iter().sum::<Expression>()));
     for constr in constrs {
         model.add_constraint(constr);
     }
+    if transit.framecond.cliqued() {
+        model.add_constraint(reflxvars.iter().sum::<Expression>().eq(1));
+    }
     match model.solve() {
         Ok(solution) => {
             transit.outcome = Feasibility::Feasible;
-            transit.solution = Some(vars.into_iter().map(|v| solution.value(v) as u32).collect());
+            transit.solution = Some((
+                vars.into_iter().map(|v| solution.value(v) as u32).collect(),
+                reflxvars
+                    .into_iter()
+                    .map(|v| solution.value(v) as u32)
+                    .collect(),
+            ));
         }
         Err(_) => {
             transit.outcome = Feasibility::NoSolution;

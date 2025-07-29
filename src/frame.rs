@@ -2,7 +2,7 @@
 pub(crate) enum FrameCondition {
     K,
     D,
-    T,
+    // T,
     // KB,
     // DB,
     // TB,
@@ -13,31 +13,45 @@ pub(crate) enum FrameCondition {
     // D5,
     K45,
     D45,
-    // KB45,
-    // S5,
+    KB45,
+    S5,
 }
 
 impl FrameCondition {
-    pub(crate) fn serial(&self) -> bool {
+    pub(crate) const fn serial(&self) -> bool {
         match self {
-            FrameCondition::K | FrameCondition::K45 => false,
-            FrameCondition::D | FrameCondition::T | FrameCondition::D45 => true,
+            FrameCondition::K | FrameCondition::K45 | FrameCondition::KB45 => false,
+            FrameCondition::D | FrameCondition::D45 | FrameCondition::S5 => true,
         }
     }
-    
-    pub(crate) fn reflexive(&self) -> bool {
+
+    pub(crate) const fn reflexive(&self) -> bool {
+        match self {
+            FrameCondition::K
+            | FrameCondition::D
+            | FrameCondition::K45
+            | FrameCondition::D45
+            | FrameCondition::KB45 => false,
+            FrameCondition::S5 => true,
+        }
+    }
+
+    pub(crate) const fn luminal(&self) -> bool {
+        match self {
+            FrameCondition::K | FrameCondition::D => false,
+            FrameCondition::K45
+            | FrameCondition::D45
+            | FrameCondition::KB45
+            | FrameCondition::S5 => true,
+        }
+    }
+
+    pub(crate) const fn cliqued(&self) -> bool {
         match self {
             FrameCondition::K | FrameCondition::D | FrameCondition::K45 | FrameCondition::D45 => {
                 false
             }
-            FrameCondition::T => true,
-        }
-    }
-
-    pub(crate) fn luminal(&self) -> bool {
-        match self {
-            FrameCondition::K | FrameCondition::D | FrameCondition::T => false,
-            FrameCondition::K45 | FrameCondition::D45 => true,
+            FrameCondition::KB45 | FrameCondition::S5 => true,
         }
     }
 }
