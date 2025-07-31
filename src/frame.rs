@@ -13,14 +13,14 @@ pub(crate) enum FrameCondition {
     // D5,
     K45,
     D45,
-    KB45,
+    KB5,
     S5,
 }
 
 impl FrameCondition {
     pub(crate) const fn serial(&self) -> bool {
         match self {
-            FrameCondition::K | FrameCondition::K45 | FrameCondition::KB45 => false,
+            FrameCondition::K | FrameCondition::K45 | FrameCondition::KB5 => false,
             FrameCondition::D | FrameCondition::D45 | FrameCondition::S5 => true,
         }
     }
@@ -31,8 +31,19 @@ impl FrameCondition {
             | FrameCondition::D
             | FrameCondition::K45
             | FrameCondition::D45
-            | FrameCondition::KB45 => false,
+            | FrameCondition::KB5 => false,
             FrameCondition::S5 => true,
+        }
+    }
+
+    pub(crate) const fn spotlit(&self) -> bool {
+        match self {
+            FrameCondition::K
+            | FrameCondition::D
+            | FrameCondition::K45
+            | FrameCondition::D45
+            | FrameCondition::KB5
+            | FrameCondition::S5 => false,
         }
     }
 
@@ -41,7 +52,7 @@ impl FrameCondition {
             FrameCondition::K | FrameCondition::D => false,
             FrameCondition::K45
             | FrameCondition::D45
-            | FrameCondition::KB45
+            | FrameCondition::KB5
             | FrameCondition::S5 => true,
         }
     }
@@ -51,7 +62,7 @@ impl FrameCondition {
             FrameCondition::K | FrameCondition::D | FrameCondition::K45 | FrameCondition::D45 => {
                 false
             }
-            FrameCondition::KB45 | FrameCondition::S5 => true,
+            FrameCondition::KB5 | FrameCondition::S5 => true,
         }
     }
 }

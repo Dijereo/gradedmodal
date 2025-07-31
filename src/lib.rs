@@ -23,6 +23,7 @@ mod parser;
 // mod parser2;
 mod rules;
 mod rules3;
+mod rules4;
 mod signed;
 mod tableau;
 mod tableau2;
@@ -45,7 +46,7 @@ pub fn run() {
             "D" => FrameCondition::D,
             "K45" => FrameCondition::K45,
             "D45" => FrameCondition::D45,
-            "KB5" => FrameCondition::KB45,
+            "KB5" => FrameCondition::KB5,
             "S5" => FrameCondition::S5,
             _ => framecond,
         };

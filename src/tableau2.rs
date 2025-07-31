@@ -318,7 +318,7 @@ impl TableauNode2 {
         };
         TableauNode2::display_root(root, f, curri, roots)?;
         writeln!(f)?;
-        for (i, choice) in transit.para_worlds.iter().enumerate() {
+        for (i, choice) in transit.paraws.iter().enumerate() {
             write!(f, "w{i}: ")?;
             for (forkid, branchid) in choice {
                 write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;

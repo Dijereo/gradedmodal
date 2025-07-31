@@ -35,6 +35,31 @@ all nondet choices are contradictions: Contradiciton
 subtransitions are unfeasible: Unfeasible
 no ilp solution: No Graded Solution
 
+cliqued:
+unnest modals
+expand static
+choose leaf
+transit
+add reflexion
+ilp
+
+spotlit:
+expand static lantern
+choose leaf
+collect psis
+flatten psis
+collect <>thetas
+choose clique settings (+/- <>theta)
+paraworlds on clique settings (+/- theta)
+paraworlds (+/- psi) checking against clique settings
+
+paraworlds
+get modals from open leaves
+collect submodals
+paraworlds
+add reflexion back to first paraworlds
+ilp
+
 
 types of nodes:
 root

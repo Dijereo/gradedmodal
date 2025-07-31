@@ -68,7 +68,7 @@ pub(crate) fn check_feasibility(transit: &mut GradedTransit) {
                     .map(|(c, _)| (*c, false, vec![], vec![])),
             ),
     );
-    for (i, world) in transit.para_worlds.iter().enumerate() {
+    for (i, world) in transit.paraws.iter().enumerate() {
         for (forkid, branchid) in world {
             if *branchid == 1 {
                 exprs[*forkid].2.push(i)
@@ -83,7 +83,7 @@ pub(crate) fn check_feasibility(transit: &mut GradedTransit) {
         }
     }
     let mut problem = ProblemVariables::new();
-    let vars = problem.add_vector(variable().integer().min(0), transit.para_worlds.len());
+    let vars = problem.add_vector(variable().integer().min(0), transit.paraws.len());
     let reflxvars = problem.add_vector(variable().binary(), transit.reflexion.para_worlds.len());
     let constrs = exprs
         .into_iter()

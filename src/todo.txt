@@ -21,3 +21,4 @@ add unit tests for depth1 algo
 change frame conditions to const generics
 add comments/docs
 display reflexion tableaux
+rename reflexion -> spotlight, unnest -> flatten, depth1 -> flat

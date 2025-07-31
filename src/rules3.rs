@@ -5,7 +5,7 @@ use crate::{
     formula::Formula,
     frame::FrameCondition,
     ilp::check_feasibility,
-    tableau2::{DupContra, Label, TabBranch, TabChildren, TableauNode2},
+    tableau2::{Conflict, DupContra, Label, TabBranch, TabChildren, TableauNode2},
 };
 
 struct PropLinear;
@@ -14,7 +14,7 @@ struct TLinear;
 
 #[derive(Clone, Debug)]
 enum ForkType {
-    Conjunction,
+    Disjunction,
     ParallelWorlds,
 }
 
@@ -45,17 +45,38 @@ pub(crate) enum Feasibility {
     Unfeasible,
 }
 
+struct Modals {
+    pub(crate) bx: Vec<Label>,
+    pub(crate) ge: Vec<(u32, Label)>,
+    pub(crate) le: Vec<(u32, Label)>,
+}
+
+struct ParallelWorlds {
+    tab: Rc<RefCell<TableauNode2>>,
+    forkids: Vec<usize>,
+}
+
 pub(crate) struct GradedTransit {
     pub(crate) framecond: FrameCondition,
-    pub(crate) boxed: Vec<Rc<Formula>>,
-    pub(crate) diamge: Vec<(u32, Rc<Formula>)>,
-    pub(crate) diamle: Vec<(u32, Rc<Formula>)>,
-    pub(crate) para_worlds: Vec<Vec<(usize, usize)>>,
+    pub(crate) modals: Modals,
+    pub(crate) paraws: Option<ParallelWorlds>,
     pub(crate) reflexion: Reflexion,
     pub(crate) outcome: Feasibility,
     pub(crate) solution: Option<(Vec<u32>, Vec<u32>)>,
-    pub(crate) root: Option<Rc<RefCell<TableauNode2>>>,
 }
+
+// pub(crate) struct Graded5Transit {
+//     pub(crate) framecond: FrameCondition,
+//     pub(crate) boxed: Vec<Rc<Formula>>,
+//     pub(crate) diamge: Vec<(u32, Rc<Formula>)>,
+//     pub(crate) diamle: Vec<(u32, Rc<Formula>)>,
+//     pub(crate) submodals: Vec<Rc<Formula>>,
+//     pub(crate) clique_settings: Vec<bool>,
+//     pub(crate) spottab: Option<Rc<RefCell<TableauNode2>>>,
+//     pub(crate) cliquetab: Option<Rc<RefCell<TableauNode2>>>,
+//     pub(crate) outcome: Feasibility,
+//     pub(crate) solution: Option<(Vec<u32>, Vec<u32>)>,
+// }
 
 pub(crate) struct Reflexion {
     pub(crate) labels: Vec<Label>,
@@ -84,23 +105,20 @@ impl GradedKCalc {
             forks: vec![],
         };
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(labels, None)));
-        if !tab.borrow().is_closed {
-            calc.init(&tab);
-            calc.apply(&tab, VecDeque::new());
-            //todo get return value
+        if tab.borrow().is_closed {
+            return tab;
         }
+        // calc.apply(&tab, );
+        calc.expand_static(&tab, VecDeque::new());
+        if tab.borrow().is_closed {
+            return tab;
+        }
+        let feasible = calc.transition_rec(&tab);
+        // TODO: tab.borrow_mut().is_closed |= !feasible;
         tab
     }
 
-    fn init(&self, tab: &Rc<RefCell<TableauNode2>>) {
-        // todo!()
-    }
-
-    fn apply(&mut self, tab: &Rc<RefCell<TableauNode2>>, forks: VecDeque<Fork>) -> bool {
-        if tab.borrow().is_closed {
-            return false;
-        }
-        self.expand_static(tab, forks);
+    fn transition_rec(&mut self, tab: &Rc<RefCell<TableauNode2>>) -> bool {
         if tab.borrow().is_closed {
             return false;
         }
@@ -108,7 +126,7 @@ impl GradedKCalc {
         let mut feasible = false;
         TableauNode2::get_open_leaves(tab, &mut open_leaves, false);
         for leaf in open_leaves {
-            let transit = GradedTransit::create(&leaf, self.framecond);
+            let transit = GradedTransit::create(&leaf, self.framecond, self);
             match transit.outcome {
                 Feasibility::NoTransition | Feasibility::Feasible => {
                     feasible = true;
@@ -125,7 +143,7 @@ impl GradedKCalc {
         if tab.borrow().is_closed {
             return;
         }
-        self.add_forks(&tab.borrow(), &mut forks);
+        self.store_disjs(&tab.borrow(), &mut forks);
         self.resolve_forks(&mut tab.borrow_mut(), &mut forks);
         if tab.borrow().is_closed {
             return;
@@ -153,32 +171,42 @@ impl GradedKCalc {
         }
     }
 
-    fn add_forks(&mut self, tab: &TableauNode2, forks: &mut VecDeque<Fork>) {
+    fn create_fork(
+        &mut self,
+        forktype: ForkType,
+        branches: Vec<Vec<Rc<Formula>>>,
+        conflictset: &Vec<Conflict>,
+    ) -> Fork {
+        let mut fork = Fork {
+            id: self.forks.len(),
+            fktype: forktype,
+            branches: vec![],
+        };
+        for (i, branch) in branches.into_iter().enumerate() {
+            let mut fork_branch = Branch {
+                id: i,
+                labels: vec![],
+            };
+            for formula in branch {
+                let label = Label {
+                    formula,
+                    conflictset: conflictset.clone(),
+                };
+                fork_branch.labels.push(label);
+            }
+            fork.branches.push(fork_branch);
+        }
+        self.forks.push(fork.clone());
+        fork
+    }
+
+    fn store_disjs(&mut self, tab: &TableauNode2, forks: &mut VecDeque<Fork>) {
         for label in &tab.formulae {
             let branches = PropFork.expand(&label.formula);
             if branches.is_empty() {
                 continue;
             }
-            let fork = Fork {
-                id: self.forks.len(),
-                fktype: ForkType::Conjunction,
-                branches: branches
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, b)| Branch {
-                        id: i,
-                        labels: b
-                            .into_iter()
-                            .map(|f| Label {
-                                formula: f,
-                                conflictset: label.conflictset.clone(),
-                            })
-                            .collect(),
-                    })
-                    .collect(),
-            };
-            forks.push_back(fork.clone());
-            self.forks.push(fork);
+            forks.push_back(self.create_fork(ForkType::Disjunction, branches, &label.conflictset));
         }
     }
 
@@ -290,57 +318,126 @@ impl GradedKCalc {
     }
 }
 
+impl Modals {
+    fn new(leaf: &Rc<RefCell<TableauNode2>>, serial: bool) -> Modals {
+        let mut this = Modals {
+            bx: vec![],
+            ge: vec![],
+            le: vec![],
+        };
+        leaf.borrow().traverse_anc_formulae(&mut |label| {
+            this.store(&label);
+            true
+        });
+        if serial && this.ge.is_empty() && !this.is_empty() {
+            this.ge.push((
+                1,
+                Label {
+                    formula: Formula::top(),
+                    conflictset: vec![],
+                },
+            ));
+        }
+        this
+    }
+
+    fn store(&mut self, label: &Label) {
+        match label.formula.as_ref() {
+            Formula::Bottom
+            | Formula::Top
+            | Formula::PropVar(..)
+            | Formula::Not(_)
+            | Formula::And(..)
+            | Formula::Or(..)
+            | Formula::Imply(..)
+            | Formula::Iff(..) => {}
+            Formula::Box(phi) => self.bx.push(Label {
+                formula: phi.clone(),
+                conflictset: label.conflictset.clone(),
+            }),
+            Formula::Diamond(phi) => self.ge.push((
+                1,
+                Label {
+                    formula: phi.clone(),
+                    conflictset: label.conflictset.clone(),
+                },
+            )),
+            Formula::DiamondGe(count, phi) => self.ge.push((
+                *count,
+                Label {
+                    formula: phi.clone(),
+                    conflictset: label.conflictset.clone(),
+                },
+            )),
+            Formula::DiamondLe(count, phi) => self.le.push((
+                *count,
+                Label {
+                    formula: phi.clone(),
+                    conflictset: label.conflictset.clone(),
+                },
+            )),
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.bx.is_empty() && self.ge.is_empty() && self.le.is_empty()
+    }
+}
+
+impl ParallelWorlds {
+    fn new<'a>(
+        determ: Vec<Label>,
+        nondeterm: impl Iterator<Item = &'a Label>,
+        calc: &mut GradedKCalc,
+    ) -> Self {
+        let forks = VecDeque::from_iter(nondeterm.map(|f| {
+            calc.create_fork(
+                ForkType::ParallelWorlds,
+                vec![vec![f.formula.clone()], vec![f.formula.not()]],
+                &f.conflictset,
+            )
+        }));
+        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(determ, None)));
+        let forkids = forks.iter().map(|f| f.id).collect();
+        calc.expand_static(&tab, forks);
+        Self { tab, forkids }
+    }
+
+    fn from_modals(modals: &Modals, calc: &mut GradedKCalc) -> Self {
+        ParallelWorlds::new(
+            modals.bx.clone(),
+            modals.ge.iter().chain(modals.le.iter()).map(|(_, l)| l),
+            calc,
+        )
+    }
+}
+
 impl GradedTransit {
-    fn create(leaf: &Rc<RefCell<TableauNode2>>, framecond: FrameCondition) -> GradedTransit {
-        let mut transit = Self {
+    fn create(
+        leaf: &Rc<RefCell<TableauNode2>>,
+        framecond: FrameCondition,
+        calc: &mut GradedKCalc,
+    ) -> GradedTransit {
+        let mut transit = GradedTransit {
             framecond,
-            boxed: vec![],
-            diamge: vec![],
-            diamle: vec![],
-            para_worlds: vec![],
+            modals: Modals::new(leaf, framecond.serial()),
+            paraws: None,
             reflexion: Reflexion::new(leaf),
             outcome: Feasibility::NoTransition,
             solution: None,
-            root: None,
         };
-        leaf.borrow().traverse_anc_formulae(&mut |label| {
-            transit.store_formula(&label.formula);
-            true
-        });
-        if transit.framecond.serial() && transit.diamge.is_empty() && !transit.is_empty() {
-            transit.diamge.push((1, Formula::top()));
-        }
-        if transit.diamge.is_empty() {
+        if transit.modals.ge.is_empty() {
             return transit;
         }
-        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(
-            transit
-                .boxed
-                .iter()
-                .map(|f| Label {
-                    formula: f.clone(),
-                    conflictset: vec![],
-                })
-                .collect(),
-            None,
-        )));
-        if tab.borrow().is_closed {
+        let paraws = ParallelWorlds::from_modals(&transit.modals, calc);
+        if paraws.tab.borrow().is_closed {
             transit.outcome = Feasibility::Contradiction;
-            transit.root = Some(tab);
+            transit.paraws = Some(paraws);
             return transit;
         }
-        let forks = transit.get_forks();
-        let mut calc = GradedKCalc {
-            framecond: transit.framecond,
-            forks: forks.iter().cloned().collect(),
-        };
-        let feasible = calc.apply(&tab, forks);
-        if tab.borrow().is_closed {
-            transit.root = Some(tab);
-            transit.outcome = Feasibility::Contradiction;
-            return transit;
-        } else if !feasible {
-            transit.root = Some(tab);
+        let feasible = calc.transition_rec(&paraws.tab);
+        if !feasible {
+            transit.paraws = Some(paraws);
             transit.outcome = Feasibility::Unfeasible;
             return transit;
         }
@@ -359,10 +456,10 @@ impl GradedTransit {
             if transit.framecond.cliqued() {
                 transit.reflexion.reflect(&seed, &choices);
             }
-            transit.para_worlds.push(choices);
+            transit.paraws.push(choices);
         }
-        transit.para_worlds.sort_unstable_by(Vec::cmp);
-        transit.para_worlds.dedup_by(|ch1, ch2| ch1 == ch2);
+        transit.paraws.sort_unstable_by(Vec::cmp);
+        transit.paraws.dedup_by(|ch1, ch2| ch1 == ch2);
         transit.reflexion.para_worlds.sort_unstable_by(Vec::cmp);
         transit
             .reflexion
@@ -370,52 +467,6 @@ impl GradedTransit {
             .dedup_by(|ch1, ch2| ch1 == ch2);
         check_feasibility(&mut transit);
         transit
-    }
-
-    fn store_formula(&mut self, formula: &Rc<Formula>) {
-        match formula.as_ref() {
-            Formula::Bottom
-            | Formula::Top
-            | Formula::PropVar(..)
-            | Formula::Not(_)
-            | Formula::And(..)
-            | Formula::Or(..)
-            | Formula::Imply(..)
-            | Formula::Iff(..) => {}
-            Formula::Box(formula) => self.boxed.push(formula.clone()),
-            Formula::Diamond(formula) => self.diamge.push((1, formula.clone())),
-            Formula::DiamondGe(count, formula) => self.diamge.push((*count, formula.clone())),
-            Formula::DiamondLe(count, formula) => self.diamle.push((*count, formula.clone())),
-        }
-    }
-
-    fn get_forks(&self) -> VecDeque<Fork> {
-        VecDeque::from_iter(
-            self.diamge
-                .iter()
-                .chain(self.diamle.iter())
-                .enumerate()
-                .map(|(id, (c, f))| Fork {
-                    id,
-                    fktype: ForkType::ParallelWorlds,
-                    branches: vec![
-                        Branch {
-                            id: 0,
-                            labels: vec![Label {
-                                formula: f.not(),
-                                conflictset: vec![],
-                            }],
-                        },
-                        Branch {
-                            id: 1,
-                            labels: vec![Label {
-                                formula: f.clone(),
-                                conflictset: vec![],
-                            }],
-                        },
-                    ],
-                }),
-        )
     }
 
     pub(crate) fn is_empty(&self) -> bool {
@@ -463,6 +514,218 @@ impl Reflexion {
         let feasible = calc.apply(&tab, VecDeque::new());
         if feasible {
             self.para_worlds.push(choices.clone());
+        }
+    }
+}
+
+// impl Graded5Transit {
+//     fn create(leaf: &Rc<RefCell<TableauNode2>>, framecond: FrameCondition) -> Graded5Transit {
+//         let mut transit = Self::init(leaf, framecond);
+//         if transit.diamge.is_empty() {
+//             return transit;
+//         }
+//         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(
+//             transit
+//                 .boxed
+//                 .iter()
+//                 .map(|f| Label {
+//                     formula: f.clone(),
+//                     conflictset: vec![],
+//                 })
+//                 .collect(),
+//             None,
+//         )));
+//         if tab.borrow().is_closed {
+//             transit.outcome = Feasibility::Contradiction;
+//             transit.root = Some(tab);
+//             return transit;
+//         }
+//         let forks = transit.get_spot_forks();
+//         let mut calc = GradedKCalc {
+//             framecond: transit.framecond,
+//             forks: forks.iter().cloned().collect(),
+//         };
+//         let feasible = calc.apply(&tab, forks);
+//         if tab.borrow().is_closed {
+//             transit.root = Some(tab);
+//             transit.outcome = Feasibility::Contradiction;
+//             return transit;
+//         } else if !feasible {
+//             transit.root = Some(tab);
+//             transit.outcome = Feasibility::Unfeasible;
+//             return transit;
+//         }
+//         let mut seeds = vec![];
+//         TableauNode2::get_open_leaves(&tab, &mut seeds, true);
+//         transit.root = Some(tab);
+//         for seed in seeds {
+//             if seed.borrow().is_closed {
+//                 continue;
+//             }
+//             let mut choices = vec![];
+//             TableauNode2::get_choices(&seed, &mut choices);
+//             // println!("Choice {:?}", choices);
+//             choices.sort_unstable();
+//             choices.truncate(transit.diamge.len() + transit.diamle.len());
+//             if transit.framecond.cliqued() {
+//                 transit.reflexion.reflect(&seed, &choices);
+//             }
+//             transit.para_worlds.push(choices);
+//         }
+//         transit.para_worlds.sort_unstable_by(Vec::cmp);
+//         transit.para_worlds.dedup_by(|ch1, ch2| ch1 == ch2);
+//         transit.reflexion.para_worlds.sort_unstable_by(Vec::cmp);
+//         transit
+//             .reflexion
+//             .para_worlds
+//             .dedup_by(|ch1, ch2| ch1 == ch2);
+//         check_feasibility(&mut transit);
+//         transit
+//     }
+
+//     fn init(leaf: &Rc<RefCell<TableauNode2>>, framecond: FrameCondition) -> Graded5Transit {
+//         let mut transit = Self {
+//             framecond,
+//             boxed: vec![],
+//             diamge: vec![],
+//             diamle: vec![],
+//             submodals: vec![],
+//             clique_settings: vec![],
+//             spottab: None,
+//             cliquetab: None,
+//             outcome: Feasibility::NoTransition,
+//             solution: None,
+//         };
+//         leaf.borrow().traverse_anc_formulae(&mut |label| {
+//             transit.store_formula(&label.formula);
+//             true
+//         });
+//         let dummy = Formula::bottom();
+//         for f in transit
+//             .diamge
+//             .iter_mut()
+//             .chain(transit.diamle.iter_mut())
+//             .map(|(_, f)| f)
+//             .chain(transit.boxed.iter_mut())
+//         {
+//             *f = Depth1F::from(mem::replace(f, dummy.clone())).into();
+//             f.store_modals(&mut transit.submodals);
+//         }
+//         transit.clique_settings = vec![true; transit.submodals.len()];
+//         if transit.framecond.serial() && transit.diamge.is_empty() && !transit.is_empty() {
+//             transit.diamge.push((1, Formula::top()));
+//         }
+//         transit
+//     }
+
+//     fn store_formula(&mut self, formula: &Rc<Formula>) {
+//         match formula.as_ref() {
+//             Formula::Bottom
+//             | Formula::Top
+//             | Formula::PropVar(..)
+//             | Formula::Not(_)
+//             | Formula::And(..)
+//             | Formula::Or(..)
+//             | Formula::Imply(..)
+//             | Formula::Iff(..) => {}
+//             Formula::Box(phi) => self.boxed.push(phi.clone()),
+//             Formula::Diamond(phi) => self.diamge.push((1, phi.clone())),
+//             Formula::DiamondGe(count, phi) => self.diamge.push((*count, phi.clone())),
+//             Formula::DiamondLe(count, phi) => self.diamle.push((*count, phi.clone())),
+//         }
+//     }
+
+//     fn get_spot_forks(&self) -> VecDeque<Fork> {
+//         VecDeque::from_iter(
+//             self.diamge
+//                 .iter()
+//                 .chain(self.diamle.iter())
+//                 .enumerate()
+//                 .map(|(id, (c, f))| Fork {
+//                     id,
+//                     fktype: ForkType::ParallelWorlds,
+//                     branches: vec![
+//                         Branch {
+//                             id: 0,
+//                             labels: vec![Label {
+//                                 formula: f.not(),
+//                                 conflictset: vec![],
+//                             }],
+//                         },
+//                         Branch {
+//                             id: 1,
+//                             labels: vec![Label {
+//                                 formula: f.clone(),
+//                                 conflictset: vec![],
+//                             }],
+//                         },
+//                     ],
+//                 }),
+//         )
+//     }
+
+//     fn get_clique_forks(&self) -> VecDeque<Fork> {
+//         VecDeque::from_iter(
+//             self.submodals
+//                 .iter()
+//                 .enumerate()
+//                 .map(|(id, (c, f))| Fork {
+//                     id,
+//                     fktype: ForkType::ParallelWorlds,
+//                     branches: vec![
+//                         Branch {
+//                             id: 0,
+//                             labels: vec![Label {
+//                                 formula: f.not(),
+//                                 conflictset: vec![],
+//                             }],
+//                         },
+//                         Branch {
+//                             id: 1,
+//                             labels: vec![Label {
+//                                 formula: f.clone(),
+//                                 conflictset: vec![],
+//                             }],
+//                         },
+//                     ],
+//                 }),
+//         )
+//     }
+
+//     pub(crate) fn is_empty(&self) -> bool {
+//         self.boxed.is_empty() && self.diamge.is_empty() && self.diamle.is_empty()
+//     }
+
+//     pub(crate) fn display_modals(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         for (i, (c, phi)) in self.diamge.iter().enumerate() {
+//             writeln!(f, "(≥{c}): φ{i} := {phi}")?;
+//         }
+//         for ((c, phi), i) in self.diamle.iter().zip(self.diamge.len()..) {
+//             writeln!(f, "(≤{c}): φ{i} := {phi}")?;
+//         }
+//         for phi in self.boxed.iter() {
+//             writeln!(f, "□: {phi}")?;
+//         }
+//         Ok(())
+//     }
+// }
+
+impl Formula {
+    fn store_modals(self: &Rc<Formula>, out: &mut Vec<Rc<Formula>>) {
+        match self.as_ref() {
+            Formula::Bottom | Formula::Top | Formula::PropVar(_, _) => {}
+            Formula::Not(phi) => phi.store_modals(out),
+            Formula::Box(phi)
+            | Formula::Diamond(phi)
+            | Formula::DiamondGe(_, phi)
+            | Formula::DiamondLe(_, phi) => out.push(phi.clone()),
+            Formula::And(phi0, phi1)
+            | Formula::Or(phi0, phi1)
+            | Formula::Imply(phi0, phi1)
+            | Formula::Iff(phi0, phi1) => {
+                phi0.store_modals(out);
+                phi1.store_modals(out);
+            }
         }
     }
 }
@@ -540,7 +803,7 @@ impl PropFork {
 impl TLinear {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>> {
         match formula.as_ref() {
-            Formula::Box(phi) => vec![phi.diamond()],
+            Formula::Box(phi) => vec![phi.clone()],
             Formula::Bottom
             | Formula::Top
             | Formula::PropVar(..)
