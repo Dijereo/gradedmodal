@@ -76,7 +76,8 @@ pub fn run() {
                         println!("{}", f);
                         println!();
                         // let tab = S4_CALCULUS.sat(vec![f]);
-                        let tab = DisplayTableau(GradedKCalc::sat(vec![f], framecond));
+                        let (tab, calc) = GradedKCalc::sat(vec![f], framecond);
+                        let tab = DisplayTableau(tab, calc);
                         println!("{}", tab);
                     }
                     Err(Some((i, tok))) => {

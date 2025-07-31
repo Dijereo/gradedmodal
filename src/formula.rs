@@ -33,6 +33,7 @@ impl fmt::Display for Formula {
             Formula::PropVar(c, None) => write!(f, "{c}"),
             Formula::Not(subformula) => match subformula.as_ref() {
                 Formula::Bottom
+                | Formula::Top
                 | Formula::PropVar(..)
                 | Formula::Not(_)
                 | Formula::Box(_)

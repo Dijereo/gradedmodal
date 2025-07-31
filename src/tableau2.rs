@@ -2,17 +2,19 @@ use std::{
     cell::RefCell,
     collections::VecDeque,
     fmt,
+    ops::RangeInclusive,
     rc::{Rc, Weak},
 };
 
-use crate::{formula::Formula, rules3::Feasibility};
+use crate::{
+    formula::Formula,
+    rules3::{Feasibility, GradedKCalc, Transit, TransitB5, TransitKOr45},
+};
 
 pub(crate) enum TabChildren {
-    Fork {
-        id: Option<usize>,
-        branches: Vec<TabBranch>,
-    },
-    Transition(Feasibility),
+    Leaf,
+    Fork { id: usize, branches: Vec<TabBranch> },
+    Transition(Feasibility, Transit),
 }
 
 pub(crate) struct TabBranch {
@@ -46,10 +48,7 @@ impl TableauNode2 {
             is_closed: false,
             formulae: vec![],
             choices: vec![],
-            children: TabChildren::Fork {
-                id: None,
-                branches: vec![],
-            },
+            children: TabChildren::Leaf,
             parent: parent.map_or(Weak::new(), Rc::downgrade),
         };
         for label in labels {
@@ -93,17 +92,20 @@ impl TableauNode2 {
     fn check_contra(&self, new_formula: &Rc<Formula>) -> Option<Vec<Conflict>> {
         let mut conflicts = None;
         self.traverse_anc_formulae(&mut |label| {
+            println!("Check contra: {new_formula} vs {}", label.formula);
             if new_formula.is_negation(&label.formula) {
                 conflicts = Some(label.conflictset.clone());
+                println!("Contra");
                 false
             } else {
+                println!("Ok");
                 true
             }
         });
         conflicts
     }
 
-    pub(crate) fn check_dup_contra(&mut self, formula: &Rc<Formula>) -> DupContra {
+    pub(crate) fn check_dup_contra(&self, formula: &Rc<Formula>) -> DupContra {
         if let Some(confs) = self.check_dup(formula) {
             DupContra::Dup(confs)
         } else if formula.is_bottom() {
@@ -116,11 +118,14 @@ impl TableauNode2 {
     }
 
     pub(crate) fn add_check_dup_contra(&mut self, new_label: Label) -> DupContra {
+        println!("New Formula: {}", new_label.formula);
         if let Some(confs) = self.check_dup(&new_label.formula) {
+            println!("Dup");
             DupContra::Dup(confs)
         } else if new_label.formula.is_bottom() {
             self.formulae.push(new_label);
             self.is_closed = true;
+            println!("Bottom");
             DupContra::Bottom
         } else if let Some(confs) = self.check_contra(&new_label.formula) {
             let mut confs2 = confs.clone();
@@ -131,9 +136,11 @@ impl TableauNode2 {
                 conflictset: confs2,
             });
             self.is_closed = true;
+            println!("Contra");
             DupContra::Contra(confs)
         } else {
             self.formulae.push(new_label);
+            println!("Ok");
             DupContra::Ok
         }
     }
@@ -147,44 +154,43 @@ impl TableauNode2 {
             return;
         }
         match &tab.borrow().children {
+            TabChildren::Leaf => {
+                leaves.push(tab.clone());
+            }
             TabChildren::Fork { branches, .. } => {
-                if branches.len() == 0 {
-                    leaves.push(tab.clone());
-                }
                 for child in branches {
                     Self::get_open_leaves(&child.node, leaves, include_seeds);
                 }
             }
-            TabChildren::Transition(feasibility) if include_seeds => match feasibility {
-                Feasibility::NoTransition | Feasibility::Feasible(..) => leaves.push(tab.clone()),
-                Feasibility::Contradiction(..)
-                | Feasibility::NoSolution(..)
-                | Feasibility::Unfeasible(..) => {}
+            TabChildren::Transition(feasibility, _) if include_seeds => match feasibility {
+                Feasibility::Feasible => leaves.push(tab.clone()),
+                Feasibility::Contradiction | Feasibility::NoSolution | Feasibility::Unfeasible => {}
             },
-            TabChildren::Transition(_) => {}
+            TabChildren::Transition(..) => {}
         }
     }
 
     pub(crate) fn get_choices(
         tab: &Rc<RefCell<Self>>,
         choices: &mut Vec<(usize, usize)>,
-        minid: usize,
-        maxid: usize,
+        forkid_ranges: &Vec<RangeInclusive<usize>>,
     ) {
+        // OPT: bin search + remove
         if let Some(parent) = tab.borrow().parent.upgrade() {
-            Self::get_choices(&parent, choices, minid, maxid);
+            Self::get_choices(&parent, choices, forkid_ranges);
         }
         choices.extend(
             tab.borrow()
                 .choices
                 .iter()
-                .filter(|(fid, _)| *fid >= minid && *fid <= maxid),
+                .filter(|(fid, _)| forkid_ranges.iter().any(|r| r.contains(fid))),
         )
     }
 
     fn get_depths_rec(&self, out: &mut VecDeque<usize>, depth: usize) {
         out.push_back(depth);
         match &self.children {
+            TabChildren::Leaf => {}
             TabChildren::Fork { branches, .. } => {
                 for branch in branches {
                     branch.node.borrow().get_depths_rec(out, depth + 1);
@@ -255,13 +261,14 @@ impl TableauNode2 {
             }
         }
         match &thisref.children {
+            TabChildren::Leaf => {}
             TabChildren::Fork { branches, .. } => {
                 for branch in branches {
                     Self::display_rec(&branch.node, f, depth + 1, next_depths, curri, seeds)?
                 }
             }
-            TabChildren::Transition(transit) => {
-                Self::display_transition(f, transit, depth + 1, next_depths, *curri)?;
+            TabChildren::Transition(feasibility, _) => {
+                Self::display_transition(f, feasibility, depth + 1, next_depths, *curri)?;
                 seeds.push_back((*curri, this.clone()));
                 *curri += 1;
             }
@@ -278,10 +285,10 @@ impl TableauNode2 {
     ) -> fmt::Result {
         let _next_depth = next_depths.pop_front();
         let specchar = match feasiblity {
-            Feasibility::NoTransition | Feasibility::Feasible(..) => "✓",
-            Feasibility::Contradiction(..) => "⊥",
-            Feasibility::NoSolution(..) => "∅",
-            Feasibility::Unfeasible(..) => "⨉",
+            Feasibility::Feasible => "✓",
+            Feasibility::Contradiction => "⊥",
+            Feasibility::NoSolution => "∅",
+            Feasibility::Unfeasible => "⨉",
         };
         if depth > 1 {
             writeln!(
@@ -294,86 +301,9 @@ impl TableauNode2 {
             writeln!(f, "{rooti} {specchar}")
         }
     }
-
-    fn display_transit(
-        f: &mut fmt::Formatter<'_>,
-        feasiblity: &Feasibility,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
-    ) -> fmt::Result {
-        let (modals, paraws) = match feasiblity {
-            Feasibility::NoTransition => return Ok(()),
-            Feasibility::Contradiction(modals, paraws)
-            | Feasibility::Unfeasible(modals, paraws)
-            | Feasibility::Feasible(modals, paraws, ..)
-            | Feasibility::NoSolution(modals, paraws, ..) => (modals, paraws),
-        };
-        writeln!(f)?;
-        writeln!(f, "{rooti}:")?;
-        modals.display_modals(f)?;
-        match feasiblity {
-            Feasibility::NoTransition => unreachable!("Returned earlier in function"),
-            Feasibility::Feasible(..) => writeln!(f, "Feasible")?,
-            Feasibility::Contradiction(..) => writeln!(f, "Contradiction")?,
-            Feasibility::NoSolution(..) => writeln!(f, "No Solution")?,
-            Feasibility::Unfeasible(..) => writeln!(f, "Unfeasible")?,
-        }
-        writeln!(f)?;
-        let tab = &paraws.tab;
-        TableauNode2::display_root(tab, f, curri, roots)?;
-        writeln!(f)?;
-        match feasiblity {
-            Feasibility::Feasible(_, _, Some(rfxn), ..)
-            | Feasibility::NoSolution(_, _, Some(rfxn)) => {
-                let rtab = &rfxn.tab;
-                TableauNode2::display_root(rtab, f, curri, roots)?;
-                writeln!(f)?;
-            }
-            _ => {}
-        }
-        for (i, choice) in paraws.choices.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        match feasiblity {
-            Feasibility::Feasible(_, _, Some(rfxn), ..)
-            | Feasibility::NoSolution(_, _, Some(rfxn)) => {
-                for (i, choice) in rfxn.choices.iter().enumerate() {
-                    write!(f, "w{i}: ")?;
-                    for (forkid, branchid) in choice {
-                        write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-                    }
-                    writeln!(f)?;
-                }
-            }
-            _ => {}
-        }
-        match feasiblity {
-            Feasibility::NoTransition => {}
-            Feasibility::Contradiction(..)
-            | Feasibility::Unfeasible(..)
-            | Feasibility::NoSolution(..) => writeln!(f, "No solution")?,
-            Feasibility::Feasible(_, _, _, soln, rsoln) => {
-                write!(f, "Solution: ")?;
-                for (i, val) in soln.iter().enumerate() {
-                    write!(f, "{val}*w{i} ")?;
-                }
-                writeln!(f)?;
-                for (i, val) in rsoln.iter().enumerate() {
-                    write!(f, "{val}*u{i} ")?;
-                }
-                writeln!(f)?;
-            }
-        }
-        writeln!(f)
-    }
 }
 
-pub(crate) struct DisplayTableau(pub(crate) Rc<RefCell<TableauNode2>>);
+pub(crate) struct DisplayTableau(pub(crate) Rc<RefCell<TableauNode2>>, pub(crate) GradedKCalc);
 
 impl fmt::Display for DisplayTableau {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -388,11 +318,135 @@ impl fmt::Display for DisplayTableau {
         writeln!(f)?;
         writeln!(f)?;
         while let Some((seedi, seed)) = seeds.pop_front() {
-            if let TabChildren::Transition(transit) = &seed.borrow().children {
-                TableauNode2::display_transit(f, transit, seedi, &mut i, &mut seeds)?;
+            if let TabChildren::Transition(feasibility, transit) = &seed.borrow().children {
+                transit.display_transit(f, feasibility, &self.1, seedi, &mut i, &mut seeds)?;
             }
         }
         Ok(())
+    }
+}
+
+impl Transit {
+    fn display_transit(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        feasiblity: &Feasibility,
+        calc: &GradedKCalc,
+        rooti: usize,
+        curri: &mut usize,
+        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
+    ) -> fmt::Result {
+        match self {
+            Transit::KOr45(transit) => {
+                transit.display_transit(f, feasiblity, calc, rooti, curri, roots)
+            }
+            Transit::B5(transit) => {
+                transit.display_transit(f, feasiblity, calc, rooti, curri, roots)
+            }
+        }
+    }
+}
+
+impl TransitKOr45 {
+    fn display_transit(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        feasiblity: &Feasibility,
+        calc: &GradedKCalc,
+        rooti: usize,
+        curri: &mut usize,
+        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
+    ) -> fmt::Result {
+        writeln!(f)?;
+        writeln!(f, "{rooti}:")?;
+        self.modals.display_modals(f, &self.constraints, calc)?;
+        match feasiblity {
+            Feasibility::Feasible => writeln!(f, "Feasible")?,
+            Feasibility::Contradiction => writeln!(f, "Contradiction")?,
+            Feasibility::NoSolution => writeln!(f, "No Solution")?,
+            Feasibility::Unfeasible => writeln!(f, "Unfeasible")?,
+        }
+        writeln!(f)?;
+        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
+        writeln!(f)?;
+        for (i, choice) in self.paraws.choices.iter().enumerate() {
+            write!(f, "w{i}: ")?;
+            for (forkid, branchid) in choice {
+                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
+            }
+            writeln!(f)?;
+        }
+        match feasiblity {
+            Feasibility::Contradiction | Feasibility::Unfeasible | Feasibility::NoSolution => {
+                writeln!(f, "No solution")?
+            }
+            Feasibility::Feasible => {
+                write!(f, "Solution: ")?;
+                for (i, val) in self.solution.iter().enumerate() {
+                    write!(f, "{val}*w{i} ")?;
+                }
+                writeln!(f)?;
+            }
+        }
+        writeln!(f)
+    }
+}
+
+impl TransitB5 {
+    fn display_transit(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        feasiblity: &Feasibility,
+        calc: &GradedKCalc,
+        rooti: usize,
+        curri: &mut usize,
+        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
+    ) -> fmt::Result {
+        writeln!(f)?;
+        writeln!(f, "{rooti}:")?;
+        self.modals.display_modals(f, &self.constraints, calc)?;
+        match feasiblity {
+            Feasibility::Feasible => writeln!(f, "Feasible")?,
+            Feasibility::Contradiction => writeln!(f, "Contradiction")?,
+            Feasibility::NoSolution => writeln!(f, "No Solution")?,
+            Feasibility::Unfeasible => writeln!(f, "Unfeasible")?,
+        }
+        writeln!(f)?;
+        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
+        writeln!(f)?;
+        TableauNode2::display_root(&self.reflexion.tab, f, curri, roots)?;
+        writeln!(f)?;
+        for (i, choice) in self.paraws.choices.iter().enumerate() {
+            write!(f, "w{i}: ")?;
+            for (forkid, branchid) in choice {
+                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
+            }
+            writeln!(f)?;
+        }
+        for (i, choice) in self.reflexion.choices.iter().enumerate() {
+            write!(f, "u{i}: ")?;
+            for (forkid, branchid) in choice {
+                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
+            }
+            writeln!(f)?;
+        }
+        match feasiblity {
+            Feasibility::Contradiction | Feasibility::Unfeasible | Feasibility::NoSolution => {
+                writeln!(f, "No solution")?
+            }
+            Feasibility::Feasible => {
+                write!(f, "Solution: ")?;
+                for (i, val) in self.solution.iter().enumerate() {
+                    if i == self.rfxsolution {
+                        write!(f, "{val}*w{i}+u ")?;
+                    } else {
+                        write!(f, "{val}*w{i} ")?;
+                    }
+                }
+                writeln!(f)?;
+            }
+        }
+        writeln!(f)
     }
 }
 

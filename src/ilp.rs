@@ -1,12 +1,14 @@
 use good_lp::{Expression, ProblemVariables, Solution, SolverModel, solvers, variable};
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fs::File,
     io::{BufWriter, Write},
     u32,
 };
 
-use crate::rules3::{Feasibility, GradedKCalc, Modals, ParallelWorlds};
+use crate::rules3::{
+    Feasibility, GradedKCalc, Modals, ParallelWorlds, Transit, TransitB5, TransitKOr45,
+};
 
 fn write_cip(
     ge_constraints: Vec<(u32, Vec<usize>)>,
@@ -55,64 +57,112 @@ fn write_cip(
     Ok(())
 }
 
-pub(crate) fn check_feasibility(
-    modals: Modals,
-    mut paraws: ParallelWorlds,
-    mut reflexion: Option<ParallelWorlds>,
-) -> Feasibility {
-    let mut problem = ProblemVariables::new();
-    paraws.set_choices();
-    let vars = problem.add_vector(variable().integer().min(0), paraws.choices.len());
-    let mut rvars = vec![];
-    let mut exprs = vec![];
-    for (c, _) in &modals.ge {
-        exprs.push((c, true, vec![], vec![]));
-    }
-    for (c, _) in &modals.le {
-        exprs.push((c, false, vec![], vec![]));
-    }
-    for (world, var) in paraws.choices.iter().zip(vars.iter()) {
-        for (forkid, branchid) in world {
-            if *branchid == 1 {
-                exprs[*forkid - paraws.minforkid].2.push(var)
-            }
+impl Transit {
+    pub(crate) fn solve(self) -> (Feasibility, Self) {
+        match self {
+            Transit::KOr45(transit) => transit.solve(),
+            Transit::B5(transit) => transit.solve(),
         }
     }
-    // let objective = 0;
-    let mut model = if let Some(rfxn) = &mut reflexion {
-        rfxn.set_choices();
-        rvars = problem.add_vector(variable().binary(), rfxn.choices.len());
-        for (world, var) in rfxn.choices.iter().zip(rvars.iter()) {
+}
+
+impl TransitKOr45 {
+    fn solve(mut self) -> (Feasibility, Transit) {
+        self.paraws.set_choices();
+        let mut problem = ProblemVariables::new();
+        let mut exprs = HashMap::with_capacity(self.constraints.len());
+        for c in &self.constraints {
+            exprs.insert(c.forkid, (c.sense, c.value, vec![]));
+        }
+        let vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
+        for (world, var) in self.paraws.choices.iter().zip(vars.iter()) {
             for (forkid, branchid) in world {
                 if *branchid == 1 {
-                    exprs[*forkid - paraws.minforkid].3.push(var)
+                    exprs
+                        .get_mut(forkid)
+                        .expect("Forkid should have been entered into hashmap")
+                        .2
+                        .push(var);
                 }
             }
         }
         let mut model = solvers::scip::scip(problem.minimise(vars.iter().sum::<Expression>()));
-        model.add_constraint(rvars.iter().sum::<Expression>().eq(1));
-        model
-    } else {
-        solvers::scip::scip(problem.minimise(vars.iter().sum::<Expression>()))
-    };
-    for (count, ge, worlds, rworlds) in exprs {
-        let expr = worlds.into_iter().sum::<Expression>() + rworlds.into_iter().sum::<Expression>();
-        let constr = if ge {
-            expr.geq(*count as f64)
-        } else {
-            expr.leq(*count)
-        };
-        model.add_constraint(constr);
-    }
-    match model.solve() {
-        Ok(solution) => {
-            let soln = vars.into_iter().map(|v| solution.value(v) as u32).collect();
-            let rsoln = rvars
-                .into_iter()
-                .map(|v| solution.value(v) as u32)
-                .collect();
-            Feasibility::Feasible(modals, paraws, reflexion, soln, rsoln)
+        for (_, (ge, count, worlds)) in exprs {
+            let expr = worlds.into_iter().sum::<Expression>();
+            let constr = if ge {
+                expr.geq(count as f64)
+            } else {
+                expr.leq(count)
+            };
+            model.add_constraint(constr);
         }
-        Err(_) => Feasibility::NoSolution(modals, paraws, reflexion),
+        match model.solve() {
+            Ok(solution) => {
+                self.solution = vars.into_iter().map(|v| solution.value(v) as u32).collect();
+                (Feasibility::Feasible, Transit::KOr45(self))
+            }
+            Err(_) => (Feasibility::NoSolution, Transit::KOr45(self)),
+        }
+    }
+}
+
+impl TransitB5 {
+    fn solve(mut self) -> (Feasibility, Transit) {
+        let mut problem = ProblemVariables::new();
+        self.paraws.set_choices();
+        let vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
+        self.reflexion.set_choices();
+        let rvars = problem.add_vector(variable().binary(), self.reflexion.choices.len());
+        let mut exprs = HashMap::with_capacity(self.constraints.len());
+        for c in &self.constraints {
+            exprs.insert(c.forkid, (c.sense, c.value, vec![]));
+        }
+        for (world, var) in self
+            .paraws
+            .choices
+            .iter()
+            .zip(vars.iter())
+            .chain(self.reflexion.choices.iter().zip(rvars.iter()))
+        {
+            for (forkid, branchid) in world {
+                if *branchid == 1 {
+                    exprs
+                        .get_mut(forkid)
+                        .expect("Forkid should have been entered into hashmap")
+                        .2
+                        .push(var);
+                }
+            }
+        }
+        let mut model = solvers::scip::scip(problem.minimise(vars.iter().sum::<Expression>()));
+        for (_, (ge, count, worlds)) in exprs {
+            let expr = worlds.into_iter().sum::<Expression>();
+            let constr = if ge {
+                expr.geq(count as f64)
+            } else {
+                expr.leq(count)
+            };
+            model.add_constraint(constr);
+        }
+        model.add_constraint(rvars.iter().sum::<Expression>().eq(1));
+        match model.solve() {
+            Ok(solution) => {
+                self.solution = vars.into_iter().map(|v| solution.value(v) as u32).collect();
+                self.rfxsolution = rvars
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(i, v)| {
+                        if solution.value(v) == 1.0 {
+                            Some(i)
+                        } else {
+                            None
+                        }
+                    })
+                    .next()
+                    .expect("There must be one variable set to 1");
+                (Feasibility::Feasible, Transit::B5(self))
+            }
+            Err(_) => (Feasibility::NoSolution, Transit::B5(self)),
+        }
     }
 }

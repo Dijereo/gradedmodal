@@ -70,7 +70,7 @@ fn apply_forks(
         if let Some(fork) = forks.pop_front() {
             for branch in fork.branches {
                 if let TabChildren::Fork { id: forkid, .. } = &mut tab.borrow_mut().children {
-                    *forkid = Some(fork.id);
+                    *forkid = fork.id;
                 }
                 let child = Rc::new(RefCell::new(TableauNode2::from_formulae(
                     branch.labels,
