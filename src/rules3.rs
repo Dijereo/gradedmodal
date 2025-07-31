@@ -39,30 +39,29 @@ pub(crate) struct GradedKCalc {
 
 pub(crate) enum Feasibility {
     NoTransition,
-    Feasible,
-    Contradiction,
-    NoSolution,
-    Unfeasible,
+    Contradiction(Modals, ParallelWorlds),
+    Unfeasible(Modals, ParallelWorlds),
+    Feasible(
+        Modals,
+        ParallelWorlds,
+        Option<ParallelWorlds>,
+        Vec<u32>,
+        Vec<u32>,
+    ),
+    NoSolution(Modals, ParallelWorlds, Option<ParallelWorlds>),
 }
 
-struct Modals {
+pub(crate) struct Modals {
     pub(crate) bx: Vec<Label>,
     pub(crate) ge: Vec<(u32, Label)>,
     pub(crate) le: Vec<(u32, Label)>,
 }
 
-struct ParallelWorlds {
-    tab: Rc<RefCell<TableauNode2>>,
-    forkids: Vec<usize>,
-}
-
-pub(crate) struct GradedTransit {
-    pub(crate) framecond: FrameCondition,
-    pub(crate) modals: Modals,
-    pub(crate) paraws: Option<ParallelWorlds>,
-    pub(crate) reflexion: Reflexion,
-    pub(crate) outcome: Feasibility,
-    pub(crate) solution: Option<(Vec<u32>, Vec<u32>)>,
+pub(crate) struct ParallelWorlds {
+    pub(crate) tab: Rc<RefCell<TableauNode2>>,
+    pub(crate) minforkid: usize,
+    pub(crate) maxforkid: usize,
+    pub(crate) choices: Vec<Vec<(usize, usize)>>,
 }
 
 // pub(crate) struct Graded5Transit {
@@ -77,11 +76,6 @@ pub(crate) struct GradedTransit {
 //     pub(crate) outcome: Feasibility,
 //     pub(crate) solution: Option<(Vec<u32>, Vec<u32>)>,
 // }
-
-pub(crate) struct Reflexion {
-    pub(crate) labels: Vec<Label>,
-    pub(crate) para_worlds: Vec<Vec<(usize, usize)>>,
-}
 
 impl GradedKCalc {
     pub(crate) fn sat(
@@ -126,14 +120,14 @@ impl GradedKCalc {
         let mut feasible = false;
         TableauNode2::get_open_leaves(tab, &mut open_leaves, false);
         for leaf in open_leaves {
-            let transit = GradedTransit::create(&leaf, self.framecond, self);
-            match transit.outcome {
-                Feasibility::NoTransition | Feasibility::Feasible => {
+            let feasibility = self.transit(&leaf, self.framecond);
+            match feasibility {
+                Feasibility::NoTransition | Feasibility::Feasible(..) => {
                     feasible = true;
                 }
                 _ => {}
             }
-            leaf.borrow_mut().children = TabChildren::Transition(transit);
+            leaf.borrow_mut().children = TabChildren::Transition(feasibility);
         }
         feasible
     }
@@ -316,6 +310,32 @@ impl GradedKCalc {
             tab.borrow_mut().is_closed = true;
         }
     }
+
+    fn transit(
+        &mut self,
+        leaf: &Rc<RefCell<TableauNode2>>,
+        framecond: FrameCondition,
+    ) -> Feasibility {
+        let modals = Modals::new(leaf, framecond.serial());
+        if modals.ge.is_empty() {
+            return Feasibility::NoTransition;
+        }
+        let paraws = ParallelWorlds::from_modals(&modals, self);
+        if paraws.tab.borrow().is_closed {
+            return Feasibility::Contradiction(modals, paraws);
+        }
+        let feasible = self.transition_rec(&paraws.tab);
+        if !feasible {
+            return Feasibility::Unfeasible(modals, paraws);
+        }
+        let reflexion = if framecond.cliqued() {
+            Some(paraws.reflect(leaf, &modals, self))
+        } else {
+            None
+        };
+        check_feasibility(modals, paraws, reflexion);
+        todo!()
+    }
 }
 
 impl Modals {
@@ -382,6 +402,19 @@ impl Modals {
     fn is_empty(&self) -> bool {
         self.bx.is_empty() && self.ge.is_empty() && self.le.is_empty()
     }
+
+    pub(crate) fn display_modals(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, (c, phi)) in self.ge.iter().enumerate() {
+            writeln!(f, "(≥{c}): φ{i} := {}", phi.formula)?;
+        }
+        for ((c, phi), i) in self.le.iter().zip(self.ge.len()..) {
+            writeln!(f, "(≤{c}): φ{i} := {}", phi.formula)?;
+        }
+        for phi in self.bx.iter() {
+            writeln!(f, "□: {}", phi.formula)?;
+        }
+        Ok(())
+    }
 }
 
 impl ParallelWorlds {
@@ -398,9 +431,21 @@ impl ParallelWorlds {
             )
         }));
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(determ, None)));
-        let forkids = forks.iter().map(|f| f.id).collect();
+        let minforkid = forks
+            .front()
+            .expect("Parallel World should have at least one fork")
+            .id;
+        let maxforkid = forks
+            .back()
+            .expect("Parallel World should have at least one fork")
+            .id;
         calc.expand_static(&tab, forks);
-        Self { tab, forkids }
+        Self {
+            tab,
+            minforkid,
+            maxforkid,
+            choices: vec![],
+        }
     }
 
     fn from_modals(modals: &Modals, calc: &mut GradedKCalc) -> Self {
@@ -410,111 +455,48 @@ impl ParallelWorlds {
             calc,
         )
     }
-}
 
-impl GradedTransit {
-    fn create(
+    fn reflect(
+        &self,
         leaf: &Rc<RefCell<TableauNode2>>,
-        framecond: FrameCondition,
+        modals: &Modals,
         calc: &mut GradedKCalc,
-    ) -> GradedTransit {
-        let mut transit = GradedTransit {
-            framecond,
-            modals: Modals::new(leaf, framecond.serial()),
-            paraws: None,
-            reflexion: Reflexion::new(leaf),
-            outcome: Feasibility::NoTransition,
-            solution: None,
-        };
-        if transit.modals.ge.is_empty() {
-            return transit;
+    ) -> Self {
+        let mut rflx_formulae = vec![];
+        leaf.borrow().traverse_anc_formulae(&mut |l| {
+            rflx_formulae.push(l.clone());
+            true
+        });
+        rflx_formulae.extend(modals.bx.iter().cloned());
+        let forks =
+            VecDeque::from_iter(calc.forks[self.minforkid..=self.maxforkid].iter().cloned());
+        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(
+            rflx_formulae,
+            None,
+        )));
+        calc.expand_static(&tab, forks);
+        Self {
+            tab,
+            minforkid: self.minforkid,
+            maxforkid: self.maxforkid,
+            choices: vec![],
         }
-        let paraws = ParallelWorlds::from_modals(&transit.modals, calc);
-        if paraws.tab.borrow().is_closed {
-            transit.outcome = Feasibility::Contradiction;
-            transit.paraws = Some(paraws);
-            return transit;
-        }
-        let feasible = calc.transition_rec(&paraws.tab);
-        if !feasible {
-            transit.paraws = Some(paraws);
-            transit.outcome = Feasibility::Unfeasible;
-            return transit;
-        }
+    }
+
+    pub(crate) fn set_choices(&mut self) {
         let mut seeds = vec![];
-        TableauNode2::get_open_leaves(&tab, &mut seeds, true);
-        transit.root = Some(tab);
+        let mut choices = vec![];
+        TableauNode2::get_open_leaves(&self.tab, &mut seeds, true);
         for seed in seeds {
             if seed.borrow().is_closed {
                 continue;
             }
-            let mut choices = vec![];
-            TableauNode2::get_choices(&seed, &mut choices);
-            // println!("Choice {:?}", choices);
-            choices.sort_unstable();
-            choices.truncate(transit.diamge.len() + transit.diamle.len());
-            if transit.framecond.cliqued() {
-                transit.reflexion.reflect(&seed, &choices);
-            }
-            transit.paraws.push(choices);
+            let mut subchoices = vec![];
+            TableauNode2::get_choices(&seed, &mut subchoices, self.minforkid, self.maxforkid);
+            choices.push(subchoices);
         }
-        transit.paraws.sort_unstable_by(Vec::cmp);
-        transit.paraws.dedup_by(|ch1, ch2| ch1 == ch2);
-        transit.reflexion.para_worlds.sort_unstable_by(Vec::cmp);
-        transit
-            .reflexion
-            .para_worlds
-            .dedup_by(|ch1, ch2| ch1 == ch2);
-        check_feasibility(&mut transit);
-        transit
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
-        self.boxed.is_empty() && self.diamge.is_empty() && self.diamle.is_empty()
-    }
-
-    pub(crate) fn display_modals(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, (c, phi)) in self.diamge.iter().enumerate() {
-            writeln!(f, "(≥{c}): φ{i} := {phi}")?;
-        }
-        for ((c, phi), i) in self.diamle.iter().zip(self.diamge.len()..) {
-            writeln!(f, "(≤{c}): φ{i} := {phi}")?;
-        }
-        for phi in self.boxed.iter() {
-            writeln!(f, "□: {phi}")?;
-        }
-        Ok(())
-    }
-}
-
-impl Reflexion {
-    fn new(leaf: &Rc<RefCell<TableauNode2>>) -> Self {
-        let mut labels = vec![];
-        leaf.borrow().traverse_anc_formulae(&mut |label| {
-            labels.push(label.clone());
-            true
-        });
-        Self {
-            labels,
-            para_worlds: vec![],
-        }
-    }
-
-    fn reflect(&mut self, seed: &Rc<RefCell<TableauNode2>>, choices: &Vec<(usize, usize)>) {
-        let mut labels = self.labels.clone();
-        seed.borrow().traverse_anc_formulae(&mut |f| {
-            labels.push(f.clone());
-            true
-        });
-        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(labels, None)));
-        let mut calc = GradedKCalc {
-            framecond: FrameCondition::K,
-            forks: vec![],
-        };
-        let feasible = calc.apply(&tab, VecDeque::new());
-        if feasible {
-            self.para_worlds.push(choices.clone());
-        }
+        choices.dedup();
+        self.choices = choices;
     }
 }
 

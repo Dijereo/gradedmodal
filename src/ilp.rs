@@ -6,7 +6,7 @@ use std::{
     u32,
 };
 
-use crate::rules3::{Feasibility, GradedTransit};
+use crate::rules3::{Feasibility, GradedKCalc, Modals, ParallelWorlds};
 
 fn write_cip(
     ge_constraints: Vec<(u32, Vec<usize>)>,
@@ -55,71 +55,64 @@ fn write_cip(
     Ok(())
 }
 
-pub(crate) fn check_feasibility(transit: &mut GradedTransit) {
-    let mut exprs = Vec::from_iter(
-        transit
-            .diamge
-            .iter()
-            .map(|(c, _)| (*c, true, vec![], vec![]))
-            .chain(
-                transit
-                    .diamle
-                    .iter()
-                    .map(|(c, _)| (*c, false, vec![], vec![])),
-            ),
-    );
-    for (i, world) in transit.paraws.iter().enumerate() {
-        for (forkid, branchid) in world {
-            if *branchid == 1 {
-                exprs[*forkid].2.push(i)
-            }
-        }
-    }
-    for (i, world) in transit.reflexion.para_worlds.iter().enumerate() {
-        for (forkid, branchid) in world {
-            if *branchid == 1 {
-                exprs[*forkid].3.push(i)
-            }
-        }
-    }
+pub(crate) fn check_feasibility(
+    modals: Modals,
+    mut paraws: ParallelWorlds,
+    mut reflexion: Option<ParallelWorlds>,
+) -> Feasibility {
     let mut problem = ProblemVariables::new();
-    let vars = problem.add_vector(variable().integer().min(0), transit.paraws.len());
-    let reflxvars = problem.add_vector(variable().binary(), transit.reflexion.para_worlds.len());
-    let constrs = exprs
-        .into_iter()
-        .map(|(count, sense, worlds, reflxworlds)| {
-            let expr = worlds.into_iter().map(|i| &vars[i]).sum::<Expression>()
-                + reflxworlds
-                    .into_iter()
-                    .map(|i| &reflxvars[i])
-                    .sum::<Expression>();
-            if sense {
-                expr.geq(count as f64)
-            } else {
-                expr.leq(count)
-            }
-        });
-    // let objective = 0;
-    let mut model = solvers::scip::scip(problem.minimise(vars.iter().sum::<Expression>()));
-    for constr in constrs {
-        model.add_constraint(constr);
+    paraws.set_choices();
+    let vars = problem.add_vector(variable().integer().min(0), paraws.choices.len());
+    let mut rvars = vec![];
+    let mut exprs = vec![];
+    for (c, _) in &modals.ge {
+        exprs.push((c, true, vec![], vec![]));
     }
-    if transit.framecond.cliqued() {
-        model.add_constraint(reflxvars.iter().sum::<Expression>().eq(1));
+    for (c, _) in &modals.le {
+        exprs.push((c, false, vec![], vec![]));
+    }
+    for (world, var) in paraws.choices.iter().zip(vars.iter()) {
+        for (forkid, branchid) in world {
+            if *branchid == 1 {
+                exprs[*forkid - paraws.minforkid].2.push(var)
+            }
+        }
+    }
+    // let objective = 0;
+    let mut model = if let Some(rfxn) = &mut reflexion {
+        rfxn.set_choices();
+        rvars = problem.add_vector(variable().binary(), rfxn.choices.len());
+        for (world, var) in rfxn.choices.iter().zip(rvars.iter()) {
+            for (forkid, branchid) in world {
+                if *branchid == 1 {
+                    exprs[*forkid - paraws.minforkid].3.push(var)
+                }
+            }
+        }
+        let mut model = solvers::scip::scip(problem.minimise(vars.iter().sum::<Expression>()));
+        model.add_constraint(rvars.iter().sum::<Expression>().eq(1));
+        model
+    } else {
+        solvers::scip::scip(problem.minimise(vars.iter().sum::<Expression>()))
+    };
+    for (count, ge, worlds, rworlds) in exprs {
+        let expr = worlds.into_iter().sum::<Expression>() + rworlds.into_iter().sum::<Expression>();
+        let constr = if ge {
+            expr.geq(*count as f64)
+        } else {
+            expr.leq(*count)
+        };
+        model.add_constraint(constr);
     }
     match model.solve() {
         Ok(solution) => {
-            transit.outcome = Feasibility::Feasible;
-            transit.solution = Some((
-                vars.into_iter().map(|v| solution.value(v) as u32).collect(),
-                reflxvars
-                    .into_iter()
-                    .map(|v| solution.value(v) as u32)
-                    .collect(),
-            ));
+            let soln = vars.into_iter().map(|v| solution.value(v) as u32).collect();
+            let rsoln = rvars
+                .into_iter()
+                .map(|v| solution.value(v) as u32)
+                .collect();
+            Feasibility::Feasible(modals, paraws, reflexion, soln, rsoln)
         }
-        Err(_) => {
-            transit.outcome = Feasibility::NoSolution;
-        }
+        Err(_) => Feasibility::NoSolution(modals, paraws, reflexion),
     }
 }
