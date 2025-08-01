@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     formula::Formula,
-    rules3::{Feasibility, GradedKCalc, Transit, TransitB5, TransitKOr45},
+    rules3::{Feasibility, GradedKCalc, Transit, Transit5, TransitB5, TransitKOr45},
 };
 
 pub(crate) enum TabChildren {
@@ -92,13 +92,13 @@ impl TableauNode2 {
     fn check_contra(&self, new_formula: &Rc<Formula>) -> Option<Vec<Conflict>> {
         let mut conflicts = None;
         self.traverse_anc_formulae(&mut |label| {
-            println!("Check contra: {new_formula} vs {}", label.formula);
+            // println!("Check contra: {new_formula} vs {}", label.formula);
             if new_formula.is_negation(&label.formula) {
                 conflicts = Some(label.conflictset.clone());
-                println!("Contra");
+                // println!("Contra");
                 false
             } else {
-                println!("Ok");
+                // println!("Ok");
                 true
             }
         });
@@ -118,14 +118,14 @@ impl TableauNode2 {
     }
 
     pub(crate) fn add_check_dup_contra(&mut self, new_label: Label) -> DupContra {
-        println!("New Formula: {}", new_label.formula);
+        // println!("New Formula: {}", new_label.formula);
         if let Some(confs) = self.check_dup(&new_label.formula) {
-            println!("Dup");
+            // println!("Dup");
             DupContra::Dup(confs)
         } else if new_label.formula.is_bottom() {
             self.formulae.push(new_label);
             self.is_closed = true;
-            println!("Bottom");
+            // println!("Bottom");
             DupContra::Bottom
         } else if let Some(confs) = self.check_contra(&new_label.formula) {
             let mut confs2 = confs.clone();
@@ -136,11 +136,11 @@ impl TableauNode2 {
                 conflictset: confs2,
             });
             self.is_closed = true;
-            println!("Contra");
+            // println!("Contra");
             DupContra::Contra(confs)
         } else {
             self.formulae.push(new_label);
-            println!("Ok");
+            // println!("Ok");
             DupContra::Ok
         }
     }
@@ -343,6 +343,9 @@ impl Transit {
             Transit::B5(transit) => {
                 transit.display_transit(f, feasiblity, calc, rooti, curri, roots)
             }
+            Transit::K5(transit) => {
+                transit.display_transit(f, feasiblity, calc, rooti, curri, roots)
+            }
         }
     }
 }
@@ -359,7 +362,8 @@ impl TransitKOr45 {
     ) -> fmt::Result {
         writeln!(f)?;
         writeln!(f, "{rooti}:")?;
-        self.modals.display_modals(f, &self.constraints, calc)?;
+        self.modals
+            .display_constraints(f, &self.constraints, calc)?;
         match feasiblity {
             Feasibility::Feasible => writeln!(f, "Feasible")?,
             Feasibility::Contradiction => writeln!(f, "Contradiction")?,
@@ -392,6 +396,68 @@ impl TransitKOr45 {
     }
 }
 
+impl Transit5 {
+    fn display_transit(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        feasiblity: &Feasibility,
+        calc: &GradedKCalc,
+        rooti: usize,
+        curri: &mut usize,
+        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
+    ) -> fmt::Result {
+        writeln!(f)?;
+        writeln!(f, "{rooti}:")?;
+        self.modals.display_modals(f)?;
+        match feasiblity {
+            Feasibility::Feasible => writeln!(f, "Feasible")?,
+            Feasibility::Contradiction => writeln!(f, "Contradiction")?,
+            Feasibility::NoSolution => writeln!(f, "No Solution")?,
+            Feasibility::Unfeasible => writeln!(f, "Unfeasible")?,
+        }
+        writeln!(f)?;
+        writeln!(f, "Second Transition Modals:")?;
+        for (i, submodal) in self.submodals.iter().enumerate() {
+            writeln!(f, "ψ{i} := {}", submodal.formula)?;
+        }
+        writeln!(f)?;
+        for (i, paracliq) in self.paracliques.iter().enumerate() {
+            writeln!(f, "Clique {i}:")?;
+            TableauNode2::display_root(&paracliq.spotws.tab, f, curri, roots)?;
+            writeln!(f)?;
+            TableauNode2::display_root(&paracliq.cliquews.tab, f, curri, roots)?;
+            for (i, choice) in paracliq.spotws.choices.iter().enumerate() {
+                write!(f, "u{i}: ")?;
+                for (forkid, branchid) in choice {
+                    write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
+                }
+                writeln!(f)?;
+            }
+            for (i, choice) in paracliq.cliquews.choices.iter().enumerate() {
+                write!(f, "w{i}: ")?;
+                for (forkid, branchid) in choice {
+                    write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
+                }
+                writeln!(f)?;
+            }
+            if paracliq.spotsolution.is_empty() {
+                writeln!(f, "No solution")?;
+            } else {
+                write!(f, "Solution: ")?;
+                for (i, val) in paracliq.spotsolution.iter().enumerate() {
+                    write!(f, "{val}*u{i} ")?;
+                }
+                writeln!(f)?;
+                for (i, val) in paracliq.cliquesolution.iter().enumerate() {
+                    write!(f, "{val}*w{i} ")?;
+                }
+                writeln!(f)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl TransitB5 {
     fn display_transit(
         &self,
@@ -404,7 +470,8 @@ impl TransitB5 {
     ) -> fmt::Result {
         writeln!(f)?;
         writeln!(f, "{rooti}:")?;
-        self.modals.display_modals(f, &self.constraints, calc)?;
+        self.modals
+            .display_constraints(f, &self.constraints, calc)?;
         match feasiblity {
             Feasibility::Feasible => writeln!(f, "Feasible")?,
             Feasibility::Contradiction => writeln!(f, "Contradiction")?,

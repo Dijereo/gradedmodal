@@ -18,7 +18,7 @@ pub(crate) enum Depth1F {
 impl From<Rc<Formula>> for Depth1F {
     fn from(value: Rc<Formula>) -> Self {
         let mut d1f = value.init_depth1();
-        println!("{}", Rc::<Formula>::from(d1f.clone()));
+        // println!("{}", Rc::<Formula>::from(d1f.clone()));
         d1f.unnest();
         d1f
     }

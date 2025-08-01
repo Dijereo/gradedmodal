@@ -9,8 +9,8 @@ pub(crate) enum FrameCondition {
     // K4,
     // D4,
     // S4,
-    // K5,
-    // D5,
+    K5,
+    D5,
     K45,
     D45,
     KB5,
@@ -20,8 +20,12 @@ pub(crate) enum FrameCondition {
 impl FrameCondition {
     pub(crate) const fn serial(&self) -> bool {
         match self {
-            FrameCondition::K | FrameCondition::K45 | FrameCondition::KB5 => false,
-            FrameCondition::D | FrameCondition::D45 | FrameCondition::S5 => true,
+            FrameCondition::K | FrameCondition::K5 | FrameCondition::K45 | FrameCondition::KB5 => {
+                false
+            }
+            FrameCondition::D | FrameCondition::D5 | FrameCondition::D45 | FrameCondition::S5 => {
+                true
+            }
         }
     }
 
@@ -29,6 +33,8 @@ impl FrameCondition {
         match self {
             FrameCondition::K
             | FrameCondition::D
+            | FrameCondition::K5
+            | FrameCondition::D5
             | FrameCondition::K45
             | FrameCondition::D45
             | FrameCondition::KB5 => false,
@@ -44,12 +50,15 @@ impl FrameCondition {
             | FrameCondition::D45
             | FrameCondition::KB5
             | FrameCondition::S5 => false,
+            FrameCondition::K5 | FrameCondition::D5 => true,
         }
     }
 
     pub(crate) const fn luminal(&self) -> bool {
         match self {
-            FrameCondition::K | FrameCondition::D => false,
+            FrameCondition::K | FrameCondition::D | FrameCondition::K5 | FrameCondition::D5 => {
+                false
+            }
             FrameCondition::K45
             | FrameCondition::D45
             | FrameCondition::KB5
@@ -59,9 +68,12 @@ impl FrameCondition {
 
     pub(crate) const fn cliqued(&self) -> bool {
         match self {
-            FrameCondition::K | FrameCondition::D | FrameCondition::K45 | FrameCondition::D45 => {
-                false
-            }
+            FrameCondition::K
+            | FrameCondition::D
+            | FrameCondition::K5
+            | FrameCondition::D5
+            | FrameCondition::K45
+            | FrameCondition::D45 => false,
             FrameCondition::KB5 | FrameCondition::S5 => true,
         }
     }

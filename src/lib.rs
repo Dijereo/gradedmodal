@@ -44,6 +44,8 @@ pub fn run() {
         framecond = match input.trim().to_uppercase().as_str() {
             "K" => FrameCondition::K,
             "D" => FrameCondition::D,
+            "K5" => FrameCondition::K5,
+            "D5" => FrameCondition::D5,
             "K45" => FrameCondition::K45,
             "D45" => FrameCondition::D45,
             "KB5" => FrameCondition::KB5,

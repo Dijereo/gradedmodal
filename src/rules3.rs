@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::VecDeque, fmt, ops::RangeInclusive, rc::Rc};
+use std::{cell::RefCell, collections::VecDeque, fmt, mem, ops::RangeInclusive, rc::Rc};
 
 use crate::{
     depth1::Depth1F,
@@ -49,6 +49,7 @@ pub(crate) struct Modals {
     pub(crate) le: Vec<(u32, Label)>,
 }
 
+#[derive(Debug)]
 pub(crate) struct Constraint {
     pub(crate) forkid: usize,
     pub(crate) sense: bool,
@@ -64,6 +65,7 @@ pub(crate) struct ParallelWorlds {
 pub(crate) enum Transit {
     KOr45(TransitKOr45),
     B5(TransitB5),
+    K5(Transit5),
 }
 
 pub(crate) struct TransitKOr45 {
@@ -80,6 +82,22 @@ pub(crate) struct TransitB5 {
     pub(crate) modals: Modals,
     pub(crate) solution: Vec<u32>,
     pub(crate) rfxsolution: usize,
+}
+
+pub(crate) struct Transit5 {
+    pub(crate) modals: Modals,
+    pub(crate) submodals: Vec<Label>,
+    pub(crate) paracliques: Vec<ParaClique>,
+}
+
+pub(crate) struct ParaClique {
+    pub(crate) settings: Vec<bool>,
+    pub(crate) spotws: ParallelWorlds,
+    pub(crate) cliquews: ParallelWorlds,
+    pub(crate) spotconstraints: Vec<Constraint>,
+    pub(crate) cliqueconstraints: Vec<Constraint>,
+    pub(crate) spotsolution: Vec<u32>,
+    pub(crate) cliquesolution: Vec<u32>,
 }
 
 // pub(crate) struct Graded5Transit {
@@ -346,13 +364,16 @@ impl GradedKCalc {
     }
 
     fn transit(&mut self, leaf: &Rc<RefCell<TableauNode2>>) -> Option<(Feasibility, Transit)> {
-        let modals = Modals::new(leaf, self.framecond.serial());
+        let modals = Modals::new(leaf, self.framecond.serial(), self.framecond.spotlit());
         if modals.ge.is_empty() {
             return None;
         }
         let mut transit = match self.framecond {
             FrameCondition::K | FrameCondition::D | FrameCondition::K45 | FrameCondition::D45 => {
                 Transit::KOr45(TransitKOr45::from_modals(modals, self))
+            }
+            FrameCondition::K5 | FrameCondition::D5 => {
+                Transit::K5(Transit5::from_modals(modals, self))
             }
             FrameCondition::KB5 | FrameCondition::S5 => {
                 match TransitB5::from_modals(modals, leaf, self) {
@@ -371,7 +392,7 @@ impl GradedKCalc {
             }
             Feasibility::Feasible => {}
         }
-        Some(transit.solve())
+        Some((transit.solve(), transit))
     }
 }
 
@@ -379,7 +400,7 @@ impl Transit {
     fn recurse(&mut self, calc: &mut GradedKCalc) -> Feasibility {
         match self {
             Transit::KOr45(transit) => calc.transition_rec(&transit.paraws.tab),
-            Transit::B5(_) => Feasibility::Feasible,
+            Transit::B5(_) | Transit::K5(_) => Feasibility::Feasible,
         }
     }
 
@@ -387,12 +408,16 @@ impl Transit {
         match self {
             Transit::KOr45(transit) => transit.paraws.tab.borrow().is_closed,
             Transit::B5(transit) => transit.paraws.tab.borrow().is_closed,
+            Transit::K5(transit) => transit
+                .paracliques
+                .iter()
+                .all(|pcq| pcq.spotws.tab.borrow().is_closed),
         }
     }
 }
 
 impl Modals {
-    fn new(leaf: &Rc<RefCell<TableauNode2>>, serial: bool) -> Modals {
+    fn new(leaf: &Rc<RefCell<TableauNode2>>, serial: bool, spotlit: bool) -> Modals {
         let mut this = Modals {
             bx: vec![],
             ge: vec![],
@@ -402,6 +427,18 @@ impl Modals {
             this.store(&label);
             true
         });
+        if spotlit {
+            let dummy = Formula::bottom();
+            for f in this
+                .ge
+                .iter_mut()
+                .chain(this.le.iter_mut())
+                .map(|(_, l)| l)
+                .chain(this.bx.iter_mut())
+            {
+                f.formula = Depth1F::from(mem::replace(&mut f.formula, dummy.clone())).into();
+            }
+        }
         if serial && this.ge.is_empty() && !this.is_empty() {
             this.ge.push((
                 1,
@@ -410,6 +447,18 @@ impl Modals {
                     conflictset: vec![],
                 },
             ));
+        }
+        this
+    }
+
+    fn from_labels(labels: &Vec<Label>) -> Modals {
+        let mut this = Modals {
+            bx: vec![],
+            ge: vec![],
+            le: vec![],
+        };
+        for label in labels {
+            this.store(label);
         }
         this
     }
@@ -452,11 +501,45 @@ impl Modals {
         }
     }
 
+    fn submodals(&self) -> Vec<Label> {
+        let mut submodalfs = vec![];
+        let mut out = vec![];
+        for label in self
+            .ge
+            .iter()
+            .chain(self.le.iter())
+            .map(|(_, l)| l)
+            .chain(self.bx.iter())
+        {
+            label.formula.store_modals(&mut submodalfs);
+            for f in submodalfs.drain(..) {
+                out.push(Label {
+                    formula: f,
+                    conflictset: label.conflictset.clone(),
+                });
+            }
+        }
+        out
+    }
+
     fn is_empty(&self) -> bool {
         self.bx.is_empty() && self.ge.is_empty() && self.le.is_empty()
     }
 
-    pub(crate) fn display_modals(
+    pub(crate) fn display_modals(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (c, phi) in &self.ge {
+            writeln!(f, "(≥{c}): {}", phi.formula)?;
+        }
+        for (c, phi) in &self.le {
+            writeln!(f, "(≤{c}): {}", phi.formula)?;
+        }
+        for phi in self.bx.iter() {
+            writeln!(f, "□: {}", phi.formula)?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn display_constraints(
         &self,
         f: &mut fmt::Formatter<'_>,
         cns: &Vec<Constraint>,
@@ -497,19 +580,17 @@ impl ParallelWorlds {
                 &f.conflictset,
             )
         }));
+        // println!("Forks: {:?}", forks);
+        // println!("Determ: {:?}", determ);
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(determ, None)));
-        let minforkid = forks
+        let forkid_ranges = forks
             .front()
-            .expect("Parallel World should have at least one fork")
-            .id;
-        let maxforkid = forks
-            .back()
-            .expect("Parallel World should have at least one fork")
-            .id;
+            .zip(forks.back())
+            .map_or(vec![], |(i, j)| vec![i.id..=j.id]);
         calc.expand_static(&tab, forks);
         Self {
             tab,
-            forkid_ranges: vec![minforkid..=maxforkid],
+            forkid_ranges,
             choices: vec![],
         }
     }
@@ -544,7 +625,7 @@ impl TransitKOr45 {
             .iter()
             .map(|(c, _)| (*c, true))
             .chain(modals.le.iter().map(|(c, _)| (*c, false)))
-            .zip(paraws.forkid_ranges[0].clone())
+            .zip(paraws.forkid_ranges.iter().cloned().flatten())
         {
             constraints.push(Constraint {
                 forkid,
@@ -558,6 +639,180 @@ impl TransitKOr45 {
             modals,
             solution: vec![],
         }
+    }
+}
+
+impl Transit5 {
+    fn from_modals(
+        modals: Modals,
+        // leaf: &Rc<RefCell<TableauNode2>>,
+        calc: &mut GradedKCalc,
+    ) -> Self {
+        let submodals = modals.submodals();
+        let mut settings = vec![true; submodals.len()];
+        let mut paracliques = vec![];
+        loop {
+            let clique_settings = submodals
+                .iter()
+                .zip(settings.iter())
+                .map(|(label, sign)| Label {
+                    formula: if *sign {
+                        label.formula.clone()
+                    } else {
+                        label.formula.not()
+                    },
+                    conflictset: label.conflictset.clone(),
+                })
+                .collect();
+            let cliquemodals = Modals::from_labels(&clique_settings);
+            let cliquews = ParallelWorlds::new(
+                cliquemodals.bx.clone(),
+                cliquemodals
+                    .ge
+                    .iter()
+                    .chain(cliquemodals.le.iter())
+                    .map(|(_, l)| l),
+                calc,
+            );
+
+            let mut spotformulae = clique_settings;
+            spotformulae.extend(cliquemodals.bx.iter().cloned());
+            spotformulae.extend(modals.bx.iter().cloned());
+            let mut spotforks =
+                VecDeque::from_iter(modals.ge.iter().chain(modals.le.iter()).map(|(_, lab)| {
+                    calc.create_fork(
+                        ForkType::ParallelWorlds,
+                        vec![vec![lab.formula.not()], vec![lab.formula.clone()]],
+                        &lab.conflictset,
+                    )
+                }));
+            let spot_forkid_ranges = spotforks
+                .front()
+                .zip(spotforks.back())
+                .map(|(i, j)| i.id..=j.id)
+                .into_iter()
+                .chain(cliquews.forkid_ranges.iter().cloned())
+                .collect();
+            let spottab = Rc::new(RefCell::new(TableauNode2::from_formulae(
+                spotformulae,
+                None,
+            )));
+            spotforks.extend(
+                cliquews
+                    .forkid_ranges
+                    .iter()
+                    .flat_map(|r| calc.forks[r.clone()].iter())
+                    .cloned(),
+            );
+            calc.expand_static(&spottab, spotforks);
+            let spotws = ParallelWorlds {
+                tab: spottab,
+                forkid_ranges: spot_forkid_ranges,
+                choices: vec![],
+            };
+            if spotws.tab.borrow().is_closed {
+                break;
+            }
+            let mut spotconstraints = vec![];
+            for ((value, sense), forkid) in modals
+                .ge
+                .iter()
+                .map(|(c, _)| (*c, true))
+                .chain(modals.le.iter().map(|(c, _)| (*c, false)))
+                .zip(spotws.forkid_ranges.iter().cloned().flatten())
+            {
+                spotconstraints.push(Constraint {
+                    forkid,
+                    sense,
+                    value,
+                });
+            }
+            let mut cliqueconstraints = vec![];
+            for ((value, sense), forkid) in cliquemodals
+                .ge
+                .iter()
+                .map(|(c, _)| (*c, true))
+                .chain(cliquemodals.le.iter().map(|(c, _)| (*c, false)))
+                .zip(cliquews.forkid_ranges.iter().cloned().flatten())
+            {
+            //     println!(
+            //         "{:?} {:?} {:?} {:?} {:?} {:?} {:?}",
+            //         Vec::from_iter(
+            //             cliquemodals
+            //                 .ge
+            //                 .iter()
+            //         ),
+            //         Vec::from_iter(
+            //             cliquemodals
+            //                 .ge
+            //                 .iter()
+            //                 .map(|(c, _)| (*c, true))
+            //         ),
+            //         Vec::from_iter(
+            //             cliquemodals
+            //                 .ge
+            //                 .iter()
+            //                 .map(|(c, _)| (*c, true))
+            //                 .chain(modals.le.iter().map(|(c, _)| (*c, false)))
+            //         ),
+            //         Vec::from_iter(
+            //             cliquemodals
+            //                 .ge
+            //                 .iter()
+            //         ),
+            //         Vec::from_iter(
+            //             cliquemodals
+            //                 .ge
+            //                 .iter()
+            //                 .map(|(c, _)| (*c, true))
+            //         ),
+            //         Vec::from_iter(
+            //             cliquemodals
+            //                 .ge
+            //                 .iter()
+            //                 .map(|(c, _)| (*c, true))
+            //                 .chain(modals.le.iter().map(|(c, _)| (*c, false))
+            //         ),
+            //         Vec::from_iter(cliquews.forkid_ranges.iter().cloned().flatten())
+            //     );
+            //     println!("Adding Constraints {:?}", forkid);
+                cliqueconstraints.push(Constraint {
+                    forkid,
+                    sense,
+                    value,
+                });
+            }
+            let paraclique = ParaClique {
+                settings: settings.clone(),
+                spotws,
+                cliquews,
+                spotconstraints,
+                cliqueconstraints,
+                spotsolution: vec![],
+                cliquesolution: vec![],
+            };
+            paracliques.push(paraclique);
+            if !Self::next_setting(&mut settings) {
+                break;
+            }
+        }
+        Self {
+            modals,
+            submodals,
+            paracliques,
+        }
+    }
+
+    fn next_setting(settings: &mut Vec<bool>) -> bool {
+        for st in settings {
+            if *st {
+                *st = false;
+                return true;
+            } else {
+                *st = true;
+            }
+        }
+        return false;
     }
 }
 
@@ -586,7 +841,7 @@ impl TransitB5 {
             .iter()
             .map(|(c, _)| (*c, true))
             .chain(modals.le.iter().map(|(c, _)| (*c, false)))
-            .zip(paraws.forkid_ranges[0].clone())
+            .zip(paraws.forkid_ranges.iter().cloned().flatten())
         {
             constraints.push(Constraint {
                 forkid,
@@ -829,10 +1084,10 @@ impl Formula {
         match self.as_ref() {
             Formula::Bottom | Formula::Top | Formula::PropVar(_, _) => {}
             Formula::Not(phi) => phi.store_modals(out),
-            Formula::Box(phi)
-            | Formula::Diamond(phi)
-            | Formula::DiamondGe(_, phi)
-            | Formula::DiamondLe(_, phi) => out.push(phi.clone()),
+            Formula::Box(_)
+            | Formula::Diamond(_)
+            | Formula::DiamondGe(_, _)
+            | Formula::DiamondLe(_, _) => out.push(self.clone()),
             Formula::And(phi0, phi1)
             | Formula::Or(phi0, phi1)
             | Formula::Imply(phi0, phi1)
