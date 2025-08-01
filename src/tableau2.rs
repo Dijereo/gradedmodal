@@ -303,7 +303,7 @@ impl TableauNode2 {
     }
 }
 
-pub(crate) struct DisplayTableau(pub(crate) Rc<RefCell<TableauNode2>>, pub(crate) GradedKCalc);
+pub(crate) struct DisplayTableau(pub(crate) Rc<RefCell<TableauNode2>>);
 
 impl fmt::Display for DisplayTableau {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -319,7 +319,7 @@ impl fmt::Display for DisplayTableau {
         writeln!(f)?;
         while let Some((seedi, seed)) = seeds.pop_front() {
             if let TabChildren::Transition(feasibility, transit) = &seed.borrow().children {
-                transit.display_transit(f, feasibility, &self.1, seedi, &mut i, &mut seeds)?;
+                transit.display_transit(f, feasibility, seedi, &mut i, &mut seeds)?;
             }
         }
         Ok(())
@@ -331,20 +331,19 @@ impl Transit {
         &self,
         f: &mut fmt::Formatter<'_>,
         feasiblity: &Feasibility,
-        calc: &GradedKCalc,
         rooti: usize,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
     ) -> fmt::Result {
         match self {
             Transit::KOr45(transit) => {
-                transit.display_transit(f, feasiblity, calc, rooti, curri, roots)
+                transit.display_transit(f, feasiblity, rooti, curri, roots)
             }
             Transit::B5(transit) => {
-                transit.display_transit(f, feasiblity, calc, rooti, curri, roots)
+                transit.display_transit(f, feasiblity, rooti, curri, roots)
             }
             Transit::K5(transit) => {
-                transit.display_transit(f, feasiblity, calc, rooti, curri, roots)
+                transit.display_transit(f, feasiblity, rooti, curri, roots)
             }
         }
     }
@@ -355,15 +354,13 @@ impl TransitKOr45 {
         &self,
         f: &mut fmt::Formatter<'_>,
         feasiblity: &Feasibility,
-        calc: &GradedKCalc,
         rooti: usize,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
     ) -> fmt::Result {
         writeln!(f)?;
         writeln!(f, "{rooti}:")?;
-        self.modals
-            .display_constraints(f, &self.constraints, calc)?;
+        self.modals.display_constraints(f, &self.constraints)?;
         match feasiblity {
             Feasibility::Feasible => writeln!(f, "Feasible")?,
             Feasibility::Contradiction => writeln!(f, "Contradiction")?,
@@ -401,7 +398,6 @@ impl Transit5 {
         &self,
         f: &mut fmt::Formatter<'_>,
         feasiblity: &Feasibility,
-        calc: &GradedKCalc,
         rooti: usize,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
@@ -463,15 +459,13 @@ impl TransitB5 {
         &self,
         f: &mut fmt::Formatter<'_>,
         feasiblity: &Feasibility,
-        calc: &GradedKCalc,
         rooti: usize,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
     ) -> fmt::Result {
         writeln!(f)?;
         writeln!(f, "{rooti}:")?;
-        self.modals
-            .display_constraints(f, &self.constraints, calc)?;
+        self.modals.display_constraints(f, &self.constraints)?;
         match feasiblity {
             Feasibility::Feasible => writeln!(f, "Feasible")?,
             Feasibility::Contradiction => writeln!(f, "Contradiction")?,
