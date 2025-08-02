@@ -2,24 +2,15 @@ use good_lp::{Expression, ProblemVariables, Solution, SolverModel, Variable, sol
 use std::collections::HashMap;
 
 use crate::{
-    rules3::{
-        Constraint, Feasibility, ParaClique, Transit, Transit4, Transit5, TransitB5, TransitKOr45,
-    },
+    rules3::Feasibility,
     tableau2::{TabChildren, TableauNode2},
+    transit::{
+        BTransit, Constraint, ParaClique, Transit, Transit4, Transit5, TransitB5, TransitKOr45,
+        TransitT,
+    },
 };
 
-impl Transit {
-    pub(crate) fn solve(&mut self) {
-        match self {
-            Transit::KOr45(transit) => transit.solve(),
-            Transit::B5(transit) => transit.solve(),
-            Transit::K5(transit) => transit.solve(),
-            Transit::K4(transit) => transit.solve(),
-        }
-    }
-}
-
-impl TransitKOr45 {
+impl Transit for TransitKOr45 {
     fn solve(&mut self) {
         self.paraws.set_choices(true);
         let mut problem = ProblemVariables::new();
@@ -59,7 +50,13 @@ impl TransitKOr45 {
     }
 }
 
-impl Transit5 {
+impl Transit for TransitT {
+    fn solve(&mut self) {
+        todo!()
+    }
+}
+
+impl Transit for Transit5 {
     fn solve(&mut self) {
         let mut feasibility = Feasibility::NoSolution;
         for paraclique in &mut self.paracliques {
@@ -70,7 +67,7 @@ impl Transit5 {
     }
 }
 
-impl ParaClique {
+impl<T: BTransit> ParaClique<T> {
     fn solve(&mut self, spotconstraints: &Vec<Constraint>) {
         let mut problem = ProblemVariables::new();
         self.spotws.set_choices(true);
@@ -129,7 +126,7 @@ impl ParaClique {
     }
 }
 
-impl Transit4 {
+impl Transit for Transit4 {
     fn solve(&mut self) {
         let mut problem = ProblemVariables::new();
         let mut exprs = HashMap::new();
@@ -156,7 +153,9 @@ impl Transit4 {
             Err(_) => self.feasibility = Feasibility::NoSolution,
         }
     }
+}
 
+impl Transit4 {
     fn build_rec(
         &mut self,
         problem: &mut ProblemVariables,
@@ -173,9 +172,7 @@ impl Transit4 {
         TableauNode2::get_fruits(&self.paraws.tab, &mut fruits);
         for fruit in fruits {
             match &mut fruit.borrow_mut().children {
-                TabChildren::Transition(Transit::K4(child)) => {
-                    allvars.extend(child.build_rec(problem, exprs))
-                }
+                TabChildren::Transition(child) => allvars.extend(child.build_rec(problem, exprs)),
                 _ => {}
             }
         }
@@ -229,7 +226,7 @@ impl Transit4 {
     }
 }
 
-impl TransitB5 {
+impl Transit for TransitB5 {
     fn solve(&mut self) {
         let mut problem = ProblemVariables::new();
         self.paraws.set_choices(true);

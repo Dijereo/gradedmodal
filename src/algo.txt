@@ -85,5 +85,3 @@ transit: given formulae, produce list of viable parallel worlds
 - utilise better constraining
 
 tableauview: contains data to display tableau and sat model
-
-
