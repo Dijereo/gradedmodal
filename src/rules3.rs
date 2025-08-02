@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::VecDeque, fmt, mem, ops::RangeInclusive, rc::Rc};
 
 use crate::{
-    depth1::FlatFormula,
+    flatformula::FlatFormula,
     formula::Formula,
     frame::FrameCondition,
     tableau2::{Conflict, DupContra, Label, TabBranch, TabChildren, TableauNode2},

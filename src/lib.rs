@@ -8,7 +8,7 @@ use crate::{
     token::tokenize,
 };
 
-mod depth1;
+mod flatformula;
 mod dnf;
 mod formula;
 mod frame;
