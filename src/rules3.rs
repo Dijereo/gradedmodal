@@ -1,4 +1,9 @@
-use std::{cell::RefCell, collections::VecDeque, fmt, mem, ops::RangeInclusive, rc::Rc};
+use std::{
+    cell::RefCell, collections::VecDeque, fmt, mem, ops::RangeInclusive, rc::Rc, thread::sleep,
+    time::Duration,
+};
+
+use good_lp::Variable;
 
 use crate::{
     flatformula::FlatFormula,
@@ -40,7 +45,7 @@ pub(crate) struct ForkStore {
     forks: Vec<Fork>,
 }
 
-// TODO: Combine No Solution and Infeasible 
+// TODO: Combine No Solution and Infeasible
 #[derive(Clone, Copy)]
 pub(crate) enum Feasibility {
     Feasible,
@@ -49,6 +54,7 @@ pub(crate) enum Feasibility {
     Contradiction,
 }
 
+#[derive(Debug)]
 pub(crate) struct Modals {
     pub(crate) bx: Vec<Label>,
     pub(crate) ge: Vec<(u32, Label)>,
@@ -71,8 +77,9 @@ pub(crate) struct ParallelWorlds {
 
 pub(crate) enum Transit {
     KOr45(TransitKOr45),
-    B5(TransitB5),
+    K4(Transit4),
     K5(Transit5),
+    B5(TransitB5),
 }
 
 pub(crate) struct TransitKOr45 {
@@ -113,10 +120,12 @@ pub(crate) struct ParaClique {
 
 pub(crate) struct Transit4 {
     pub(crate) feasibility: Feasibility,
+    pub(crate) paraws: ParallelWorlds,
+    pub(crate) constraints: Vec<Constraint>,
     pub(crate) modals: Modals,
-    pub(crate) submodals: Vec<Label>,
-    pub(crate) spotconstraints: Vec<Constraint>,
-    pub(crate) paracliques: Vec<ParaClique>,
+    pub(crate) ranges: Vec<RangeInclusive<usize>>,
+    pub(crate) vars: Vec<Variable>,
+    pub(crate) solution: Vec<u32>,
 }
 
 impl GradedKCalc {
@@ -174,6 +183,31 @@ impl GradedKCalc {
         }
         // TODO: Set entire tree of feasibility
         tab.borrow_mut().feasibility = feasibility;
+    }
+
+    fn diffract_rec(&mut self, transit: &mut Transit4) {
+        if transit.feasibility.is_bad() {
+            return;
+        }
+        let mut flowers = Vec::new();
+        TableauNode2::get_flowers(&transit.paraws.tab, &mut flowers);
+        let mut feasibility = Feasibility::Infeasible;
+        for flower in flowers {
+            let subtransit = transit.diffract(&flower, self);
+            match subtransit {
+                Some(subtransit) => {
+                    if let Feasibility::Feasible = subtransit.feasibility {
+                        feasibility = Feasibility::Feasible;
+                    }
+                    flower.borrow_mut().feasibility = subtransit.feasibility;
+                    flower.borrow_mut().children = TabChildren::Transition(Transit::K4(subtransit));
+                }
+                None => feasibility = Feasibility::Feasible,
+            }
+        }
+        // TODO: Set entire tree of feasibility
+        transit.feasibility = feasibility;
+        transit.paraws.tab.borrow_mut().feasibility = feasibility;
     }
 
     fn expand_static(
@@ -347,7 +381,7 @@ impl GradedKCalc {
                 feasibility = feasibility.better(&branch.node.borrow().feasibility);
             }
         }
-        tab.borrow_mut().feasibility = Feasibility::Contradiction;
+        tab.borrow_mut().feasibility = feasibility;
     }
 
     fn transit(&mut self, fruit: &Rc<RefCell<TableauNode2>>) -> Option<Transit> {
@@ -367,6 +401,9 @@ impl GradedKCalc {
         let mut transit = match self.framecond {
             FrameCondition::K | FrameCondition::D | FrameCondition::K45 | FrameCondition::D45 => {
                 Transit::KOr45(TransitKOr45::from_modals(modals, self))
+            }
+            FrameCondition::K4 | FrameCondition::D4 => {
+                Transit::K4(Transit4::from_modals(modals, self))
             }
             FrameCondition::K5 | FrameCondition::D5 => {
                 Transit::K5(Transit5::from_modals(modals, self))
@@ -426,6 +463,7 @@ impl Transit {
         match self {
             Transit::KOr45(transit) => calc.transition_rec(&transit.paraws.tab),
             Transit::B5(_) | Transit::K5(_) => {}
+            Transit::K4(transit) => calc.diffract_rec(transit),
         }
     }
 
@@ -438,6 +476,7 @@ impl Transit {
             Transit::KOr45(transit) => transit.feasibility,
             Transit::B5(transit) => transit.feasibility,
             Transit::K5(transit) => transit.feasibility,
+            Transit::K4(transit) => transit.feasibility,
         }
     }
 }
@@ -607,9 +646,11 @@ impl ParallelWorlds {
         }
     }
 
-    pub(crate) fn set_choices(&mut self) {
+    pub(crate) fn set_choices(&mut self, dedup: bool) {
+        if !self.choices.is_empty() {
+            return;
+        }
         let mut fruits = vec![];
-        let mut choices = vec![];
         TableauNode2::get_fruits(&self.tab, &mut fruits);
         for fruit in fruits {
             if fruit.borrow().is_closed() {
@@ -619,10 +660,11 @@ impl ParallelWorlds {
             fruit
                 .borrow()
                 .get_choices(&mut subchoices, &self.forkid_ranges);
-            choices.push(subchoices);
+            self.choices.push(subchoices);
         }
-        choices.dedup(); // ?
-        self.choices = choices;
+        if dedup {
+            self.choices.dedup(); // ?
+        }
     }
 }
 
@@ -718,6 +760,70 @@ impl ParaClique {
             spotsolution: vec![],
             cliquesolution: vec![],
         }
+    }
+}
+
+impl Transit4 {
+    fn from_modals(modals: Modals, calc: &mut GradedKCalc) -> Self {
+        let (paraws, constraints) = ParallelWorlds::from_modals(&modals, calc);
+        let feasibility = paraws.tab.borrow().feasibility;
+        Self {
+            feasibility,
+            ranges: paraws.forkid_ranges.clone(),
+            paraws,
+            constraints,
+            modals,
+            vars: vec![],
+            solution: vec![],
+        }
+    }
+
+    fn from_diffraction(
+        modals: Modals,
+        srcranges: impl Iterator<Item = RangeInclusive<usize>>,
+        calc: &mut GradedKCalc,
+    ) -> Self {
+        let (forkids, constraints) = modals.to_forks_constraints(&mut calc.forks);
+        let ranges: Vec<_> = srcranges.chain(forkids.into_iter()).collect();
+        let paraws = ParallelWorlds::from_forks(modals.bx.clone(), ranges.iter().cloned(), calc);
+        let feasibility = paraws.tab.borrow().feasibility;
+        Self {
+            feasibility,
+            paraws,
+            constraints,
+            modals,
+            vars: vec![],
+            solution: vec![],
+            ranges,
+        }
+    }
+
+    fn diffract(
+        &self,
+        fruit: &Rc<RefCell<TableauNode2>>,
+        calc: &mut GradedKCalc,
+    ) -> Option<Transit4> {
+        let mut labels = vec![];
+        fruit.borrow().traverse_anc_formulae(&mut |label| {
+            labels.push(label.clone());
+            true
+        });
+        labels.extend(self.modals.bx.iter().cloned());
+        let modals = Modals::new(labels.iter(), calc.framecond.serial(), false);
+        sleep(Duration::from_secs(3));
+        if modals.ge.is_empty() {
+            return None;
+        }
+        let mut transit = Self::from_diffraction(modals, self.ranges.iter().cloned(), calc);
+        if transit.feasibility.is_bad() {
+            return Some(transit);
+        }
+        calc.diffract_rec(&mut transit);
+        if transit.feasibility.is_bad() {
+            return Some(transit);
+        }
+        transit.check();
+        Some(transit)
     }
 }
 

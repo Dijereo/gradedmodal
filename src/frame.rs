@@ -6,8 +6,8 @@ pub(crate) enum FrameCondition {
     // KB,
     // DB,
     // TB,
-    // K4,
-    // D4,
+    K4,
+    D4,
     // S4,
     K5,
     D5,
@@ -20,12 +20,16 @@ pub(crate) enum FrameCondition {
 impl FrameCondition {
     pub(crate) const fn serial(&self) -> bool {
         match self {
-            FrameCondition::K | FrameCondition::K5 | FrameCondition::K45 | FrameCondition::KB5 => {
-                false
-            }
-            FrameCondition::D | FrameCondition::D5 | FrameCondition::D45 | FrameCondition::S5 => {
-                true
-            }
+            FrameCondition::K
+            | FrameCondition::K4
+            | FrameCondition::K5
+            | FrameCondition::K45
+            | FrameCondition::KB5 => false,
+            FrameCondition::D
+            | FrameCondition::D4
+            | FrameCondition::D5
+            | FrameCondition::D45
+            | FrameCondition::S5 => true,
         }
     }
 
@@ -33,6 +37,8 @@ impl FrameCondition {
         match self {
             FrameCondition::K
             | FrameCondition::D
+            | FrameCondition::K4
+            | FrameCondition::D4
             | FrameCondition::K5
             | FrameCondition::D5
             | FrameCondition::K45
@@ -44,7 +50,9 @@ impl FrameCondition {
 
     pub(crate) const fn euclidean(&self) -> bool {
         match self {
-            FrameCondition::K | FrameCondition::D => false,
+            FrameCondition::K | FrameCondition::D | FrameCondition::K4 | FrameCondition::D4 => {
+                false
+            }
             FrameCondition::K5
             | FrameCondition::D5
             | FrameCondition::K45
@@ -58,6 +66,8 @@ impl FrameCondition {
         match self {
             FrameCondition::K
             | FrameCondition::D
+            | FrameCondition::K4
+            | FrameCondition::D4
             | FrameCondition::K45
             | FrameCondition::D45
             | FrameCondition::KB5
@@ -68,9 +78,12 @@ impl FrameCondition {
 
     pub(crate) const fn luminal(&self) -> bool {
         match self {
-            FrameCondition::K | FrameCondition::D | FrameCondition::K5 | FrameCondition::D5 => {
-                false
-            }
+            FrameCondition::K
+            | FrameCondition::D
+            | FrameCondition::K4
+            | FrameCondition::D4
+            | FrameCondition::K5
+            | FrameCondition::D5 => false,
             FrameCondition::K45
             | FrameCondition::D45
             | FrameCondition::KB5
@@ -82,11 +95,27 @@ impl FrameCondition {
         match self {
             FrameCondition::K
             | FrameCondition::D
+            | FrameCondition::K4
+            | FrameCondition::D4
             | FrameCondition::K5
             | FrameCondition::D5
             | FrameCondition::K45
             | FrameCondition::D45 => false,
             FrameCondition::KB5 | FrameCondition::S5 => true,
+        }
+    }
+
+    pub(crate) const fn diffractive(&self) -> bool {
+        match self {
+            FrameCondition::K4 | FrameCondition::D4 => true,
+            FrameCondition::K
+            | FrameCondition::D
+            | FrameCondition::K5
+            | FrameCondition::D5
+            | FrameCondition::K45
+            | FrameCondition::D45
+            | FrameCondition::KB5
+            | FrameCondition::S5 => false,
         }
     }
 }

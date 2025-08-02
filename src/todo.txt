@@ -26,3 +26,4 @@ change hasher
 fix display
 smaller files
 better negation and equality check
+change transit enum to generics

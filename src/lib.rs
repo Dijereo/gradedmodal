@@ -8,8 +8,8 @@ use crate::{
     token::tokenize,
 };
 
-mod flatformula;
 mod dnf;
+mod flatformula;
 mod formula;
 mod frame;
 mod ilp;
@@ -37,6 +37,8 @@ pub fn run() {
         framecond = match input.trim().to_uppercase().as_str() {
             "K" => FrameCondition::K,
             "D" => FrameCondition::D,
+            "K4" => FrameCondition::K4,
+            "D4" => FrameCondition::D4,
             "K5" => FrameCondition::K5,
             "D5" => FrameCondition::D5,
             "K45" => FrameCondition::K45,
