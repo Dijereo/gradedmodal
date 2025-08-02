@@ -14,11 +14,11 @@ use crate::{
 pub(crate) enum TabChildren {
     Leaf,
     Fork { id: usize, branches: Vec<TabBranch> },
-    Transition(Feasibility, Transit),
+    Transition(Transit),
 }
 
 pub(crate) struct TabBranch {
-    pub(crate) branchid: usize,
+    pub(crate) id: usize,
     pub(crate) node: Rc<RefCell<TableauNode2>>,
 }
 
@@ -35,7 +35,7 @@ pub(crate) struct Label {
 }
 
 pub(crate) struct TableauNode2 {
-    pub(crate) is_closed: bool,
+    pub(crate) feasibility: Feasibility,
     pub(crate) formulae: Vec<Label>,
     pub(crate) choices: Vec<(usize, usize)>,
     pub(crate) children: TabChildren,
@@ -45,7 +45,7 @@ pub(crate) struct TableauNode2 {
 impl TableauNode2 {
     pub(crate) fn from_formulae(labels: Vec<Label>, parent: Option<&Rc<RefCell<Self>>>) -> Self {
         let mut tab = Self {
-            is_closed: false,
+            feasibility: Feasibility::Feasible,
             formulae: vec![],
             choices: vec![],
             children: TabChildren::Leaf,
@@ -124,7 +124,7 @@ impl TableauNode2 {
             DupContra::Dup(confs)
         } else if new_label.formula.is_bottom() {
             self.formulae.push(new_label);
-            self.is_closed = true;
+            self.feasibility = Feasibility::Contradiction;
             // println!("Bottom");
             DupContra::Bottom
         } else if let Some(confs) = self.check_contra(&new_label.formula) {
@@ -135,7 +135,7 @@ impl TableauNode2 {
                 formula: Formula::bottom(),
                 conflictset: confs2,
             });
-            self.is_closed = true;
+            self.feasibility = Feasibility::Contradiction;
             // println!("Contra");
             DupContra::Contra(confs)
         } else {
@@ -145,45 +145,60 @@ impl TableauNode2 {
         }
     }
 
-    pub(crate) fn get_open_leaves(
-        tab: &Rc<RefCell<Self>>,
-        leaves: &mut Vec<Rc<RefCell<Self>>>,
-        include_seeds: bool,
-    ) {
-        if tab.borrow().is_closed {
+    pub(crate) const fn is_closed(&self) -> bool {
+        self.feasibility.is_bad()
+    }
+
+    pub(crate) fn get_flowers(this: &Rc<RefCell<Self>>, flowers: &mut Vec<Rc<RefCell<Self>>>) {
+        if this.borrow().is_closed() {
             return;
         }
-        match &tab.borrow().children {
+        match &this.borrow().children {
             TabChildren::Leaf => {
-                leaves.push(tab.clone());
+                flowers.push(this.clone());
             }
             TabChildren::Fork { branches, .. } => {
                 for child in branches {
-                    Self::get_open_leaves(&child.node, leaves, include_seeds);
+                    Self::get_flowers(&child.node, flowers);
                 }
             }
-            TabChildren::Transition(feasibility, _) if include_seeds => match feasibility {
-                Feasibility::Feasible => leaves.push(tab.clone()),
-                Feasibility::Contradiction | Feasibility::NoSolution | Feasibility::Unfeasible => {}
-            },
             TabChildren::Transition(..) => {}
         }
     }
 
+    pub(crate) fn get_fruits(this: &Rc<RefCell<Self>>, fruits: &mut Vec<Rc<RefCell<Self>>>) {
+        if this.borrow().is_closed() {
+            return;
+        }
+        match &this.borrow().children {
+            TabChildren::Leaf => {
+                fruits.push(this.clone());
+            }
+            TabChildren::Fork { branches, .. } => {
+                for child in branches {
+                    Self::get_fruits(&child.node, fruits);
+                }
+            }
+            TabChildren::Transition(transit) => match transit.feasibility() {
+                Feasibility::Feasible => fruits.push(this.clone()),
+                Feasibility::Contradiction | Feasibility::NoSolution | Feasibility::Infeasible => {}
+            },
+        }
+    }
+
     pub(crate) fn get_choices(
-        tab: &Rc<RefCell<Self>>,
+        &self,
         choices: &mut Vec<(usize, usize)>,
-        forkid_ranges: &Vec<RangeInclusive<usize>>,
+        forkranges: &Vec<RangeInclusive<usize>>,
     ) {
         // OPT: bin search + remove
-        if let Some(parent) = tab.borrow().parent.upgrade() {
-            Self::get_choices(&parent, choices, forkid_ranges);
+        if let Some(parent) = self.parent.upgrade() {
+            parent.borrow().get_choices(choices, forkranges);
         }
         choices.extend(
-            tab.borrow()
-                .choices
+            self.choices
                 .iter()
-                .filter(|(fid, _)| forkid_ranges.iter().any(|r| r.contains(fid))),
+                .filter(|(fid, _)| forkranges.iter().any(|r| r.contains(fid))),
         )
     }
 
@@ -227,7 +242,7 @@ impl TableauNode2 {
         depth: usize,
         next_depths: &mut VecDeque<usize>,
         curri: &mut usize,
-        seeds: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
+        fruits: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
     ) -> fmt::Result {
         let thisref = this.borrow();
         let next_depth = next_depths.pop_front();
@@ -264,12 +279,12 @@ impl TableauNode2 {
             TabChildren::Leaf => {}
             TabChildren::Fork { branches, .. } => {
                 for branch in branches {
-                    Self::display_rec(&branch.node, f, depth + 1, next_depths, curri, seeds)?
+                    Self::display_rec(&branch.node, f, depth + 1, next_depths, curri, fruits)?
                 }
             }
-            TabChildren::Transition(feasibility, _) => {
-                Self::display_transition(f, feasibility, depth + 1, next_depths, *curri)?;
-                seeds.push_back((*curri, this.clone()));
+            TabChildren::Transition(transit) => {
+                Self::display_transition(f, transit.feasibility(), depth + 1, next_depths, *curri)?;
+                fruits.push_back((*curri, this.clone()));
                 *curri += 1;
             }
         }
@@ -278,18 +293,13 @@ impl TableauNode2 {
 
     fn display_transition(
         f: &mut fmt::Formatter<'_>,
-        feasiblity: &Feasibility,
+        feasiblity: Feasibility,
         depth: usize,
         next_depths: &mut VecDeque<usize>,
         rooti: usize,
     ) -> fmt::Result {
         let _next_depth = next_depths.pop_front();
-        let specchar = match feasiblity {
-            Feasibility::Feasible => "✓",
-            Feasibility::Contradiction => "⊥",
-            Feasibility::NoSolution => "∅",
-            Feasibility::Unfeasible => "⨉",
-        };
+        let specchar = feasiblity.symbol();
         if depth > 1 {
             writeln!(
                 f,
@@ -309,17 +319,13 @@ impl fmt::Display for DisplayTableau {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut i = 1;
         let mut seeds = VecDeque::new();
-        if self.0.borrow().is_closed {
-            writeln!(f, "0: ⊥")?;
-        } else {
-            writeln!(f, "0:")?;
-        }
+        writeln!(f, "0: {}", self.0.borrow().feasibility.symbol())?;
         TableauNode2::display_root(&self.0, f, &mut i, &mut seeds)?;
         writeln!(f)?;
         writeln!(f)?;
         while let Some((seedi, seed)) = seeds.pop_front() {
-            if let TabChildren::Transition(feasibility, transit) = &seed.borrow().children {
-                transit.display_transit(f, feasibility, seedi, &mut i, &mut seeds)?;
+            if let TabChildren::Transition(transit) = &seed.borrow().children {
+                transit.display_transit(f, seedi, &mut i, &mut seeds)?;
             }
         }
         Ok(())
@@ -330,21 +336,14 @@ impl Transit {
     fn display_transit(
         &self,
         f: &mut fmt::Formatter<'_>,
-        feasiblity: &Feasibility,
         rooti: usize,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
     ) -> fmt::Result {
         match self {
-            Transit::KOr45(transit) => {
-                transit.display_transit(f, feasiblity, rooti, curri, roots)
-            }
-            Transit::B5(transit) => {
-                transit.display_transit(f, feasiblity, rooti, curri, roots)
-            }
-            Transit::K5(transit) => {
-                transit.display_transit(f, feasiblity, rooti, curri, roots)
-            }
+            Transit::KOr45(transit) => transit.display_transit(f, rooti, curri, roots),
+            Transit::B5(transit) => transit.display_transit(f, rooti, curri, roots),
+            Transit::K5(transit) => transit.display_transit(f, rooti, curri, roots),
         }
     }
 }
@@ -353,20 +352,13 @@ impl TransitKOr45 {
     fn display_transit(
         &self,
         f: &mut fmt::Formatter<'_>,
-        feasiblity: &Feasibility,
         rooti: usize,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
     ) -> fmt::Result {
         writeln!(f)?;
-        writeln!(f, "{rooti}:")?;
+        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
         self.modals.display_constraints(f, &self.constraints)?;
-        match feasiblity {
-            Feasibility::Feasible => writeln!(f, "Feasible")?,
-            Feasibility::Contradiction => writeln!(f, "Contradiction")?,
-            Feasibility::NoSolution => writeln!(f, "No Solution")?,
-            Feasibility::Unfeasible => writeln!(f, "Unfeasible")?,
-        }
         writeln!(f)?;
         TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
         writeln!(f)?;
@@ -377,17 +369,14 @@ impl TransitKOr45 {
             }
             writeln!(f)?;
         }
-        match feasiblity {
-            Feasibility::Contradiction | Feasibility::Unfeasible | Feasibility::NoSolution => {
-                writeln!(f, "No solution")?
+        if self.feasibility.is_bad() {
+            writeln!(f, "No solution")?
+        } else {
+            write!(f, "Solution: ")?;
+            for (i, val) in self.solution.iter().enumerate() {
+                write!(f, "{val}*w{i} ")?;
             }
-            Feasibility::Feasible => {
-                write!(f, "Solution: ")?;
-                for (i, val) in self.solution.iter().enumerate() {
-                    write!(f, "{val}*w{i} ")?;
-                }
-                writeln!(f)?;
-            }
+            writeln!(f)?;
         }
         writeln!(f)
     }
@@ -397,20 +386,13 @@ impl Transit5 {
     fn display_transit(
         &self,
         f: &mut fmt::Formatter<'_>,
-        feasiblity: &Feasibility,
         rooti: usize,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
     ) -> fmt::Result {
         writeln!(f)?;
-        writeln!(f, "{rooti}:")?;
-        self.modals.display_modals(f)?;
-        match feasiblity {
-            Feasibility::Feasible => writeln!(f, "Feasible")?,
-            Feasibility::Contradiction => writeln!(f, "Contradiction")?,
-            Feasibility::NoSolution => writeln!(f, "No Solution")?,
-            Feasibility::Unfeasible => writeln!(f, "Unfeasible")?,
-        }
+        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
+        self.modals.display_constraints(f, &self.spotconstraints)?;
         writeln!(f)?;
         writeln!(f, "Second Transition Modals:")?;
         for (i, submodal) in self.submodals.iter().enumerate() {
@@ -458,20 +440,13 @@ impl TransitB5 {
     fn display_transit(
         &self,
         f: &mut fmt::Formatter<'_>,
-        feasiblity: &Feasibility,
         rooti: usize,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2>>)>,
     ) -> fmt::Result {
         writeln!(f)?;
-        writeln!(f, "{rooti}:")?;
+        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
         self.modals.display_constraints(f, &self.constraints)?;
-        match feasiblity {
-            Feasibility::Feasible => writeln!(f, "Feasible")?,
-            Feasibility::Contradiction => writeln!(f, "Contradiction")?,
-            Feasibility::NoSolution => writeln!(f, "No Solution")?,
-            Feasibility::Unfeasible => writeln!(f, "Unfeasible")?,
-        }
         writeln!(f)?;
         TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
         writeln!(f)?;
@@ -491,8 +466,8 @@ impl TransitB5 {
             }
             writeln!(f)?;
         }
-        match feasiblity {
-            Feasibility::Contradiction | Feasibility::Unfeasible | Feasibility::NoSolution => {
+        match self.feasibility {
+            Feasibility::Contradiction | Feasibility::Infeasible | Feasibility::NoSolution => {
                 writeln!(f, "No solution")?
             }
             Feasibility::Feasible => {

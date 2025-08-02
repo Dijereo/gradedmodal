@@ -24,12 +24,12 @@ fn expand_static(
     reflexive: bool,
 ) {
     expand_linear(&mut tab.borrow_mut(), reflexive);
-    if tab.borrow().is_closed {
+    if tab.borrow().is_closed() {
         return;
     }
     add_forks(&tab.borrow(), &mut fork_queue, fork_list);
     resolve_forks(&mut tab.borrow_mut(), &mut fork_queue);
-    if tab.borrow().is_closed {
+    if tab.borrow().is_closed() {
         return;
     }
     apply_forks(tab, fork_list, fork_queue, reflexive);
@@ -47,7 +47,7 @@ fn expand_linear(tab: &mut TableauNode2, reflexive: bool) {
                 formula: new_formula,
                 conflictset: label.conflictset.clone(),
             });
-            if tab.is_closed {
+            if tab.is_closed() {
                 return;
             }
         }
@@ -79,7 +79,7 @@ fn apply_forks(
                 child.borrow_mut().choices.push((fork.id, branch.id));
                 if let TabChildren::Fork { branches, .. } = &mut tab.borrow_mut().children {
                     branches.push(TabBranch {
-                        branchid: branch.id,
+                        id: branch.id,
                         node: child,
                     });
                 }
@@ -91,17 +91,17 @@ fn apply_forks(
     let mut all_closed = true;
     if let TabChildren::Fork { branches, .. } = &tab.borrow().children {
         for branch in branches.iter() {
-            if branch.node.borrow().is_closed {
+            if branch.node.borrow().is_closed() {
                 continue;
             }
             expand_static(&branch.node, fork_list, forks.clone(), reflexive);
-            if !branch.node.borrow().is_closed {
+            if !branch.node.borrow().is_closed() {
                 all_closed = false;
             }
         }
     }
     if all_closed {
-        tab.borrow_mut().is_closed = true;
+        // tab.borrow_mut().is_closed = true;
     }
 }
 
@@ -184,7 +184,7 @@ fn resolve_forks(tab: &mut TableauNode2, forks: &mut VecDeque<Fork>) {
                     formula: label.formula,
                     conflictset: conflictset.clone(),
                 });
-                if tab.is_closed {
+                if tab.is_closed() {
                     return;
                 }
             }

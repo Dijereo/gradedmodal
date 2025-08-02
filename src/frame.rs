@@ -42,6 +42,18 @@ impl FrameCondition {
         }
     }
 
+    pub(crate) const fn euclidean(&self) -> bool {
+        match self {
+            FrameCondition::K | FrameCondition::D => false,
+            FrameCondition::K5
+            | FrameCondition::D5
+            | FrameCondition::K45
+            | FrameCondition::D45
+            | FrameCondition::KB5
+            | FrameCondition::S5 => true,
+        }
+    }
+
     pub(crate) const fn spotlit(&self) -> bool {
         match self {
             FrameCondition::K

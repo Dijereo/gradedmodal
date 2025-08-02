@@ -68,6 +68,8 @@ branch
 leaf
 stub
 fruit
+flower
+twig
 seed
 
 
