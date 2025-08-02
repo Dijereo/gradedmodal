@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::VecDeque, fmt, mem, ops::RangeInclusive, rc::Rc};
 
 use crate::{
-    depth1::Depth1F,
+    depth1::FlatFormula,
     formula::Formula,
     frame::FrameCondition,
     tableau2::{Conflict, DupContra, Label, TabBranch, TabChildren, TableauNode2},
@@ -30,6 +30,7 @@ struct Fork {
     branches: Vec<Branch>,
 }
 
+// TODO: Rename
 pub(crate) struct GradedKCalc {
     framecond: FrameCondition,
     forks: ForkStore,
@@ -110,6 +111,14 @@ pub(crate) struct ParaClique {
     pub(crate) cliquesolution: Vec<u32>,
 }
 
+pub(crate) struct Transit4 {
+    pub(crate) feasibility: Feasibility,
+    pub(crate) modals: Modals,
+    pub(crate) submodals: Vec<Label>,
+    pub(crate) spotconstraints: Vec<Constraint>,
+    pub(crate) paracliques: Vec<ParaClique>,
+}
+
 impl GradedKCalc {
     pub(crate) fn sat(
         mut formulae: Vec<Rc<Formula>>,
@@ -117,7 +126,7 @@ impl GradedKCalc {
     ) -> Rc<RefCell<TableauNode2>> {
         if framecond.luminal() {
             for f in formulae.iter_mut() {
-                *f = Depth1F::from(f.clone()).into();
+                *f = FlatFormula::from(f.clone()).into();
             }
         }
         let labels = formulae
@@ -452,7 +461,7 @@ impl Modals {
                 .map(|(_, l)| l)
                 .chain(this.bx.iter_mut())
             {
-                f.formula = Depth1F::from(mem::replace(&mut f.formula, dummy.clone())).into();
+                f.formula = FlatFormula::from(mem::replace(&mut f.formula, dummy.clone())).into();
             }
         }
         if serial && this.ge.is_empty() && (!this.le.is_empty() || !this.bx.is_empty()) {

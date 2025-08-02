@@ -23,3 +23,6 @@ add comments/docs
 display reflexion tableaux
 rename reflexion -> spotlight, unnest -> flatten, depth1 -> flat
 change hasher
+fix display
+smaller files
+better negation and equality check

@@ -1,71 +1,70 @@
-use std::{cmp::max, mem, rc::Rc};
+use std::{cell::RefCell, cmp::max, mem, rc::Rc};
 
 use crate::formula::Formula;
 
 #[derive(Clone, Debug)]
-pub(crate) enum Depth1F {
+pub(crate) enum FlatFormula {
     Bool(bool),
     Var(bool, char),
     VarI(bool, char, usize),
-    Disj(usize, Box<Depth1F>, Box<Depth1F>),
-    Conj(usize, Box<Depth1F>, Box<Depth1F>),
-    Dm(usize, Box<Depth1F>),
-    Bx(usize, Box<Depth1F>),
-    Ge(usize, u32, Box<Depth1F>),
-    Le(usize, u32, Box<Depth1F>),
+    Disj(usize, Box<FlatFormula>, Box<FlatFormula>),
+    Conj(usize, Box<FlatFormula>, Box<FlatFormula>),
+    Dm(usize, Box<FlatFormula>),
+    Bx(usize, Box<FlatFormula>),
+    Ge(usize, u32, Box<FlatFormula>),
+    Le(usize, u32, Box<FlatFormula>),
 }
 
-impl From<Rc<Formula>> for Depth1F {
+impl From<Rc<Formula>> for FlatFormula {
     fn from(value: Rc<Formula>) -> Self {
-        let mut d1f = value.init_depth1();
-        // println!("{}", Rc::<Formula>::from(d1f.clone()));
-        d1f.unnest();
+        let mut d1f = value.init_flat();
+        d1f.flatten();
         d1f
     }
 }
 
-impl From<Depth1F> for Rc<Formula> {
-    fn from(value: Depth1F) -> Self {
+impl From<FlatFormula> for Rc<Formula> {
+    fn from(value: FlatFormula) -> Self {
         match value {
-            Depth1F::Bool(false) => Formula::bottom(),
-            Depth1F::Bool(true) => Formula::top(),
-            Depth1F::Var(true, p) => Rc::new(Formula::PropVar(p, None)),
-            Depth1F::Var(false, p) => Rc::new(Formula::PropVar(p, None)).not(),
-            Depth1F::VarI(true, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))),
-            Depth1F::VarI(false, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))).not(),
-            Depth1F::Disj(_, phi0, phi1) => Rc::<Formula>::from(*phi0).or(&(*phi1).into()),
-            Depth1F::Conj(_, phi0, phi1) => Rc::<Formula>::from(*phi0).and(&(*phi1).into()),
-            Depth1F::Dm(_, phi) => Rc::<Formula>::from(*phi).diamond(),
-            Depth1F::Bx(_, phi) => Rc::<Formula>::from(*phi).box_(),
-            Depth1F::Ge(_, c, phi) => Rc::<Formula>::from(*phi).dmge(c),
-            Depth1F::Le(_, c, phi) => Rc::<Formula>::from(*phi).dmle(c),
+            FlatFormula::Bool(false) => Formula::bottom(),
+            FlatFormula::Bool(true) => Formula::top(),
+            FlatFormula::Var(true, p) => Rc::new(Formula::PropVar(p, None)),
+            FlatFormula::Var(false, p) => Rc::new(Formula::PropVar(p, None)).not(),
+            FlatFormula::VarI(true, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))),
+            FlatFormula::VarI(false, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))).not(),
+            FlatFormula::Disj(_, phi0, phi1) => Rc::<Formula>::from(*phi0).or(&(*phi1).into()),
+            FlatFormula::Conj(_, phi0, phi1) => Rc::<Formula>::from(*phi0).and(&(*phi1).into()),
+            FlatFormula::Dm(_, phi) => Rc::<Formula>::from(*phi).diamond(),
+            FlatFormula::Bx(_, phi) => Rc::<Formula>::from(*phi).box_(),
+            FlatFormula::Ge(_, c, phi) => Rc::<Formula>::from(*phi).dmge(c),
+            FlatFormula::Le(_, c, phi) => Rc::<Formula>::from(*phi).dmle(c),
         }
     }
 }
 
-impl Depth1F {
-    fn depth(&self) -> usize {
+impl FlatFormula {
+    const fn depth(&self) -> usize {
         match self {
-            Depth1F::Var(..) | Depth1F::VarI(..) | Depth1F::Bool(_) => 0,
-            Depth1F::Disj(d, ..)
-            | Depth1F::Conj(d, ..)
-            | Depth1F::Dm(d, ..)
-            | Depth1F::Bx(d, ..)
-            | Depth1F::Ge(d, ..)
-            | Depth1F::Le(d, ..) => *d,
+            FlatFormula::Var(..) | FlatFormula::VarI(..) | FlatFormula::Bool(_) => 0,
+            FlatFormula::Disj(d, ..)
+            | FlatFormula::Conj(d, ..)
+            | FlatFormula::Dm(d, ..)
+            | FlatFormula::Bx(d, ..)
+            | FlatFormula::Ge(d, ..)
+            | FlatFormula::Le(d, ..) => *d,
         }
     }
 
     fn reset_depth(&mut self) {
         match self {
-            Depth1F::Bool(_) | Depth1F::Var(_, _) | Depth1F::VarI(_, _, _) => {}
-            Depth1F::Disj(d, phi0, phi1) | Depth1F::Conj(d, phi0, phi1) => {
+            FlatFormula::Bool(_) | FlatFormula::Var(_, _) | FlatFormula::VarI(_, _, _) => {}
+            FlatFormula::Disj(d, phi0, phi1) | FlatFormula::Conj(d, phi0, phi1) => {
                 *d = max(phi0.depth(), phi1.depth());
             }
-            Depth1F::Dm(d, phi)
-            | Depth1F::Bx(d, phi)
-            | Depth1F::Ge(d, _, phi)
-            | Depth1F::Le(d, _, phi) => {
+            FlatFormula::Dm(d, phi)
+            | FlatFormula::Bx(d, phi)
+            | FlatFormula::Ge(d, _, phi)
+            | FlatFormula::Le(d, _, phi) => {
                 *d = phi.depth() + 1;
             }
         }
@@ -73,15 +72,15 @@ impl Depth1F {
 
     fn not(self) -> Self {
         match self {
-            Depth1F::Bool(sign) => Depth1F::Bool(!sign),
-            Depth1F::Var(sign, p) => Depth1F::Var(!sign, p),
-            Depth1F::VarI(sign, p, i) => Depth1F::VarI(!sign, p, i),
-            Depth1F::Disj(_, phi0, phi1) => phi0.not().conj(phi1.not()),
-            Depth1F::Conj(_, phi0, phi1) => phi0.not().disj(phi1.not()),
-            Depth1F::Dm(_, phi) => phi.not().bx(),
-            Depth1F::Bx(_, phi) => phi.not().dm(),
-            Depth1F::Ge(_, c, phi) => phi.le(c - 1),
-            Depth1F::Le(_, c, phi) => phi.ge(c + 1),
+            FlatFormula::Bool(sign) => FlatFormula::Bool(!sign),
+            FlatFormula::Var(sign, p) => FlatFormula::Var(!sign, p),
+            FlatFormula::VarI(sign, p, i) => FlatFormula::VarI(!sign, p, i),
+            FlatFormula::Disj(_, phi0, phi1) => phi0.not().conj(phi1.not()),
+            FlatFormula::Conj(_, phi0, phi1) => phi0.not().disj(phi1.not()),
+            FlatFormula::Dm(_, phi) => phi.not().bx(),
+            FlatFormula::Bx(_, phi) => phi.not().dm(),
+            FlatFormula::Ge(_, c, phi) => phi.le(c - 1),
+            FlatFormula::Le(_, c, phi) => phi.ge(c + 1),
         }
     }
 
@@ -102,169 +101,170 @@ impl Depth1F {
     }
 
     fn bx(self) -> Self {
-        Depth1F::Bx(self.depth() + 1, Box::new(self))
+        FlatFormula::Bx(self.depth() + 1, Box::new(self))
     }
 
     fn dm(self) -> Self {
-        Depth1F::Dm(self.depth() + 1, Box::new(self))
+        FlatFormula::Dm(self.depth() + 1, Box::new(self))
     }
 
     fn ge(self, count: u32) -> Self {
         if count == 0 {
-            Depth1F::Bool(true)
+            FlatFormula::Bool(true)
         } else if count == 1 {
-            Depth1F::Dm(self.depth() + 1, Box::new(self))
+            FlatFormula::Dm(self.depth() + 1, Box::new(self))
         } else {
-            Depth1F::Ge(self.depth() + 1, count, Box::new(self))
+            FlatFormula::Ge(self.depth() + 1, count, Box::new(self))
         }
     }
 
     fn le(self, count: u32) -> Self {
-        Depth1F::Le(self.depth() + 1, count, Box::new(self))
+        FlatFormula::Le(self.depth() + 1, count, Box::new(self))
     }
 
-    fn unnest(&mut self) {
+    fn flatten(&mut self) {
         match self {
-            Depth1F::Var(..) | Depth1F::VarI(..) | Depth1F::Bool(_) => {}
-            Depth1F::Disj(d, ..)
-            | Depth1F::Conj(d, ..)
-            | Depth1F::Dm(d, ..)
-            | Depth1F::Bx(d, ..)
-            | Depth1F::Ge(d, ..)
-            | Depth1F::Le(d, ..)
+            FlatFormula::Var(..) | FlatFormula::VarI(..) | FlatFormula::Bool(_) => {}
+            FlatFormula::Disj(d, ..)
+            | FlatFormula::Conj(d, ..)
+            | FlatFormula::Dm(d, ..)
+            | FlatFormula::Bx(d, ..)
+            | FlatFormula::Ge(d, ..)
+            | FlatFormula::Le(d, ..)
                 if *d <= 1 => {}
-            Depth1F::Conj(d, phi0, phi1) | Depth1F::Disj(d, phi0, phi1) => {
-                phi0.unnest();
-                phi1.unnest();
+            FlatFormula::Conj(d, phi0, phi1) | FlatFormula::Disj(d, phi0, phi1) => {
+                phi0.flatten();
+                phi1.flatten();
                 *d = 1;
             }
-            Depth1F::Bx(_, phi) => {
-                phi.unnest();
-                *self = mem::replace(phi.as_mut(), Depth1F::Bool(false)).unnest_bx();
+            FlatFormula::Bx(_, phi) => {
+                phi.flatten();
+                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_bx();
             }
-            Depth1F::Dm(_, phi) => {
-                phi.unnest();
-                *self = mem::replace(phi.as_mut(), Depth1F::Bool(false)).unnest_dm();
+            FlatFormula::Dm(_, phi) => {
+                phi.flatten();
+                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_dm();
             }
-            Depth1F::Ge(_, c, phi) => {
-                phi.unnest();
-                *self = mem::replace(phi.as_mut(), Depth1F::Bool(false)).unnest_ge(*c);
+            FlatFormula::Ge(_, c, phi) => {
+                phi.flatten();
+                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_ge(*c);
             }
-            Depth1F::Le(_, c, phi) => {
-                phi.unnest();
-                *self = mem::replace(phi.as_mut(), Depth1F::Bool(false)).unnest_le(*c);
+            FlatFormula::Le(_, c, phi) => {
+                phi.flatten();
+                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_le(*c);
             }
         }
     }
 
-    fn unnest_bx(mut self) -> Depth1F {
-        match self.unnest_rec() {
+    fn flatten_bx(mut self) -> FlatFormula {
+        match self.flatten_rec() {
             CutStatus::Neither => self,
             CutStatus::Disj(nest) => {
                 let mut phi = self.bx();
-                phi.unnest();
+                phi.flatten();
                 nest.disj(phi)
             }
             CutStatus::Conj(nest) => {
                 let mut phi = self.bx();
-                phi.unnest();
+                phi.flatten();
                 nest.conj(phi)
             }
             CutStatus::Both(nest, disj) => {
                 let mut phi0 = self.bx();
-                phi0.unnest();
+                phi0.flatten();
                 let mut phi1 = disj.bx();
-                phi1.unnest();
+                phi1.flatten();
                 nest.conj(phi0).disj(phi1)
             }
         }
     }
 
-    fn unnest_dm(mut self) -> Depth1F {
-        match self.unnest_rec() {
-            CutStatus::Neither => self.conj(Depth1F::Bool(true).dm()),
+    fn flatten_dm(mut self) -> FlatFormula {
+        match self.flatten_rec() {
+            CutStatus::Neither => self.conj(FlatFormula::Bool(true).dm()),
             CutStatus::Disj(nest) => {
                 let mut phi = self.dm();
-                phi.unnest();
-                nest.conj(Depth1F::Bool(true).dm()).disj(phi)
+                phi.flatten();
+                nest.conj(FlatFormula::Bool(true).dm()).disj(phi)
             }
             CutStatus::Conj(nest) => {
                 let mut phi = self.dm();
-                phi.unnest();
+                phi.flatten();
                 nest.conj(phi)
             }
             CutStatus::Both(nest, disj) => {
                 let mut phi0 = self.dm();
-                phi0.unnest();
+                phi0.flatten();
                 let mut phi1 = disj.dm();
-                phi1.unnest();
+                phi1.flatten();
                 nest.conj(phi0).disj(phi1)
             }
         }
     }
 
-    fn unnest_ge(mut self, c: u32) -> Depth1F {
-        match self.unnest_rec() {
-            CutStatus::Neither => self.conj(Depth1F::Bool(true).ge(c)),
+    fn flatten_ge(mut self, c: u32) -> FlatFormula {
+        match self.flatten_rec() {
+            CutStatus::Neither => self.conj(FlatFormula::Bool(true).ge(c)),
             CutStatus::Disj(nest) => {
                 let mut phi = self.ge(c);
-                phi.unnest();
-                nest.conj(Depth1F::Bool(true).ge(c)).disj(phi)
+                phi.flatten();
+                nest.conj(FlatFormula::Bool(true).ge(c)).disj(phi)
             }
             CutStatus::Conj(nest) => {
                 let mut phi = self.ge(c);
-                phi.unnest();
+                phi.flatten();
                 nest.conj(phi)
             }
             CutStatus::Both(nest, disj) => {
                 let mut phi0 = self.ge(c);
-                phi0.unnest();
+                phi0.flatten();
                 let mut phi1 = disj.ge(c);
-                phi1.unnest();
+                phi1.flatten();
                 nest.conj(phi0).disj(phi1)
             }
         }
     }
 
-    fn unnest_le(mut self, c: u32) -> Depth1F {
-        match self.unnest_rec() {
-            CutStatus::Neither => self.not().disj(Depth1F::Bool(true).le(c)),
+    fn flatten_le(mut self, c: u32) -> FlatFormula {
+        match self.flatten_rec() {
+            CutStatus::Neither => self.not().disj(FlatFormula::Bool(true).le(c)),
             CutStatus::Disj(nest) => {
                 let mut phi = self.le(c);
-                phi.unnest();
-                nest.not().conj(phi).disj(Depth1F::Bool(true).le(c))
+                phi.flatten();
+                nest.not().conj(phi).disj(FlatFormula::Bool(true).le(c))
             }
             CutStatus::Conj(nest) => {
                 let mut phi = self.le(c);
-                phi.unnest();
+                phi.flatten();
                 nest.not().disj(phi)
             }
             CutStatus::Both(nest, conj) => {
                 let mut phi0 = self.le(c);
-                phi0.unnest();
+                phi0.flatten();
                 let mut phi1 = conj.le(c);
-                phi1.unnest();
+                phi1.flatten();
                 nest.not().conj(phi1).disj(phi0)
             }
         }
     }
 
-    fn unnest_rec(&mut self) -> CutStatus {
+    fn flatten_rec(&mut self) -> CutStatus {
         match self {
-            Depth1F::Var(_, _) | Depth1F::VarI(_, _, _) | Depth1F::Bool(_) => {
+            FlatFormula::Var(_, _) | FlatFormula::VarI(_, _, _) | FlatFormula::Bool(_) => {
                 unreachable!("Function should only be called on nested modals")
             }
-            Depth1F::Dm(..) | Depth1F::Bx(..) | Depth1F::Ge(..) | Depth1F::Le(..) => {
-                CutStatus::Neither
-            }
-            Depth1F::Disj(_, phi0, phi1) => {
+            FlatFormula::Dm(..)
+            | FlatFormula::Bx(..)
+            | FlatFormula::Ge(..)
+            | FlatFormula::Le(..) => CutStatus::Neither,
+            FlatFormula::Disj(_, phi0, phi1) => {
                 if phi1.depth() == 0 {
                     mem::swap(phi0.as_mut(), phi1.as_mut());
                 }
-                match phi1.unnest_rec() {
+                match phi1.flatten_rec() {
                     CutStatus::Neither => {
-                        let phi1 = mem::replace(phi1.as_mut(), Depth1F::Bool(false));
-                        *self = mem::replace(phi0.as_mut(), Depth1F::Bool(false));
+                        let phi1 = mem::replace(phi1.as_mut(), FlatFormula::Bool(false));
+                        *self = mem::replace(phi0.as_mut(), FlatFormula::Bool(false));
                         CutStatus::Disj(phi1)
                     }
                     cutstatus @ CutStatus::Disj(..) => {
@@ -283,14 +283,14 @@ impl Depth1F {
                     }
                 }
             }
-            Depth1F::Conj(_, phi0, phi1) => {
+            FlatFormula::Conj(_, phi0, phi1) => {
                 if phi1.depth() == 0 {
                     mem::swap(phi0.as_mut(), phi1.as_mut());
                 }
-                match phi1.unnest_rec() {
+                match phi1.flatten_rec() {
                     CutStatus::Neither => {
-                        let phi1 = mem::replace(phi1.as_mut(), Depth1F::Bool(false));
-                        *self = mem::replace(phi0.as_mut(), Depth1F::Bool(false));
+                        let phi1 = mem::replace(phi1.as_mut(), FlatFormula::Bool(false));
+                        *self = mem::replace(phi0.as_mut(), FlatFormula::Bool(false));
                         CutStatus::Conj(phi1)
                     }
                     cutstatus @ CutStatus::Conj(..) => {
@@ -315,55 +315,54 @@ impl Depth1F {
 }
 
 impl Formula {
-    fn init_depth1(self: &Rc<Formula>) -> Depth1F {
+    fn init_flat(self: &Rc<Formula>) -> FlatFormula {
         match self.as_ref() {
-            Formula::Bottom => Depth1F::Bool(false),
-            Formula::Top => Depth1F::Bool(true),
-            Formula::PropVar(p, Some(i)) => Depth1F::VarI(true, *p, *i as usize),
-            Formula::PropVar(p, None) => Depth1F::Var(true, *p),
-            Formula::Not(phi) => phi.init_neg_depth1(),
-            Formula::And(phi0, phi1) => phi0.init_depth1().conj(phi1.init_depth1()),
-            Formula::Or(phi0, phi1) => phi0.init_depth1().disj(phi1.init_depth1()),
-            Formula::Imply(phi0, phi1) => phi0.init_neg_depth1().disj(phi1.init_depth1()),
+            Formula::Bottom => FlatFormula::Bool(false),
+            Formula::Top => FlatFormula::Bool(true),
+            Formula::PropVar(p, Some(i)) => FlatFormula::VarI(true, *p, *i as usize),
+            Formula::PropVar(p, None) => FlatFormula::Var(true, *p),
+            Formula::Not(phi) => phi.init_neg_flat(),
+            Formula::And(phi0, phi1) => phi0.init_flat().conj(phi1.init_flat()),
+            Formula::Or(phi0, phi1) => phi0.init_flat().disj(phi1.init_flat()),
+            Formula::Imply(phi0, phi1) => phi0.init_neg_flat().disj(phi1.init_flat()),
             Formula::Iff(phi0, phi1) => phi0
-                .init_depth1()
-                .conj(phi1.init_depth1())
-                .disj(phi0.init_neg_depth1().conj(phi1.init_neg_depth1())),
-            Formula::Box(phi) => phi.init_depth1().bx(),
-            Formula::Diamond(phi) => phi.init_depth1().dm(),
-            Formula::DiamondGe(c, phi) => phi.init_depth1().ge(*c),
-            Formula::DiamondLe(c, phi) => phi.init_depth1().le(*c),
+                .init_flat()
+                .conj(phi1.init_flat())
+                .disj(phi0.init_neg_flat().conj(phi1.init_neg_flat())),
+            Formula::Box(phi) => phi.init_flat().bx(),
+            Formula::Diamond(phi) => phi.init_flat().dm(),
+            Formula::DiamondGe(c, phi) => phi.init_flat().ge(*c),
+            Formula::DiamondLe(c, phi) => phi.init_flat().le(*c),
         }
     }
 
-    fn init_neg_depth1(self: &Rc<Formula>) -> Depth1F {
-        // println!("Init Neg: {self}");
+    fn init_neg_flat(self: &Rc<Formula>) -> FlatFormula {
         match self.as_ref() {
-            Formula::Bottom => Depth1F::Bool(true),
-            Formula::Top => Depth1F::Bool(false),
-            Formula::PropVar(p, Some(i)) => Depth1F::VarI(false, *p, *i as usize),
-            Formula::PropVar(p, None) => Depth1F::Var(false, *p),
-            Formula::Not(phi) => phi.init_depth1(),
-            Formula::And(phi0, phi1) => phi0.init_neg_depth1().disj(phi1.init_neg_depth1()),
-            Formula::Or(phi0, phi1) => phi0.init_neg_depth1().conj(phi1.init_neg_depth1()),
-            Formula::Imply(phi0, phi1) => phi0.init_depth1().conj(phi1.init_neg_depth1()),
+            Formula::Bottom => FlatFormula::Bool(true),
+            Formula::Top => FlatFormula::Bool(false),
+            Formula::PropVar(p, Some(i)) => FlatFormula::VarI(false, *p, *i as usize),
+            Formula::PropVar(p, None) => FlatFormula::Var(false, *p),
+            Formula::Not(phi) => phi.init_flat(),
+            Formula::And(phi0, phi1) => phi0.init_neg_flat().disj(phi1.init_neg_flat()),
+            Formula::Or(phi0, phi1) => phi0.init_neg_flat().conj(phi1.init_neg_flat()),
+            Formula::Imply(phi0, phi1) => phi0.init_flat().conj(phi1.init_neg_flat()),
             Formula::Iff(phi0, phi1) => phi0
-                .init_depth1()
-                .conj(phi1.init_neg_depth1())
-                .disj(phi0.init_neg_depth1().conj(phi1.init_depth1())),
-            Formula::Box(phi) => phi.init_neg_depth1().dm(),
-            Formula::Diamond(phi) => phi.init_neg_depth1().bx(),
-            Formula::DiamondGe(c, phi) => phi.init_depth1().le(*c - 1),
-            Formula::DiamondLe(c, phi) => phi.init_depth1().ge(*c + 1),
+                .init_flat()
+                .conj(phi1.init_neg_flat())
+                .disj(phi0.init_neg_flat().conj(phi1.init_flat())),
+            Formula::Box(phi) => phi.init_neg_flat().dm(),
+            Formula::Diamond(phi) => phi.init_neg_flat().bx(),
+            Formula::DiamondGe(c, phi) => phi.init_flat().le(*c - 1),
+            Formula::DiamondLe(c, phi) => phi.init_flat().ge(*c + 1),
         }
     }
 }
 
 enum CutStatus {
     Neither,
-    Disj(Depth1F),
-    Conj(Depth1F),
-    Both(Depth1F, Depth1F),
+    Disj(FlatFormula),
+    Conj(FlatFormula),
+    Both(FlatFormula, FlatFormula),
 }
 
 mod test {
