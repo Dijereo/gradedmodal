@@ -5,7 +5,7 @@ use crate::{
     rules3::Feasibility,
     tableau2::{TabChildren, TableauNode2},
     transit::{
-        BTransit, Constraint, ParaClique, Transit, Transit4, Transit5, TransitB5, TransitKOr45,
+        BaseTransit, Constraint, ParaClique, Transit, Transit4, Transit5, TransitB5, TransitKOr45,
         TransitT,
     },
 };
@@ -67,7 +67,7 @@ impl Transit for Transit5 {
     }
 }
 
-impl<T: BTransit> ParaClique<T> {
+impl<T: BaseTransit> ParaClique<T> {
     fn solve(&mut self, spotconstraints: &Vec<Constraint>) {
         let mut problem = ProblemVariables::new();
         self.spotws.set_choices(true);

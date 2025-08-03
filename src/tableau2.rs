@@ -9,7 +9,7 @@ use std::{
 use crate::{
     formula::Formula,
     rules3::Feasibility,
-    transit::{BTransit, Transit},
+    transit::{BaseTransit, Transit},
 };
 
 pub(crate) enum TabChildren<T> {
@@ -33,21 +33,22 @@ pub(crate) struct Conflict {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Label {
+pub(crate) struct LabeledFormula {
     pub(crate) formula: Rc<Formula>,
     pub(crate) conflictset: Vec<Conflict>,
+    pub(crate) lemma: bool,
 }
 
 pub(crate) struct TableauNode2<T> {
     pub(crate) feasibility: Feasibility,
-    pub(crate) formulae: Vec<Label>,
+    pub(crate) formulae: Vec<LabeledFormula>,
     pub(crate) choices: Vec<(usize, usize)>,
     pub(crate) children: TabChildren<T>,
     pub(crate) parent: Weak<RefCell<TableauNode2<T>>>,
 }
 
-impl<T: BTransit> TableauNode2<T> {
-    pub(crate) fn from_formulae(labels: Vec<Label>, parent: Option<&Rc<RefCell<Self>>>) -> Self {
+impl<T: BaseTransit> TableauNode2<T> {
+    pub(crate) fn from_formulae(labels: Vec<LabeledFormula>, parent: Option<&Rc<RefCell<Self>>>) -> Self {
         let mut tab = Self {
             feasibility: Feasibility::Feasible,
             formulae: vec![],
@@ -59,15 +60,16 @@ impl<T: BTransit> TableauNode2<T> {
             tab.add_check_dup_contra(label);
         }
         if tab.formulae.is_empty() {
-            tab.formulae.push(Label {
+            tab.formulae.push(LabeledFormula {
                 formula: Formula::top(),
                 conflictset: vec![],
+                lemma: false,
             });
         }
         tab
     }
 
-    pub(crate) fn traverse_anc_formulae(&self, map_while: &mut impl FnMut(&Label) -> bool) {
+    pub(crate) fn traverse_anc_formulae(&self, map_while: &mut impl FnMut(&LabeledFormula) -> bool) {
         for label in &self.formulae {
             if !map_while(label) {
                 return;
@@ -121,7 +123,7 @@ impl<T: BTransit> TableauNode2<T> {
         }
     }
 
-    pub(crate) fn add_check_dup_contra(&mut self, new_label: Label) -> DupContra {
+    pub(crate) fn add_check_dup_contra(&mut self, new_label: LabeledFormula) -> DupContra {
         // println!("New Formula: {}", new_label.formula);
         if let Some(confs) = self.check_dup(&new_label.formula) {
             // println!("Dup");
@@ -135,9 +137,10 @@ impl<T: BTransit> TableauNode2<T> {
             let mut confs2 = confs.clone();
             confs2.extend(new_label.conflictset.clone());
             self.formulae.push(new_label);
-            self.formulae.push(Label {
+            self.formulae.push(LabeledFormula {
                 formula: Formula::bottom(),
                 conflictset: confs2,
+                lemma: false,
             });
             self.feasibility = Feasibility::Contradiction;
             // println!("Contra");

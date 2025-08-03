@@ -1,4 +1,4 @@
-use std::{cell::RefCell, cmp::max, mem, rc::Rc};
+use std::{cmp::max, mem, rc::Rc};
 
 use crate::formula::Formula;
 

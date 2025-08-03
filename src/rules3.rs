@@ -4,8 +4,8 @@ use crate::{
     flatformula::FlatFormula,
     formula::Formula,
     frame::FrameCondition,
-    tableau2::{Conflict, DupContra, Label, TabBranch, TabChildren, TableauNode2},
-    transit::{BTransit, Modals, Transit, Transit4},
+    tableau2::{Conflict, DupContra, LabeledFormula, TabBranch, TabChildren, TableauNode2},
+    transit::{BaseTransit, Modals, Transit, Transit4},
 };
 
 // TODO: Combine No Solution and Infeasible
@@ -30,7 +30,7 @@ pub(crate) enum ForkType {
 #[derive(Clone, Debug)]
 struct Branch {
     id: usize,
-    labels: Vec<Label>,
+    labels: Vec<LabeledFormula>,
 }
 
 #[derive(Clone, Debug)]
@@ -62,9 +62,10 @@ impl GradedKCalc {
         }
         let labels = formulae
             .into_iter()
-            .map(|f| Label {
+            .map(|f| LabeledFormula {
                 formula: f,
                 conflictset: vec![],
+                lemma: false,
             })
             .collect();
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(labels, None)));
@@ -79,11 +80,11 @@ impl GradedKCalc {
         if tab.borrow().is_closed() {
             return tab;
         }
-        calc.transition_rec(&tab);
+        calc.first_transition(&tab);
         tab
     }
 
-    pub(crate) fn transition_rec<T: Transit>(&mut self, tab: &Rc<RefCell<TableauNode2<T>>>) {
+    pub(crate) fn first_transition<T: Transit>(&mut self, tab: &Rc<RefCell<TableauNode2<T>>>) {
         if tab.borrow().is_closed() {
             return;
         }
@@ -91,48 +92,21 @@ impl GradedKCalc {
         TableauNode2::get_flowers(tab, &mut flowers);
         let mut feasibility = Feasibility::Infeasible;
         for flower in flowers {
-            let transit = self.transit(&flower);
-            match transit {
-                Some(transit) => {
-                    if let Feasibility::Feasible = transit.feasibility() {
-                        feasibility = Feasibility::Feasible;
-                    }
-                    flower.borrow_mut().feasibility = transit.feasibility();
-                    flower.borrow_mut().children = TabChildren::Transition(transit);
+            if let Some(transit) = self.first_transit(&flower) {
+                if let Feasibility::Feasible = transit.feasibility() {
+                    feasibility = Feasibility::Feasible;
                 }
-                None => feasibility = Feasibility::Feasible,
+                flower.borrow_mut().feasibility = transit.feasibility();
+                flower.borrow_mut().children = TabChildren::Transition(transit);
+            } else {
+                feasibility = Feasibility::Feasible;
             }
         }
         // TODO: Set entire tree of feasibility
         tab.borrow_mut().feasibility = feasibility;
     }
 
-    pub(crate) fn diffract_rec(&mut self, transit: &mut Transit4) {
-        if transit.feasibility.is_bad() {
-            return;
-        }
-        let mut flowers = Vec::new();
-        TableauNode2::get_flowers(&transit.paraws.tab, &mut flowers);
-        let mut feasibility = Feasibility::Infeasible;
-        for flower in flowers {
-            let subtransit = transit.diffract(&flower, self);
-            match subtransit {
-                Some(subtransit) => {
-                    if let Feasibility::Feasible = subtransit.feasibility {
-                        feasibility = Feasibility::Feasible;
-                    }
-                    flower.borrow_mut().feasibility = subtransit.feasibility;
-                    flower.borrow_mut().children = TabChildren::Transition(subtransit);
-                }
-                None => feasibility = Feasibility::Feasible,
-            }
-        }
-        // TODO: Set entire tree of feasibility
-        transit.feasibility = feasibility;
-        transit.paraws.tab.borrow_mut().feasibility = feasibility;
-    }
-
-    pub(crate) fn expand_static<T: BTransit>(
+    pub(crate) fn expand_static<T: BaseTransit>(
         &mut self,
         tab: &Rc<RefCell<TableauNode2<T>>>,
         mut forks: VecDeque<Fork>,
@@ -151,7 +125,7 @@ impl GradedKCalc {
         self.apply_forks(tab, forks, isroot);
     }
 
-    fn expand_linear<T: BTransit>(&self, tab: &mut TableauNode2<T>, reflexive: bool) {
+    fn expand_linear<T: BaseTransit>(&self, tab: &mut TableauNode2<T>, reflexive: bool) {
         let mut i = 0;
         while let Some(label) = tab.formulae.get(i).cloned() {
             let mut new_formulae = PropLinear.expand(&label.formula);
@@ -159,9 +133,10 @@ impl GradedKCalc {
                 new_formulae.extend(TLinear.expand(&label.formula));
             }
             for new_formula in new_formulae {
-                tab.add_check_dup_contra(Label {
+                tab.add_check_dup_contra(LabeledFormula {
                     formula: new_formula,
                     conflictset: label.conflictset.clone(),
+                    lemma: label.lemma,
                 });
                 if tab.is_closed() {
                     return;
@@ -171,8 +146,11 @@ impl GradedKCalc {
         }
     }
 
-    fn store_disjs<T: BTransit>(&mut self, tab: &TableauNode2<T>, forks: &mut VecDeque<Fork>) {
+    fn store_disjs<T: BaseTransit>(&mut self, tab: &TableauNode2<T>, forks: &mut VecDeque<Fork>) {
         for label in &tab.formulae {
+            if label.lemma {
+                continue;
+            }
             let branches = PropFork.expand(&label.formula);
             if branches.is_empty() {
                 continue;
@@ -185,7 +163,7 @@ impl GradedKCalc {
         }
     }
 
-    fn resolve_forks<T: BTransit>(
+    fn resolve_forks<T: BaseTransit>(
         &mut self,
         tab: &Rc<RefCell<TableauNode2<T>>>,
         forks: &mut VecDeque<Fork>,
@@ -226,18 +204,20 @@ impl GradedKCalc {
             conflictset.sort();
             conflictset.dedup();
             if fork.branches.is_empty() {
-                let confs = tab.borrow_mut().add_check_dup_contra(Label {
+                let confs = tab.borrow_mut().add_check_dup_contra(LabeledFormula {
                     formula: Formula::bottom(),
                     conflictset,
+                    lemma: false,
                 });
                 return;
             } else if fork.branches.len() == 1 {
                 let branch = fork.branches.pop().expect("Checked in if statement above");
                 tab.borrow_mut().choices.push((fork.id, branch.id));
                 for label in branch.labels {
-                    let confs = tab.borrow_mut().add_check_dup_contra(Label {
+                    let confs = tab.borrow_mut().add_check_dup_contra(LabeledFormula {
                         formula: label.formula,
                         conflictset: conflictset.clone(),
+                        lemma: label.lemma,
                     });
                     if tab.borrow().is_closed() {
                         return;
@@ -248,9 +228,10 @@ impl GradedKCalc {
                 let branch = fork.branches.pop().expect("Checked by if let find");
                 tab.borrow_mut().choices.push((fork.id, branch.id));
                 for label in branch.labels {
-                    let confs = tab.borrow_mut().add_check_dup_contra(Label {
+                    let confs = tab.borrow_mut().add_check_dup_contra(LabeledFormula {
                         formula: label.formula,
                         conflictset: conflictset.clone(),
+                        lemma: label.lemma,
                     });
                     if tab.borrow().is_closed() {
                         return;
@@ -264,7 +245,7 @@ impl GradedKCalc {
         forks.append(&mut unresolved);
     }
 
-    fn apply_forks<T: BTransit>(
+    fn apply_forks<T: BaseTransit>(
         &mut self,
         tab: &Rc<RefCell<TableauNode2<T>>>,
         mut forks: VecDeque<Fork>,
@@ -310,7 +291,10 @@ impl GradedKCalc {
         tab.borrow_mut().feasibility = feasibility;
     }
 
-    fn transit<T: Transit>(&mut self, fruit: &Rc<RefCell<TableauNode2<T>>>) -> Option<T> {
+    pub(crate) fn first_transit<T: Transit>(
+        &mut self,
+        fruit: &Rc<RefCell<TableauNode2<T>>>,
+    ) -> Option<T> {
         let mut labels = vec![];
         fruit.borrow().traverse_anc_formulae(&mut |label| {
             labels.push(label.clone());
@@ -355,9 +339,10 @@ impl ForkStore {
                 labels: vec![],
             };
             for formula in branch {
-                let label = Label {
+                let label = LabeledFormula {
                     formula,
                     conflictset: conflictset.clone(),
+                    lemma: false,
                 };
                 fork_branch.labels.push(label);
             }
@@ -442,6 +427,7 @@ impl TLinear {
     fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>> {
         match formula.as_ref() {
             Formula::Box(phi) => vec![phi.clone()],
+            Formula::DiamondLe(0, phi) => vec![phi.not()],
             Formula::Bottom
             | Formula::Top
             | Formula::PropVar(..)

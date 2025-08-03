@@ -75,6 +75,7 @@ pub fn run() {
                         println!("{}", f);
                         println!();
                         // let tab = S4_CALCULUS.sat(vec![f]);
+                        // TODO: remove Frames trait
                         match framecond {
                             FrameCondition::K => println!(
                                 "{}",
@@ -113,7 +114,7 @@ pub fn run() {
                             FrameCondition::S5 => {
                                 println!("{}", DisplayTableau(FramesB5::<true>.sat(vec![f])))
                             }
-                        };
+                        }
                     }
                     Err(Some((i, tok))) => {
                         eprintln!("Error: bad token sequence '{:#?}' at index {}", tok, i)
