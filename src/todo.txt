@@ -21,9 +21,9 @@ add unit tests for depth1 algo
 change frame conditions to const generics
 add comments/docs
 display reflexion tableaux
-rename reflexion -> spotlight, unnest -> flatten, depth1 -> flat
+rename reflexion -> spotlight, unnest -> flatten, ranges -> forkids
 change hasher
 fix display
 smaller files
 better negation and equality check
-change transit enum to generics
+move display function to separate trait

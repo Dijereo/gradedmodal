@@ -92,7 +92,7 @@ impl GradedKCalc {
         TableauNode2::get_flowers(tab, &mut flowers);
         let mut feasibility = Feasibility::Infeasible;
         for flower in flowers {
-            if let Some(transit) = self.first_transit(&flower) {
+            if let Some(transit) = T::first_transit(&flower, self) {
                 if let Feasibility::Feasible = transit.feasibility() {
                     feasibility = Feasibility::Feasible;
                 }

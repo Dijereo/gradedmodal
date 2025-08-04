@@ -48,7 +48,10 @@ pub(crate) struct TableauNode2<T> {
 }
 
 impl<T: BaseTransit> TableauNode2<T> {
-    pub(crate) fn from_formulae(labels: Vec<LabeledFormula>, parent: Option<&Rc<RefCell<Self>>>) -> Self {
+    pub(crate) fn from_formulae(
+        labels: Vec<LabeledFormula>,
+        parent: Option<&Rc<RefCell<Self>>>,
+    ) -> Self {
         let mut tab = Self {
             feasibility: Feasibility::Feasible,
             formulae: vec![],
@@ -69,7 +72,10 @@ impl<T: BaseTransit> TableauNode2<T> {
         tab
     }
 
-    pub(crate) fn traverse_anc_formulae(&self, map_while: &mut impl FnMut(&LabeledFormula) -> bool) {
+    pub(crate) fn traverse_anc_formulae(
+        &self,
+        map_while: &mut impl FnMut(&LabeledFormula) -> bool,
+    ) {
         for label in &self.formulae {
             if !map_while(label) {
                 return;
@@ -200,7 +206,9 @@ impl<T: BaseTransit> TableauNode2<T> {
     ) {
         // OPT: bin search + remove
         if let Some(parent) = self.parent.upgrade() {
-            parent.borrow().get_choices(choices, forkranges);
+            if let TabChildren::Fork { .. } = parent.borrow().children {
+                parent.borrow().get_choices(choices, forkranges);
+            }
         }
         choices.extend(
             self.choices

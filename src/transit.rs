@@ -1,4 +1,10 @@
-use std::{cell::RefCell, collections::VecDeque, fmt, mem, ops::RangeInclusive, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::VecDeque,
+    fmt, mem,
+    ops::RangeInclusive,
+    rc::{Rc, Weak},
+};
 
 use good_lp::Variable;
 
@@ -16,7 +22,7 @@ pub(crate) struct Modals {
     pub(crate) le: Vec<(u32, LabeledFormula)>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Constraint {
     pub(crate) forkid: usize,
     pub(crate) sense: bool,
@@ -259,30 +265,52 @@ impl Constraint {
 }
 
 impl<T: BaseTransit> ParallelWorlds<T> {
-    fn from_modals(modals: &Modals, calc: &mut GradedKCalc) -> (Self, Vec<Constraint>) {
+    fn from_modals(
+        modals: &Modals,
+        parent: Option<&Rc<RefCell<TableauNode2<T>>>>,
+        calc: &mut GradedKCalc,
+    ) -> (Self, Vec<Constraint>) {
         let (forkranges, constraints) = modals.to_forks_constraints(&mut calc.forks);
-        let this = Self::from_forks(modals.bx.clone(), forkranges.into_iter(), calc);
+        let this = Self::from_forks(
+            modals.bx.clone(),
+            forkranges.into_iter().collect(),
+            parent,
+            calc,
+        );
         (this, constraints)
     }
 
-    fn from_forks<'a>(
+    fn from_forks(
         formulae: Vec<LabeledFormula>,
-        forkids: impl Iterator<Item = RangeInclusive<usize>>,
+        forkids: Vec<RangeInclusive<usize>>,
+        parent: Option<&Rc<RefCell<TableauNode2<T>>>>,
         calc: &mut GradedKCalc,
     ) -> Self {
-        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(formulae, None)));
-        let forkid_ranges = Vec::from_iter(forkids);
+        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(formulae, parent)));
         let forks = VecDeque::from_iter(
-            forkid_ranges
+            forkids
                 .iter()
                 .flat_map(|r| calc.forks.forks[r.clone()].iter().cloned()),
         );
         calc.expand_static(&tab, forks, false);
         Self {
             tab,
-            forkid_ranges,
+            forkid_ranges: forkids,
             choices: vec![],
         }
+    }
+
+    fn add_forks(
+        &mut self,
+        forkids: impl Iterator<Item = RangeInclusive<usize>>,
+        calc: &mut GradedKCalc,
+    ) {
+        let mut forks = VecDeque::new();
+        for range in forkids {
+            forks.extend(calc.forks.forks[range.clone()].iter().cloned());
+            self.forkid_ranges.push(range);
+        }
+        calc.expand_static(&self.tab, forks, false);
     }
 
     pub(crate) fn set_choices(&mut self, dedup: bool) {
@@ -317,6 +345,11 @@ pub(crate) trait BaseTransit: Sized {
         self.feasibility().is_bad()
     }
 
+    fn first_transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut GradedKCalc,
+    ) -> Option<Self>;
+
     fn from_modals(
         modals: Modals,
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
@@ -343,6 +376,13 @@ impl BaseTransit for TransitKOr45 {
         calc.first_transition(&self.paraws.tab)
     }
 
+    fn first_transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut GradedKCalc,
+    ) -> Option<Self> {
+        calc.first_transit(fruit)
+    }
+
     fn display_transit(
         &self,
         f: &mut fmt::Formatter<'_>,
@@ -352,7 +392,11 @@ impl BaseTransit for TransitKOr45 {
     ) -> fmt::Result {
         writeln!(f)?;
         writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        Constraint::display(f, self.modals.bx.iter().map(|lab| &lab.formula), &self.constraints)?;
+        Constraint::display(
+            f,
+            self.modals.bx.iter().map(|lab| &lab.formula),
+            &self.constraints,
+        )?;
         writeln!(f)?;
         TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
         writeln!(f)?;
@@ -377,10 +421,10 @@ impl BaseTransit for TransitKOr45 {
 
     fn from_modals(
         modals: Modals,
-        _leaf: &Rc<RefCell<TableauNode2<Self>>>,
+        leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut GradedKCalc,
     ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(&modals, calc);
+        let (paraws, constraints) = ParallelWorlds::from_modals(&modals, Some(leaf), calc);
         let feasibility = paraws.tab.borrow().feasibility;
         Self {
             feasibility,
@@ -397,15 +441,32 @@ impl BaseTransit for TransitT {
         self.feasibility
     }
 
+    fn first_transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut GradedKCalc,
+    ) -> Option<Self> {
+        Self::reflect(fruit, vec![], None.into_iter(), calc)
+    }
+
     fn recurse(&mut self, calc: &mut GradedKCalc) {
-        if self.feasibility.is_bad() {
+        if self.is_closed() {
             return;
         }
         let mut flowers = Vec::new();
         TableauNode2::get_flowers(&self.paraws.tab, &mut flowers);
         let mut feasibility = Feasibility::Infeasible;
         for flower in flowers {
-            if let Some(subtransit) = self.reflect(&flower, calc) {
+            let subtransit = if self.reflexion {
+                Self::reflect(
+                    &flower,
+                    self.ranges.clone(),
+                    self.constraints.iter().cloned(),
+                    calc,
+                )
+            } else {
+                Self::reflect(&flower, self.ranges.clone(), None.into_iter(), calc)
+            };
+            if let Some(subtransit) = subtransit {
                 if let Feasibility::Feasible = subtransit.feasibility {
                     feasibility = Feasibility::Feasible;
                 }
@@ -437,8 +498,10 @@ impl BaseTransit for TransitT {
         Constraint::display(f, self.box_subformulae.iter(), &self.constraints)?;
         writeln!(f)?;
         TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
+        if self.reflexion {
+            return writeln!(f)
+        }
         writeln!(f)?;
-        todo!();
         for (i, choice) in self.paraws.choices.iter().enumerate() {
             write!(f, "w{i}: ")?;
             for (forkid, branchid) in choice {
@@ -460,11 +523,16 @@ impl BaseTransit for TransitT {
 
     fn from_modals(
         modals: Modals,
-        _leaf: &Rc<RefCell<TableauNode2<Self>>>,
+        leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut GradedKCalc,
     ) -> Self {
         let (ranges, constraints) = modals.to_forks_constraints(&mut calc.forks);
-        let paraws = ParallelWorlds::from_forks(modals.bx.clone(), ranges.iter().cloned(), calc);
+        let ranges = ranges.map_or(vec![], |r| vec![r]);
+        let paraws =
+            ParallelWorlds::from_forks(modals.bx.clone(), ranges.clone(), Some(leaf), calc);
+        for lab in &paraws.tab.borrow().formulae {
+            println!("P: {} L: {}", lab.formula, lab.lemma);
+        }
         let feasibility = paraws.tab.borrow().feasibility;
         Self {
             reflexion: true,
@@ -472,7 +540,7 @@ impl BaseTransit for TransitT {
             box_subformulae: modals.bx.into_iter().map(|lab| lab.formula).collect(),
             paraws,
             constraints,
-            ranges: ranges.map_or(vec![], |r| vec![r]),
+            ranges,
             vars: vec![],
             solution: vec![],
         }
@@ -482,16 +550,24 @@ impl BaseTransit for TransitT {
 impl TransitT {
     fn from_reflection(
         modals: Modals,
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
         mut labels: Vec<LabeledFormula>,
-        srcranges: impl Iterator<Item = RangeInclusive<usize>>,
+        mut ranges: Vec<RangeInclusive<usize>>,
+        src_constraints: impl Iterator<Item = Constraint>,
         calc: &mut GradedKCalc,
     ) -> Self {
-        let (forkids, constraints) = modals.to_forks_constraints(&mut calc.forks);
-        let ranges: Vec<_> = srcranges.chain(forkids.into_iter()).collect();
+        let (forkids, mut constraints) = modals.to_forks_constraints(&mut calc.forks);
         for lab in labels.iter_mut() {
             lab.lemma = true;
         }
-        let paraws = ParallelWorlds::<Self>::from_forks(labels, ranges.iter().cloned(), calc);
+        let paraws = ParallelWorlds::<Self>::from_forks(
+            labels,
+            forkids.clone().map_or(vec![], |f| vec![f]),
+            Some(fruit),
+            calc,
+        );
+        ranges.extend(forkids.into_iter());
+        constraints.extend(src_constraints);
         let feasibility = paraws.tab.borrow().feasibility;
         Self {
             reflexion: true,
@@ -506,8 +582,9 @@ impl TransitT {
     }
 
     pub(crate) fn reflect(
-        &self,
         fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        ranges: Vec<RangeInclusive<usize>>,
+        src_constraints: impl Iterator<Item = Constraint>,
         calc: &mut GradedKCalc,
     ) -> Option<Self> {
         let mut labels = vec![];
@@ -517,9 +594,19 @@ impl TransitT {
         });
         let modals = Modals::new(labels.iter().filter(|lab| !lab.lemma), false, false);
         if modals.ge.is_empty() && modals.le.is_empty() {
-            return Self::transition(labels.iter(), self.ranges.clone(), calc);
+            if let Some(mut transit) = Self::transition(fruit, labels.iter(), ranges.clone(), src_constraints.collect(), calc)
+            {
+                let mut choices = Vec::new();
+                Self::get_choices(fruit, &mut choices, &ranges);
+                // transit.set_choices();
+                transit.full_solve(&choices);
+                return Some(transit);
+            } else {
+                return None;
+            }
         }
-        let mut transit = Self::from_reflection(modals, labels, self.ranges.iter().cloned(), calc);
+        let mut transit =
+            Self::from_reflection(modals, fruit, labels, ranges, src_constraints, calc);
         if transit.is_closed() {
             return Some(transit);
         }
@@ -527,13 +614,14 @@ impl TransitT {
         if transit.is_closed() {
             return Some(transit);
         }
-        transit.solve();
         Some(transit)
     }
 
     fn transition<'a>(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
         labels: impl Iterator<Item = &'a LabeledFormula>,
         ranges: Vec<RangeInclusive<usize>>,
+        constraints: Vec<Constraint>,
         calc: &mut GradedKCalc,
     ) -> Option<Self> {
         if ranges.is_empty() {
@@ -553,13 +641,13 @@ impl TransitT {
             })
             .collect();
         let box_subformulae = formulae.iter().map(|lab| lab.formula.clone()).collect();
-        let paraws = ParallelWorlds::<Self>::from_forks(formulae, ranges.iter().cloned(), calc);
+        let paraws = ParallelWorlds::<Self>::from_forks(formulae, ranges, Some(fruit), calc);
         let feasibility = paraws.tab.borrow().feasibility;
         let mut subtransit = Self {
             reflexion: false,
             feasibility,
             paraws,
-            constraints: vec![],
+            constraints,
             box_subformulae,
             vars: vec![],
             solution: vec![],
@@ -572,7 +660,6 @@ impl TransitT {
         if subtransit.is_closed() {
             return Some(subtransit);
         }
-        subtransit.solve();
         Some(subtransit)
     }
 }
@@ -584,15 +671,22 @@ impl BaseTransit for TransitB5 {
 
     fn recurse(&mut self, _calc: &mut GradedKCalc) {}
 
+    fn first_transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut GradedKCalc,
+    ) -> Option<Self> {
+        calc.first_transit(fruit)
+    }
+
     fn from_modals(
         modals: Modals,
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut GradedKCalc,
     ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(&modals, calc);
+        let (paraws, constraints) = ParallelWorlds::from_modals(&modals, Some(leaf), calc);
         let feasibility = paraws.tab.borrow().feasibility;
         let reflexion = if paraws.tab.borrow().is_closed() {
-            ParallelWorlds::from_forks(vec![], [].into_iter(), calc)
+            ParallelWorlds::from_forks(vec![], vec![], Some(leaf), calc)
         } else {
             Self::get_reflexion(&modals, &paraws, leaf, calc)
         };
@@ -616,7 +710,11 @@ impl BaseTransit for TransitB5 {
     ) -> fmt::Result {
         writeln!(f)?;
         writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        Constraint::display(f, self.modals.bx.iter().map(|lab| &lab.formula), &self.constraints)?;
+        Constraint::display(
+            f,
+            self.modals.bx.iter().map(|lab| &lab.formula),
+            &self.constraints,
+        )?;
         writeln!(f)?;
         TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
         writeln!(f)?;
@@ -668,7 +766,7 @@ impl TransitB5 {
             formulae.push(l.clone());
             true
         });
-        ParallelWorlds::from_forks(formulae, paraws.forkid_ranges.iter().cloned(), calc)
+        ParallelWorlds::from_forks(formulae, paraws.forkid_ranges.clone(), Some(leaf), calc)
     }
 }
 
@@ -679,6 +777,13 @@ impl BaseTransit for Transit5 {
 
     fn recurse(&mut self, _calc: &mut GradedKCalc) {}
 
+    fn first_transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut GradedKCalc,
+    ) -> Option<Self> {
+        calc.first_transit(fruit)
+    }
+
     fn display_transit(
         &self,
         f: &mut fmt::Formatter<'_>,
@@ -688,7 +793,11 @@ impl BaseTransit for Transit5 {
     ) -> fmt::Result {
         writeln!(f)?;
         writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        Constraint::display(f, self.modals.bx.iter().map(|lab| &lab.formula), &self.spotconstraints)?;
+        Constraint::display(
+            f,
+            self.modals.bx.iter().map(|lab| &lab.formula),
+            &self.spotconstraints,
+        )?;
         writeln!(f)?;
         writeln!(f, "Second Transition Modals:")?;
         for (i, submodal) in self.submodals.iter().enumerate() {
@@ -733,7 +842,7 @@ impl BaseTransit for Transit5 {
 
     fn from_modals(
         modals: Modals,
-        _leaf: &Rc<RefCell<TableauNode2<Self>>>,
+        leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut GradedKCalc,
     ) -> Self {
         let submodals = modals.submodals();
@@ -747,7 +856,8 @@ impl BaseTransit for Transit5 {
                 submodals.iter(),
                 &settings,
                 modals.bx.iter().cloned(),
-                spotranges.iter().cloned(),
+                Vec::from_iter(spotranges.iter().cloned()),
+                leaf,
                 calc,
             );
             feasibility = feasibility.better(&paraclique.feasibility);
@@ -771,7 +881,8 @@ impl<T: Transit> ParaClique<T> {
         submodals: impl Iterator<Item = &'a LabeledFormula>,
         signs: &Vec<bool>,
         modalboxes: impl Iterator<Item = LabeledFormula>,
-        ranges: impl Iterator<Item = RangeInclusive<usize>>,
+        mut spotranges: Vec<RangeInclusive<usize>>,
+        leaf: &Rc<RefCell<TableauNode2<T>>>,
         calc: &mut GradedKCalc,
     ) -> Self {
         let settings: Vec<_> = submodals
@@ -787,12 +898,13 @@ impl<T: Transit> ParaClique<T> {
             })
             .collect();
         let cliquemodals = Modals::new(settings.iter(), false, false);
-        let (cliquews, cliqueconstraints) = ParallelWorlds::from_modals(&cliquemodals, calc);
+        let (cliquews, cliqueconstraints) =
+            ParallelWorlds::from_modals(&cliquemodals, Some(leaf), calc);
         let mut spotformulae = settings;
         spotformulae.extend(cliquemodals.bx.iter().cloned());
         spotformulae.extend(modalboxes);
-        let spotranges = ranges.chain(cliquews.forkid_ranges.iter().cloned());
-        let spotws = ParallelWorlds::from_forks(spotformulae, spotranges, calc);
+        spotranges.extend_from_slice(&cliquews.forkid_ranges);
+        let spotws = ParallelWorlds::from_forks(spotformulae, spotranges, Some(leaf), calc);
         let cliquefeas = spotws.tab.borrow().feasibility;
         ParaClique {
             settings: signs.clone(),
@@ -821,6 +933,13 @@ impl Transit5 {
 impl BaseTransit for Transit4 {
     fn feasibility(&self) -> Feasibility {
         self.feasibility
+    }
+
+    fn first_transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut GradedKCalc,
+    ) -> Option<Self> {
+        calc.first_transit(fruit)
     }
 
     fn recurse(&mut self, calc: &mut GradedKCalc) {
@@ -857,7 +976,11 @@ impl BaseTransit for Transit4 {
     ) -> fmt::Result {
         writeln!(f)?;
         writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        Constraint::display(f, self.modals.bx.iter().map(|lab| &lab.formula), &self.constraints)?;
+        Constraint::display(
+            f,
+            self.modals.bx.iter().map(|lab| &lab.formula),
+            &self.constraints,
+        )?;
         writeln!(f)?;
         TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
         writeln!(f)?;
@@ -882,10 +1005,10 @@ impl BaseTransit for Transit4 {
 
     fn from_modals(
         modals: Modals,
-        _leaf: &Rc<RefCell<TableauNode2<Self>>>,
+        leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut GradedKCalc,
     ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(&modals, calc);
+        let (paraws, constraints) = ParallelWorlds::from_modals(&modals, Some(leaf), calc);
         let feasibility = paraws.tab.borrow().feasibility;
         Self {
             feasibility,
@@ -902,12 +1025,14 @@ impl BaseTransit for Transit4 {
 impl Transit4 {
     fn from_diffraction(
         modals: Modals,
-        srcranges: impl Iterator<Item = RangeInclusive<usize>>,
+        mut ranges: Vec<RangeInclusive<usize>>,
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut GradedKCalc,
     ) -> Self {
         let (forkids, constraints) = modals.to_forks_constraints(&mut calc.forks);
-        let ranges: Vec<_> = srcranges.chain(forkids.into_iter()).collect();
-        let paraws = ParallelWorlds::from_forks(modals.bx.clone(), ranges.iter().cloned(), calc);
+        ranges.extend(forkids.into_iter());
+        let paraws =
+            ParallelWorlds::from_forks(modals.bx.clone(), ranges.clone(), Some(fruit), calc);
         let feasibility = paraws.tab.borrow().feasibility;
         Self {
             feasibility,
@@ -936,7 +1061,7 @@ impl Transit4 {
         if modals.ge.is_empty() {
             return None;
         }
-        let mut subtransit = Self::from_diffraction(modals, self.ranges.iter().cloned(), calc);
+        let mut subtransit = Self::from_diffraction(modals, self.ranges.clone(), fruit, calc);
         if subtransit.feasibility.is_bad() {
             return Some(subtransit);
         }
