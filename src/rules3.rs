@@ -224,12 +224,11 @@ impl GradedKCalc {
                     }
                 }
                 forks.append(&mut unresolved);
-            } else if let Some(_) = fork.branches.iter().find(|b| b.labels.is_empty()) {
-                let branch = fork.branches.pop().expect("Checked by if let find");
+            } else if let Some(branch) = fork.branches.iter().find(|b| b.labels.is_empty()) {
                 tab.borrow_mut().choices.push((fork.id, branch.id));
-                for label in branch.labels {
+                for label in &branch.labels {
                     let confs = tab.borrow_mut().add_check_dup_contra(LabeledFormula {
-                        formula: label.formula,
+                        formula: label.formula.clone(),
                         conflictset: conflictset.clone(),
                         lemma: label.lemma,
                     });

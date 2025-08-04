@@ -526,12 +526,16 @@ impl BaseTransit for TransitT {
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut GradedKCalc,
     ) -> Self {
+        for lab in &modals.bx {
+            println!("B: {} L: {}", lab.formula, lab.lemma);
+        }
         let (ranges, constraints) = modals.to_forks_constraints(&mut calc.forks);
         let ranges = ranges.map_or(vec![], |r| vec![r]);
+        println!("R: {:?}", ranges);
         let paraws =
             ParallelWorlds::from_forks(modals.bx.clone(), ranges.clone(), Some(leaf), calc);
         for lab in &paraws.tab.borrow().formulae {
-            println!("P: {} L: {}", lab.formula, lab.lemma);
+            println!("M: {} L: {}", lab.formula, lab.lemma);
         }
         let feasibility = paraws.tab.borrow().feasibility;
         Self {
@@ -560,6 +564,10 @@ impl TransitT {
         for lab in labels.iter_mut() {
             lab.lemma = true;
         }
+        for lab in &labels {
+            println!("L: {} L: {}", lab.formula, lab.lemma);
+        }
+        println!("R: {:?}", forkids);
         let paraws = ParallelWorlds::<Self>::from_forks(
             labels,
             forkids.clone().map_or(vec![], |f| vec![f]),
@@ -569,6 +577,9 @@ impl TransitT {
         ranges.extend(forkids.into_iter());
         constraints.extend(src_constraints);
         let feasibility = paraws.tab.borrow().feasibility;
+        for lab in &paraws.tab.borrow().formulae {
+            println!("F: {} L: {}", lab.formula, lab.lemma);
+        }
         Self {
             reflexion: true,
             feasibility,
@@ -627,7 +638,7 @@ impl TransitT {
         if ranges.is_empty() {
             return None;
         }
-        let formulae: Vec<_> = labels
+        let bxformulae: Vec<_> = labels
             .filter_map(|lab| {
                 if let Formula::Box(phi) = lab.formula.as_ref() {
                     Some(LabeledFormula {
@@ -640,15 +651,22 @@ impl TransitT {
                 }
             })
             .collect();
-        let box_subformulae = formulae.iter().map(|lab| lab.formula.clone()).collect();
-        let paraws = ParallelWorlds::<Self>::from_forks(formulae, ranges, Some(fruit), calc);
+        for lab in &bxformulae {
+            println!("T: {} L: {}", lab.formula, lab.lemma);
+        }
+        println!("R: {:?}", ranges);
+        let boxphis = bxformulae.iter().map(|lab| lab.formula.clone()).collect();
+        let paraws = ParallelWorlds::<Self>::from_forks(bxformulae, ranges, Some(fruit), calc);
         let feasibility = paraws.tab.borrow().feasibility;
+        for lab in &paraws.tab.borrow().formulae {
+            println!("P: {} L: {}", lab.formula, lab.lemma);
+        }
         let mut subtransit = Self {
             reflexion: false,
             feasibility,
             paraws,
             constraints,
-            box_subformulae,
+            box_subformulae: boxphis,
             vars: vec![],
             solution: vec![],
             ranges: vec![],
