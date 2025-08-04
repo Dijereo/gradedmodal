@@ -18,3 +18,12 @@ interface
 depth1 algo should use rc vs box when changes are no longer needed
 generalize depth1 algo to multiple nestings
 add unit tests for depth1 algo
+change frame conditions to const generics
+add comments/docs
+display reflexion tableaux
+rename reflexion -> spotlight, unnest -> flatten, ranges -> forkids
+change hasher
+fix display
+smaller files
+better negation and equality check
+move display function to separate trait

@@ -1,136 +1,144 @@
-use std::{cell::RefCell, collections::VecDeque, fmt, mem, rc::Rc};
+use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
 use crate::{
-    depth1::Depth1F, formula::Formula, frame::FrameCondition, ilp::check_feasibility, tableau2::{DupContra, Label, TabBranch, TabChildren, TableauNode2}
+    flatformula::FlatFormula,
+    formula::Formula,
+    frame::FrameCondition,
+    tableau2::{Conflict, DupContra, LabeledFormula, TabBranch, TabChildren, TableauNode2},
+    transit::{BaseTransit, Modals, Transit, Transit4},
 };
+
+// TODO: Combine No Solution and Infeasible
+#[derive(Clone, Copy)]
+pub(crate) enum Feasibility {
+    Feasible,
+    Infeasible,
+    NoSolution,
+    Contradiction,
+}
 
 struct PropLinear;
 struct PropFork;
+struct TLinear;
 
 #[derive(Clone, Debug)]
-enum ForkType {
-    Conjunction,
+pub(crate) enum ForkType {
+    Disjunction,
     ParallelWorlds,
 }
 
 #[derive(Clone, Debug)]
 struct Branch {
     id: usize,
-    labels: Vec<Label>,
+    labels: Vec<LabeledFormula>,
 }
 
 #[derive(Clone, Debug)]
-struct Fork {
-    id: usize,
-    fktype: ForkType,
-    branches: Vec<Branch>,
+pub(crate) struct Fork {
+    pub(crate) id: usize,
+    pub(crate) fktype: ForkType,
+    pub(crate) branches: Vec<Branch>,
 }
 
+// TODO: Rename
 pub(crate) struct GradedKCalc {
-    // leaves_backlog: VecDeque<Rc<RefCell<TableauNode2>>>,
-    framecond: FrameCondition,
-    forks: Vec<Fork>,
-}
-
-pub(crate) enum Feasibility {
-    NoTransition,
-    Feasible,
-    Contradiction,
-    NoSolution,
-    Unfeasible,
-}
-
-pub(crate) struct GradedTransit {
     pub(crate) framecond: FrameCondition,
-    pub(crate) boxed: Vec<Rc<Formula>>,
-    pub(crate) diamge: Vec<(u32, Rc<Formula>)>,
-    pub(crate) diamle: Vec<(u32, Rc<Formula>)>,
-    pub(crate) para_worlds: Vec<Vec<(usize, usize)>>,
-    pub(crate) outcome: Feasibility,
-    pub(crate) solution: Option<Vec<u32>>,
-    pub(crate) root: Option<Rc<RefCell<TableauNode2>>>,
+    pub(crate) forks: ForkStore,
+}
+
+pub(crate) struct ForkStore {
+    pub(crate) forks: Vec<Fork>,
 }
 
 impl GradedKCalc {
-    pub(crate) fn sat(
+    pub(crate) fn sat<T: Transit>(
         mut formulae: Vec<Rc<Formula>>,
         framecond: FrameCondition,
-    ) -> Rc<RefCell<TableauNode2>> {
+    ) -> Rc<RefCell<TableauNode2<T>>> {
         if framecond.luminal() {
             for f in formulae.iter_mut() {
-                *f = Depth1F::from(f.clone()).into();
+                *f = FlatFormula::from(f.clone()).into();
             }
         }
         let labels = formulae
             .into_iter()
-            .map(|f| Label {
+            .map(|f| LabeledFormula {
                 formula: f,
                 conflictset: vec![],
+                lemma: false,
             })
             .collect();
+        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(labels, None)));
         let mut calc = Self {
             framecond,
-            forks: vec![],
+            forks: ForkStore { forks: vec![] },
         };
-        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(labels, None)));
-        if !tab.borrow().is_closed {
-            calc.init(&tab);
-            calc.apply(&tab, VecDeque::new());
-            //todo get return value
+        if tab.borrow().is_closed() {
+            return tab;
         }
+        calc.expand_static(&tab, VecDeque::new(), true);
+        if tab.borrow().is_closed() {
+            return tab;
+        }
+        calc.first_transition(&tab);
         tab
     }
 
-    fn init(&self, tab: &Rc<RefCell<TableauNode2>>) {
-        // todo!()
-    }
-
-    fn apply(&mut self, tab: &Rc<RefCell<TableauNode2>>, forks: VecDeque<Fork>) -> bool {
-        if tab.borrow().is_closed {
-            return false;
+    pub(crate) fn first_transition<T: Transit>(&mut self, tab: &Rc<RefCell<TableauNode2<T>>>) {
+        if tab.borrow().is_closed() {
+            return;
         }
-        self.expand_static(tab, forks);
-        if tab.borrow().is_closed {
-            return false;
-        }
-        let mut open_leaves = Vec::new();
-        let mut feasible = false;
-        TableauNode2::get_open_leaves(tab, &mut open_leaves, false);
-        for leaf in open_leaves {
-            let transit = GradedTransit::create(&leaf, self.framecond);
-            match transit.outcome {
-                Feasibility::NoTransition | Feasibility::Feasible => {
-                    feasible = true;
+        let mut flowers = Vec::new();
+        TableauNode2::get_flowers(tab, &mut flowers);
+        let mut feasibility = Feasibility::Infeasible;
+        for flower in flowers {
+            if let Some(transit) = T::first_transit(&flower, self) {
+                if let Feasibility::Feasible = transit.feasibility() {
+                    feasibility = Feasibility::Feasible;
                 }
-                _ => {}
+                flower.borrow_mut().feasibility = transit.feasibility();
+                flower.borrow_mut().children = TabChildren::Transition(transit);
+            } else {
+                feasibility = Feasibility::Feasible;
             }
-            leaf.borrow_mut().children = TabChildren::Transition(transit);
         }
-        feasible
+        // TODO: Set entire tree of feasibility
+        tab.borrow_mut().feasibility = feasibility;
     }
 
-    fn expand_static(&mut self, tab: &Rc<RefCell<TableauNode2>>, mut forks: VecDeque<Fork>) {
-        self.expand_linear(&mut tab.borrow_mut());
-        if tab.borrow().is_closed {
+    pub(crate) fn expand_static<T: BaseTransit>(
+        &mut self,
+        tab: &Rc<RefCell<TableauNode2<T>>>,
+        mut forks: VecDeque<Fork>,
+        isroot: bool,
+    ) {
+        let reflexive = self.framecond.reflexive() || !isroot && self.framecond.euclidean();
+        self.expand_linear(&mut tab.borrow_mut(), reflexive);
+        if tab.borrow().is_closed() {
             return;
         }
-        self.add_forks(&tab.borrow(), &mut forks);
-        self.resolve_forks(&mut tab.borrow_mut(), &mut forks);
-        if tab.borrow().is_closed {
+        self.store_disjs(&tab.borrow(), &mut forks);
+        self.resolve_forks(&tab, &mut forks);
+        if tab.borrow().is_closed() {
             return;
         }
-        self.apply_forks(tab, forks);
+        self.apply_forks(tab, forks, isroot);
     }
 
-    fn expand_linear(&self, tab: &mut TableauNode2) {
+    fn expand_linear<T: BaseTransit>(&self, tab: &mut TableauNode2<T>, reflexive: bool) {
         let mut i = 0;
         while let Some(label) = tab.formulae.get(i).cloned() {
-            for new_formula in PropLinear.expand(&label.formula) {
-                tab.add_check_dup_contra(Label {
+            let mut new_formulae = PropLinear.expand(&label.formula);
+            if reflexive {
+                new_formulae.extend(TLinear.expand(&label.formula));
+            }
+            for new_formula in new_formulae {
+                tab.add_check_dup_contra(LabeledFormula {
                     formula: new_formula,
                     conflictset: label.conflictset.clone(),
+                    lemma: label.lemma,
                 });
-                if tab.is_closed {
+                if tab.is_closed() {
                     return;
                 }
             }
@@ -138,36 +146,28 @@ impl GradedKCalc {
         }
     }
 
-    fn add_forks(&mut self, tab: &TableauNode2, forks: &mut VecDeque<Fork>) {
+    fn store_disjs<T: BaseTransit>(&mut self, tab: &TableauNode2<T>, forks: &mut VecDeque<Fork>) {
         for label in &tab.formulae {
+            if label.lemma {
+                continue;
+            }
             let branches = PropFork.expand(&label.formula);
             if branches.is_empty() {
                 continue;
             }
-            let fork = Fork {
-                id: self.forks.len(),
-                fktype: ForkType::Conjunction,
-                branches: branches
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, b)| Branch {
-                        id: i,
-                        labels: b
-                            .into_iter()
-                            .map(|f| Label {
-                                formula: f,
-                                conflictset: label.conflictset.clone(),
-                            })
-                            .collect(),
-                    })
-                    .collect(),
-            };
-            forks.push_back(fork.clone());
-            self.forks.push(fork);
+            forks.push_back(self.forks.create_fork(
+                ForkType::Disjunction,
+                branches,
+                &label.conflictset,
+            ));
         }
     }
 
-    fn resolve_forks(&mut self, tab: &mut TableauNode2, forks: &mut VecDeque<Fork>) {
+    fn resolve_forks<T: BaseTransit>(
+        &mut self,
+        tab: &Rc<RefCell<TableauNode2<T>>>,
+        forks: &mut VecDeque<Fork>,
+    ) {
         let mut unresolved = VecDeque::new();
         while let Some(mut fork) = forks.pop_front() {
             let mut conflictset = vec![];
@@ -175,7 +175,7 @@ impl GradedKCalc {
             'outer: while let Some(branch) = fork.branches.get_mut(i) {
                 let mut j = 0;
                 'inner: while let Some(label) = branch.labels.get_mut(j) {
-                    match tab.check_dup_contra(&label.formula) {
+                    match tab.borrow().check_dup_contra(&label.formula) {
                         DupContra::Ok => {}
                         DupContra::Bottom => {
                             fork.branches.swap_remove(i);
@@ -204,20 +204,35 @@ impl GradedKCalc {
             conflictset.sort();
             conflictset.dedup();
             if fork.branches.is_empty() {
-                let confs = tab.add_check_dup_contra(Label {
+                let confs = tab.borrow_mut().add_check_dup_contra(LabeledFormula {
                     formula: Formula::bottom(),
                     conflictset,
+                    lemma: false,
                 });
                 return;
             } else if fork.branches.len() == 1 {
                 let branch = fork.branches.pop().expect("Checked in if statement above");
-                tab.choices.push((fork.id, branch.id));
+                tab.borrow_mut().choices.push((fork.id, branch.id));
                 for label in branch.labels {
-                    let confs = tab.add_check_dup_contra(Label {
+                    let confs = tab.borrow_mut().add_check_dup_contra(LabeledFormula {
                         formula: label.formula,
                         conflictset: conflictset.clone(),
+                        lemma: label.lemma,
                     });
-                    if tab.is_closed {
+                    if tab.borrow().is_closed() {
+                        return;
+                    }
+                }
+                forks.append(&mut unresolved);
+            } else if let Some(branch) = fork.branches.iter().find(|b| b.labels.is_empty()) {
+                tab.borrow_mut().choices.push((fork.id, branch.id));
+                for label in &branch.labels {
+                    let confs = tab.borrow_mut().add_check_dup_contra(LabeledFormula {
+                        formula: label.formula.clone(),
+                        conflictset: conflictset.clone(),
+                        lemma: label.lemma,
+                    });
+                    if tab.borrow().is_closed() {
                         return;
                     }
                 }
@@ -229,186 +244,111 @@ impl GradedKCalc {
         forks.append(&mut unresolved);
     }
 
-    fn apply_forks(&mut self, tab: &Rc<RefCell<TableauNode2>>, mut forks: VecDeque<Fork>) {
+    fn apply_forks<T: BaseTransit>(
+        &mut self,
+        tab: &Rc<RefCell<TableauNode2<T>>>,
+        mut forks: VecDeque<Fork>,
+        isroot: bool,
+    ) {
         loop {
             match &tab.borrow().children {
+                TabChildren::Leaf => {}
                 TabChildren::Transition(..) => return,
-                TabChildren::Fork { branches, .. } if !branches.is_empty() => break,
-                _ => {}
+                TabChildren::Fork { .. } => break,
             };
             if let Some(fork) = forks.pop_front() {
+                let mut branches = vec![];
                 for branch in fork.branches {
-                    if let TabChildren::Fork { id: forkid, .. } = &mut tab.borrow_mut().children {
-                        *forkid = Some(fork.id);
-                    }
                     let child = Rc::new(RefCell::new(TableauNode2::from_formulae(
                         branch.labels,
                         Some(tab),
                     )));
                     child.borrow_mut().choices.push((fork.id, branch.id));
-                    if let TabChildren::Fork { branches, .. } = &mut tab.borrow_mut().children {
-                        branches.push(TabBranch {
-                            branchid: branch.id,
-                            node: child,
-                        });
-                    }
+                    branches.push(TabBranch {
+                        id: branch.id,
+                        node: child,
+                    });
                 }
+                tab.borrow_mut().children = TabChildren::Fork {
+                    id: fork.id,
+                    branches,
+                };
             } else {
                 return;
             }
         }
-        let mut all_closed = true;
+        let mut feasibility = Feasibility::Contradiction;
         if let TabChildren::Fork { branches, .. } = &tab.borrow().children {
             for branch in branches.iter() {
-                if branch.node.borrow().is_closed {
+                if branch.node.borrow().is_closed() {
                     continue;
                 }
-                self.expand_static(&branch.node, forks.clone());
-                if !branch.node.borrow().is_closed {
-                    all_closed = false;
-                }
+                self.expand_static(&branch.node, forks.clone(), isroot);
+                feasibility = feasibility.better(&branch.node.borrow().feasibility);
             }
         }
-        if all_closed {
-            tab.borrow_mut().is_closed = true;
+        tab.borrow_mut().feasibility = feasibility;
+    }
+
+    pub(crate) fn first_transit<T: Transit>(
+        &mut self,
+        fruit: &Rc<RefCell<TableauNode2<T>>>,
+    ) -> Option<T> {
+        let mut labels = vec![];
+        fruit.borrow().traverse_anc_formulae(&mut |label| {
+            labels.push(label.clone());
+            true
+        });
+        let modals = Modals::new(
+            labels.iter(),
+            self.framecond.ray(),
+            self.framecond.spotlit(),
+        );
+        if modals.ge.is_empty() {
+            return None;
         }
+        let mut transit = T::from_modals(modals, fruit, self);
+        if transit.is_closed() {
+            return Some(transit);
+        }
+        transit.recurse(self);
+        if transit.is_closed() {
+            return Some(transit);
+        }
+        transit.solve();
+        Some(transit)
     }
 }
 
-impl GradedTransit {
-    fn create(leaf: &Rc<RefCell<TableauNode2>>, framecond: FrameCondition) -> GradedTransit {
-        let mut transit = Self {
-            framecond,
-            boxed: vec![],
-            diamge: vec![],
-            diamle: vec![],
-            para_worlds: vec![],
-            outcome: Feasibility::NoTransition,
-            solution: None,
-            root: None,
+impl ForkStore {
+    pub(crate) fn create_fork(
+        &mut self,
+        forktype: ForkType,
+        branches: Vec<Vec<Rc<Formula>>>,
+        conflictset: &Vec<Conflict>,
+    ) -> Fork {
+        let mut fork = Fork {
+            id: self.forks.len(),
+            fktype: forktype,
+            branches: vec![],
         };
-        leaf.borrow().traverse_anc_formulae(&mut |label| {
-            transit.store_formula(&label.formula);
-            true
-        });
-        if transit.framecond.serial() && transit.diamge.is_empty() && !transit.is_empty() {
-            transit.diamge.push((1, Formula::top()));
-        }
-        if transit.diamge.is_empty() {
-            return transit;
-        }
-        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(
-            transit
-                .boxed
-                .iter()
-                .map(|f| Label {
-                    formula: f.clone(),
-                    conflictset: vec![],
-                })
-                .collect(),
-            None,
-        )));
-        if tab.borrow().is_closed {
-            transit.outcome = Feasibility::Contradiction;
-            transit.root = Some(tab);
-            return transit;
-        }
-        let forks = transit.get_forks();
-        let mut calc = GradedKCalc {
-            framecond: transit.framecond,
-            forks: forks.iter().cloned().collect(),
-        };
-        let feasible = calc.apply(&tab, forks);
-        if tab.borrow().is_closed {
-            transit.root = Some(tab);
-            transit.outcome = Feasibility::Contradiction;
-            return transit;
-        } else if !feasible {
-            transit.root = Some(tab);
-            transit.outcome = Feasibility::Unfeasible;
-            return transit;
-        }
-        let mut seeds = vec![];
-        TableauNode2::get_open_leaves(&tab, &mut seeds, true);
-        transit.root = Some(tab);
-        for seed in seeds {
-            if seed.borrow().is_closed {
-                continue;
+        for (i, branch) in branches.into_iter().enumerate() {
+            let mut fork_branch = Branch {
+                id: i,
+                labels: vec![],
+            };
+            for formula in branch {
+                let label = LabeledFormula {
+                    formula,
+                    conflictset: conflictset.clone(),
+                    lemma: false,
+                };
+                fork_branch.labels.push(label);
             }
-            let mut choices = vec![];
-            TableauNode2::get_choices(&seed, &mut choices);
-            // println!("Choice {:?}", choices);
-            choices.sort_unstable();
-            choices.truncate(transit.diamge.len() + transit.diamle.len());
-            transit.para_worlds.push(choices);
+            fork.branches.push(fork_branch);
         }
-        transit.para_worlds.sort_unstable_by(Vec::cmp);
-        transit.para_worlds.dedup_by(|ch1, ch2| ch1 == ch2);
-        check_feasibility(&mut transit);
-        transit
-    }
-
-    fn store_formula(&mut self, formula: &Rc<Formula>) {
-        match formula.as_ref() {
-            Formula::Bottom
-            | Formula::Top
-            | Formula::PropVar(..)
-            | Formula::Not(_)
-            | Formula::And(..)
-            | Formula::Or(..)
-            | Formula::Imply(..)
-            | Formula::Iff(..) => {}
-            Formula::Box(formula) => self.boxed.push(formula.clone()),
-            Formula::Diamond(formula) => self.diamge.push((1, formula.clone())),
-            Formula::DiamondGe(count, formula) => self.diamge.push((*count, formula.clone())),
-            Formula::DiamondLe(count, formula) => self.diamle.push((*count, formula.clone())),
-        }
-    }
-
-    fn get_forks(&self) -> VecDeque<Fork> {
-        VecDeque::from_iter(
-            self.diamge
-                .iter()
-                .chain(self.diamle.iter())
-                .enumerate()
-                .map(|(id, (c, f))| Fork {
-                    id,
-                    fktype: ForkType::ParallelWorlds,
-                    branches: vec![
-                        Branch {
-                            id: 0,
-                            labels: vec![Label {
-                                formula: f.not(),
-                                conflictset: vec![],
-                            }],
-                        },
-                        Branch {
-                            id: 1,
-                            labels: vec![Label {
-                                formula: f.clone(),
-                                conflictset: vec![],
-                            }],
-                        },
-                    ],
-                }),
-        )
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
-        self.boxed.is_empty() && self.diamge.is_empty() && self.diamle.is_empty()
-    }
-
-    pub(crate) fn display_modals(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, (c, phi)) in self.diamge.iter().enumerate() {
-            writeln!(f, "(≥{c}): φ{i} := {phi}")?;
-        }
-        for ((c, phi), i) in self.diamle.iter().zip(self.diamge.len()..) {
-            writeln!(f, "(≤{c}): φ{i} := {phi}")?;
-        }
-        for phi in self.boxed.iter() {
-            writeln!(f, "□: {phi}")?;
-        }
-        Ok(())
+        self.forks.push(fork.clone());
+        fork
     }
 }
 
@@ -428,10 +368,10 @@ impl PropLinear {
             Formula::And(phi1, phi2) => vec![phi1.clone(), phi2.clone()],
             Formula::Not(phi) => match phi.as_ref() {
                 Formula::Bottom
-                | Formula::Top
                 | Formula::PropVar(..)
                 | Formula::And(_, _)
                 | Formula::Iff(_, _) => vec![],
+                Formula::Top => vec![Formula::bottom()],
                 Formula::Not(psi) => vec![psi.clone()],
                 Formula::Box(psi) => vec![psi.not().diamond()],
                 Formula::Diamond(psi) => vec![psi.not().box_()],
@@ -478,6 +418,53 @@ impl PropFork {
                 vec![phi1.clone(), phi2.clone()],
                 vec![phi1.not(), phi2.not()],
             ],
+        }
+    }
+}
+
+impl TLinear {
+    fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>> {
+        match formula.as_ref() {
+            Formula::Box(phi) => vec![phi.clone()],
+            Formula::DiamondLe(0, phi) => vec![phi.not()],
+            Formula::Bottom
+            | Formula::Top
+            | Formula::PropVar(..)
+            | Formula::Diamond(_)
+            | Formula::DiamondGe(..)
+            | Formula::DiamondLe(..)
+            | Formula::Not(_)
+            | Formula::Or(_, _)
+            | Formula::And(..)
+            | Formula::Imply(_, _)
+            | Formula::Iff(_, _) => vec![],
+        }
+    }
+}
+
+impl Feasibility {
+    pub(crate) const fn symbol(&self) -> &'static str {
+        match self {
+            Feasibility::Feasible => "✓",
+            Feasibility::Contradiction => "⊥",
+            Feasibility::NoSolution => "∅",
+            Feasibility::Infeasible => "⨉",
+        }
+    }
+
+    pub(crate) const fn is_bad(&self) -> bool {
+        match self {
+            Feasibility::Contradiction | Feasibility::Infeasible | Feasibility::NoSolution => true,
+            Feasibility::Feasible => false,
+        }
+    }
+
+    pub(crate) const fn better(&self, other: &Self) -> Self {
+        match (self, other) {
+            (_, Feasibility::Feasible) | (Feasibility::Feasible, _) => Feasibility::Feasible,
+            (_, Feasibility::Infeasible) | (Feasibility::Infeasible, _) => Feasibility::Infeasible,
+            (_, Feasibility::NoSolution) | (Feasibility::NoSolution, _) => Feasibility::NoSolution,
+            _ => Feasibility::Contradiction,
         }
     }
 }
