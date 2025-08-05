@@ -5,7 +5,7 @@ import CytoscapeComponent from 'react-cytoscapejs';
 
 function ModelGraph({ elements }) {
   return (
-    <CytoscapeComponent elements={CytoscapeComponent.normalizeElements(elements)} style={{ width: '300px', height: '150px' }} />
+    <CytoscapeComponent elements={CytoscapeComponent.normalizeElements(elements)} style={{ width: '300px', height: '400px' }} />
   );
 }
 
@@ -13,7 +13,7 @@ function DisplayFormula({ formula }) {
   return <span className="tableau-formula">{formula}</span>;
 }
 
-function FormulaList({ formulae }) {
+function FormulaList2({ formulae }) {
   const rows = [];
 
   formulae.forEach(formula => {
@@ -27,6 +27,24 @@ function FormulaList({ formulae }) {
       <div className="formulae-list">
         {rows}
       </div>
+    </>
+  );
+}
+
+function FormulaList({ formulae }) {
+  // const rows = [];
+
+  // formulae.forEach(formula => {
+  //   rows.push(
+  //     <DisplayFormula formula={formula} key={formula} />
+  //   );
+  // });
+
+  return (
+    <>
+      <textarea
+        value={formulae}
+        rows="23" cols="100"></textarea>
     </>
   );
 }
@@ -101,7 +119,7 @@ function SearchBar({ setResponseData, setEnd2EndTime }) {
 function App() {
   const [computeTime, setComputeTime] = useState("");
   const [end2EndTime, setEnd2EndTime] = useState("");
-  const [formulaList, setFormulaList] = useState(["∅", "⨉", "✓", "", "T"]);
+  const [formulaList, setFormulaList] = useState(["∅⨉✓⊥⊤¬□≥◇≤∧∨→↔"]);
   const [graphData, setGraphData] = useState(
     {
       nodes: [
@@ -119,6 +137,10 @@ function App() {
     if (responseJsonData.graph_data !== undefined) {
       setGraphData(responseJsonData.graph_data);
     }
+
+    if (responseJsonData.extra !== undefined) {
+      setFormulaList(responseJsonData.extra);
+    }
   }
 
   return (
@@ -126,14 +148,14 @@ function App() {
       <div className="page">
         <SearchBar setResponseData={setResponseData} setEnd2EndTime={setEnd2EndTime} className="formula-query" />
         <div className="main-grid">
-          <div className="left-column">
+          {/* <div className="left-column">
             <div className="top-left">
               <ModelGraph elements={graphData} />
             </div>
             <div className="bottom-left">
               <ModelGraph elements={graphData} />
             </div>
-          </div>
+          </div> */}
           <div className="middle-column">
             <ModelGraph elements={graphData} />
           </div>

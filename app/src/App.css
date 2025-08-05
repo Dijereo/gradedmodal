@@ -55,8 +55,8 @@
 }
 
 .middle-column {
-  flex: 1;
-  background: #f1f8e9;
+  flex: 0;
+  background: #eeffff;
   padding: 1rem;
   border: 1px solid #000;
 }
@@ -66,16 +66,22 @@
 }
 
 .formulae-list {
-  flex: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  background: #fce4ec;
+  background: #eeffff;
   padding: 1rem;
   font-size: 0.9rem;
   font-family:'Courier New', Courier, monospace;
   line-height: 1;
   font-weight: bold;
   color: #000;
+  border: 1px solid #000;
+}
+
+textarea {
+  background-color: #eeffff;
+  font-size: 1.2em;
 }
 
 .compute-times {

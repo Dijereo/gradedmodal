@@ -217,7 +217,7 @@ impl<T: BaseTransit> TableauNode2<T> {
         )
     }
 
-    fn get_depths_rec(&self, out: &mut VecDeque<usize>, depth: usize) {
+    pub(crate) fn get_depths_rec(&self, out: &mut VecDeque<usize>, depth: usize) {
         out.push_back(depth);
         match &self.children {
             TabChildren::Leaf => {}
@@ -251,9 +251,9 @@ impl<T: BaseTransit> TableauNode2<T> {
         )
     }
 
-    fn display_rec(
+    pub(crate) fn display_rec(
         this: &Rc<RefCell<Self>>,
-        f: &mut fmt::Formatter<'_>,
+        f: &mut impl fmt::Write,
         depth: usize,
         next_depths: &mut VecDeque<usize>,
         curri: &mut usize,
@@ -307,7 +307,7 @@ impl<T: BaseTransit> TableauNode2<T> {
     }
 
     fn display_transition(
-        f: &mut fmt::Formatter<'_>,
+        f: &mut impl fmt::Write,
         feasiblity: Feasibility,
         depth: usize,
         next_depths: &mut VecDeque<usize>,
