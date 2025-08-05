@@ -1,6 +1,6 @@
 use std::{
     io::{self, Write},
-    rc::Rc,
+    rc::Rc, time::Instant,
 };
 
 use axum::{
@@ -15,9 +15,10 @@ use tower_http::cors::{self, CorsLayer};
 use crate::{
     formula::full_parser,
     frame::{FrameCondition, Frames, Frames4, Frames5, FramesB5, FramesKOr45, FramesT},
-    model::{Graph, mock_graph},
+    model::{Graph, IntoModelGraph, mock_graph},
     tableau2::DisplayTableau,
     token::tokenize,
+    transit::{Transit4, Transit5, TransitB5, TransitKOr45, TransitT},
 };
 
 mod dnf;
@@ -89,10 +90,105 @@ impl IntoResponse for ServerResponse {
 }
 
 async fn world_hello(Json(json): Json<UserSubmission>) -> ServerResponse {
+    let start = Instant::now();
     println!("{} {}", json.formula, json.frames);
+    let graph_data = solve(&json.formula, &json.frames);
+    let compute_time = format!("{:.9?}", start.elapsed());
+    println!("Elapsed: {}", compute_time);
     ServerResponse {
-        compute_time: "Hello".to_string(),
-        graph_data: mock_graph(),
+        compute_time,
+        graph_data,
+    }
+}
+
+fn solve(formula: &str, frames: &str) -> Graph {
+    let framecond = match frames {
+        "K" => FrameCondition::K,
+        "D" => FrameCondition::D,
+        "T" => FrameCondition::T,
+        "K4" => FrameCondition::K4,
+        "D4" => FrameCondition::D4,
+        "K5" => FrameCondition::K5,
+        "D5" => FrameCondition::D5,
+        "K45" => FrameCondition::K45,
+        "D45" => FrameCondition::D45,
+        "KB5" => FrameCondition::KB5,
+        "S5" => FrameCondition::S5,
+        _ => FrameCondition::K,
+    };
+    println!("Chosen Frame Class: {:?}", framecond);
+
+    match tokenize(formula.trim()) {
+        Ok(tokens) => {
+            let stream = tokens.into_iter().enumerate();
+            match full_parser(stream) {
+                Ok(f) => {
+                    let f = Rc::new(f);
+                    let graph = match framecond {
+                        FrameCondition::K => {
+                            let tab = DisplayTableau(FramesKOr45::<false, false>.sat(vec![f]));
+                            TransitKOr45::to_model_graph(tab)
+                        }
+                        FrameCondition::D => {
+                            let tab = DisplayTableau(FramesKOr45::<true, false>.sat(vec![f]));
+                            TransitKOr45::to_model_graph(tab)
+                        }
+                        FrameCondition::T => {
+                            let tab = DisplayTableau(FramesT.sat(vec![f]));
+                            TransitT::to_model_graph(tab)
+                        }
+                        FrameCondition::K4 => {
+                            let tab = DisplayTableau(Frames4::<false>.sat(vec![f]));
+                            Transit4::to_model_graph(tab)
+                        }
+                        FrameCondition::D4 => {
+                            let tab = DisplayTableau(Frames4::<true>.sat(vec![f]));
+                            Transit4::to_model_graph(tab)
+                        }
+                        FrameCondition::K5 => {
+                            let tab = DisplayTableau(Frames5::<false>.sat(vec![f]));
+                            Transit5::to_model_graph(tab)
+                        }
+                        FrameCondition::D5 => {
+                            let tab = DisplayTableau(Frames5::<true>.sat(vec![f]));
+                            Transit5::to_model_graph(tab)
+                        }
+                        FrameCondition::K45 => {
+                            let tab = DisplayTableau(FramesKOr45::<false, true>.sat(vec![f]));
+                            TransitKOr45::to_model_graph(tab)
+                        }
+                        FrameCondition::D45 => {
+                            let tab = DisplayTableau(FramesKOr45::<true, true>.sat(vec![f]));
+                            TransitKOr45::to_model_graph(tab)
+                        }
+                        FrameCondition::KB5 => {
+                            let tab = DisplayTableau(FramesB5::<false>.sat(vec![f]));
+                            TransitB5::to_model_graph(tab)
+                        }
+                        FrameCondition::S5 => {
+                            let tab = DisplayTableau(FramesB5::<true>.sat(vec![f]));
+                            TransitB5::to_model_graph(tab)
+                        }
+                    };
+                    graph
+                }
+                Err(Some((i, tok))) => {
+                    eprintln!("Error: bad token sequence '{:#?}' at index {}", tok, i);
+                    mock_graph()
+                }
+                Err(None) => {
+                    eprintln!("Error: unterminated token sequence");
+                    mock_graph()
+                }
+            }
+        }
+        Err((idx, ch)) => {
+            eprintln!(
+                "Error: bad character sequence '{}' at byte index {}",
+                ch, idx
+            );
+            mock_graph()
+        }
     }
 }
 

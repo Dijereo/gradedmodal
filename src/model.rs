@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use crate::{tableau2::DisplayTableau, transit::Transit};
+
 #[derive(Serialize)]
 pub(crate) struct Graph {
     nodes: Vec<NodeData>,
@@ -34,6 +36,16 @@ struct Edge {
     source: String,
     target: String,
     label: String,
+}
+
+pub(crate) trait IntoModelGraph: Transit {
+    fn to_model_graph(tab: DisplayTableau<Self>) -> Graph {
+        mock_graph()
+    }
+}
+
+impl<T: Transit> IntoModelGraph for T {
+    
 }
 
 pub(crate) fn mock_graph() -> Graph {
