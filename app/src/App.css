@@ -1,0 +1,77 @@
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.formula-query {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.formula-input {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: stretch;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.frame-options {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.main-grid {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.left-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.middle-column {
+  flex: 1;
+  background: #f1f8e9;
+  padding: 1rem;
+  border: 1px solid #000;
+}
+
+.top-left, .bottom-left {
+  border: 1px solid #000;
+}
+
+.formulae-list {
+  flex: 0;
+  background: #fce4ec;
+  padding: 1rem;
+  font-size: 0.9rem;
+  font-family:'Courier New', Courier, monospace;
+  line-height: 1;
+  font-weight: bold;
+  color: #000;
+}

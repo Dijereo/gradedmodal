@@ -14,12 +14,26 @@ async fn main() -> Result<(), io::Error> {
 
 fn init_router() -> Router {
     Router::new()
-        .route("/app", get(hello_world))
-        .route("/api", get(world_hello))
-        .merge(Router::new().route_service(
-            "/",
-            ServeDir::new("dist").not_found_service(ServeFile::new("dist/index.html")),
-        ))
+        // .route("/", get(hello_world))
+        // .route("/api", get(world_hello))
+        .route_service("/", ServeFile::new("dist/index.html"))
+        .route_service(
+            "/assets/index-BrQhOZ60.js",
+            ServeFile::new("dist/assets/index-BrQhOZ60.js"),
+        )
+        .route_service(
+            "/assets/index-C5BzwU7B.js",
+            ServeFile::new("dist/assets/index-C5BzwU7B.js"),
+        )
+        .route_service(
+            "/assets/index-D8b4DHJx.css",
+            ServeFile::new("dist/assets/index-D8b4DHJx.css"),
+        )
+        .route_service(
+            "/assets/react-CHdo91hT.svg",
+            ServeFile::new("dist/assets/react-CHdo91hT.svg"),
+        )
+        .route_service("/vite.svg", ServeFile::new("dist/vite.svg"))
 }
 
 async fn hello_world() -> &'static str {
