@@ -16,7 +16,7 @@ use tower_http::cors::{self, CorsLayer};
 use crate::{
     formula::full_parser,
     frame::{FrameCondition, Frames, Frames4, Frames5, FramesB5, FramesKOr45, FramesT},
-    model::{Graph, IntoModelGraph, mock_graph},
+    model::{Graph, mock_graph},
     tableau2::DisplayTableau,
     token::tokenize,
     transit::{Transit4, Transit5, TransitB5, TransitKOr45, TransitT},
@@ -130,47 +130,47 @@ fn solve(formula: &str, frames: &str) -> (Graph, String) {
                     let graph = match framecond {
                         FrameCondition::K => {
                             let tab = DisplayTableau(FramesKOr45::<false, false>.sat(vec![f]));
-                            TransitKOr45::model_graph(tab)
+                            tab.model_graph()
                         }
                         FrameCondition::D => {
                             let tab = DisplayTableau(FramesKOr45::<true, false>.sat(vec![f]));
-                            TransitKOr45::model_graph(tab)
+                            tab.model_graph()
                         }
                         FrameCondition::T => {
                             let tab = DisplayTableau(FramesT.sat(vec![f]));
-                            TransitT::model_graph(tab)
+                            tab.model_graph()
                         }
                         FrameCondition::K4 => {
                             let tab = DisplayTableau(Frames4::<false>.sat(vec![f]));
-                            Transit4::model_graph(tab)
+                            tab.model_graph()
                         }
                         FrameCondition::D4 => {
                             let tab = DisplayTableau(Frames4::<true>.sat(vec![f]));
-                            Transit4::model_graph(tab)
+                            tab.model_graph()
                         }
                         FrameCondition::K5 => {
                             let tab = DisplayTableau(Frames5::<false>.sat(vec![f]));
-                            Transit5::model_graph(tab)
+                            tab.model_graph()
                         }
                         FrameCondition::D5 => {
                             let tab = DisplayTableau(Frames5::<true>.sat(vec![f]));
-                            Transit5::model_graph(tab)
+                            tab.model_graph()
                         }
                         FrameCondition::K45 => {
                             let tab = DisplayTableau(FramesKOr45::<false, true>.sat(vec![f]));
-                            TransitKOr45::model_graph(tab)
+                            tab.model_graph()
                         }
                         FrameCondition::D45 => {
                             let tab = DisplayTableau(FramesKOr45::<true, true>.sat(vec![f]));
-                            TransitKOr45::model_graph(tab)
+                            tab.model_graph()
                         }
                         FrameCondition::KB5 => {
                             let tab = DisplayTableau(FramesB5::<false>.sat(vec![f]));
-                            TransitB5::model_graph(tab)
+                            tab.model_graph()
                         }
                         FrameCondition::S5 => {
                             let tab = DisplayTableau(FramesB5::<true>.sat(vec![f]));
-                            TransitB5::model_graph(tab)
+                            tab.model_graph()
                         }
                     };
                     match graph {

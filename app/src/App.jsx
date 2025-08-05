@@ -5,7 +5,9 @@ import CytoscapeComponent from 'react-cytoscapejs';
 
 function ModelGraph({ elements }) {
   return (
-    <CytoscapeComponent elements={CytoscapeComponent.normalizeElements(elements)} style={{ width: '300px', height: '400px' }} />
+    <CytoscapeComponent elements={CytoscapeComponent.normalizeElements(elements)} layout={{ name: "breadthfirst" }} style={{
+      width: '300px', height: '400px'
+    }} />
   );
 }
 
