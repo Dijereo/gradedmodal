@@ -3,9 +3,19 @@ use std::{
     rc::Rc,
 };
 
+use axum::{
+    Json, Router,
+    http::{Method, StatusCode, header},
+    response::{IntoResponse, Response},
+    routing::post,
+};
+use serde::{Deserialize, Serialize};
+use tower_http::cors::{self, CorsLayer};
+
 use crate::{
     formula::full_parser,
     frame::{FrameCondition, Frames, Frames4, Frames5, FramesB5, FramesKOr45, FramesT},
+    model::{Graph, mock_graph},
     tableau2::DisplayTableau,
     token::tokenize,
 };
@@ -25,6 +35,66 @@ mod tableau2;
 mod token;
 mod transit;
 mod util;
+
+pub fn init_router() -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin(cors::Any)
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers([header::CONTENT_TYPE]);
+
+    Router::new()
+        // .route("/", get(hello_world))
+        .route("/api", post(world_hello))
+        // .route_service("/", ServeFile::new("dist/index.html"))
+        // .route_service(
+        //     "/assets/index-BrQhOZ60.js",
+        //     ServeFile::new("dist/assets/index-BrQhOZ60.js"),
+        // )
+        // .route_service(
+        //     "/assets/index-C5BzwU7B.js",
+        //     ServeFile::new("dist/assets/index-C5BzwU7B.js"),
+        // )
+        // .route_service(
+        //     "/assets/index-D8b4DHJx.css",
+        //     ServeFile::new("dist/assets/index-D8b4DHJx.css"),
+        // )
+        // .route_service(
+        //     "/assets/react-CHdo91hT.svg",
+        //     ServeFile::new("dist/assets/react-CHdo91hT.svg"),
+        // )
+        // .route_service("/vite.svg", ServeFile::new("dist/vite.svg"))
+        .layer(cors)
+}
+
+async fn hello_world() -> &'static str {
+    "Hello world!"
+}
+
+#[derive(Deserialize)]
+pub struct UserSubmission {
+    formula: String,
+    frames: String,
+}
+
+#[derive(Serialize)]
+pub struct ServerResponse {
+    compute_time: String,
+    graph_data: Graph,
+}
+
+impl IntoResponse for ServerResponse {
+    fn into_response(self) -> Response {
+        (StatusCode::OK, Json(self)).into_response()
+    }
+}
+
+async fn world_hello(Json(json): Json<UserSubmission>) -> ServerResponse {
+    println!("{} {}", json.formula, json.frames);
+    ServerResponse {
+        compute_time: "Hello".to_string(),
+        graph_data: mock_graph(),
+    }
+}
 
 pub fn run() {
     let mut framecond = FrameCondition::K;
