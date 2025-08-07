@@ -5,7 +5,7 @@ use crate::{
     formula::Formula,
     frame::FrameCondition,
     tableau2::{Conflict, DupContra, LabeledFormula, TabBranch, TabChildren, TableauNode2},
-    transit::{BaseTransit, Modals, Transit, Transit4},
+    transit::{BaseTransit, Modals, Transit},
 };
 
 // TODO: Combine No Solution and Infeasible
@@ -52,8 +52,8 @@ pub(crate) struct ForkStore {
 
 impl GradedKCalc {
     pub(crate) fn sat<T: Transit>(
-        mut formulae: Vec<Rc<Formula>>,
         framecond: FrameCondition,
+        mut formulae: Vec<Rc<Formula>>,
     ) -> Rc<RefCell<TableauNode2<T>>> {
         if framecond.luminal() {
             for f in formulae.iter_mut() {
@@ -449,6 +449,7 @@ impl Feasibility {
             Feasibility::Contradiction => "⊥",
             Feasibility::NoSolution => "∅",
             Feasibility::Infeasible => "⨉",
+            // ✅❌🚫
         }
     }
 

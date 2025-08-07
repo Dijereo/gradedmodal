@@ -27,3 +27,5 @@ fix display
 smaller files
 better negation and equality check
 move display function to separate trait
+store indexes and str slices in tokens to provide user error
+modularize react components

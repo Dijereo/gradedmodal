@@ -34,25 +34,16 @@ function FormulaList2({ formulae }) {
 }
 
 function FormulaList({ formulae }) {
-  // const rows = [];
-
-  // formulae.forEach(formula => {
-  //   rows.push(
-  //     <DisplayFormula formula={formula} key={formula} />
-  //   );
-  // });
-
   return (
     <>
       <textarea
         value={formulae}
-        rows="23" cols="100"></textarea>
+        rows="22" cols="100"></textarea>
     </>
   );
 }
 
-function SearchBar({ setResponseData, setEnd2EndTime }) {
-  const [formula, setFormula] = useState("_|_");
+function SearchBar({ setResponseData, searchFormula, setSearchFormula }) {
   const [frameClass, setFrameClass] = useState("K");
 
   const handleSubmit = async (e) => {
@@ -60,7 +51,7 @@ function SearchBar({ setResponseData, setEnd2EndTime }) {
     e.preventDefault();
 
     const payload = {
-      formula: formula,
+      formula: searchFormula,
       frames: frameClass,
     };
 
@@ -79,11 +70,10 @@ function SearchBar({ setResponseData, setEnd2EndTime }) {
       const responseJsonData = await res.json();
       console.log("Success!");
       console.log(responseJsonData);
-      setResponseData(responseJsonData);
-
       const elapsedMs = performance.now() - startTime;
-      setEnd2EndTime(`${elapsedMs.toFixed(3)} ms`)
-
+      const end2EndTime = `${elapsedMs.toFixed(3)} ms`;
+      console.log(end2EndTime);
+      setResponseData(responseJsonData, end2EndTime);
     } catch (err) {
       console.error("Failed to submit:", err);
     }
@@ -93,8 +83,8 @@ function SearchBar({ setResponseData, setEnd2EndTime }) {
     <form onSubmit={handleSubmit}>
       <div className="formula-input">
         <textarea
-          value={formula}
-          onChange={(e) => setFormula(e.target.value)} rows="3" cols="100" placeholder="Enter formula here..."></textarea>
+          value={searchFormula}
+          onChange={(e) => setSearchFormula(e.target.value)} rows="3" cols="100" placeholder="Enter formula here..."></textarea>
         <button type="submit">Satisfy</button>
       </div>
       <div className="frame-options">
@@ -118,10 +108,33 @@ function SearchBar({ setResponseData, setEnd2EndTime }) {
   );
 }
 
+function Times({ computeTime }) {
+  return (
+    <>
+      <div className="times">
+        <span>Solve Time: {computeTime.solveTime}</span>
+        <span>Server Time: {computeTime.serverTime}</span>
+        <span>End-To-End Time: {computeTime.end2EndTime}</span>
+        <span>Parse Time: {computeTime.parseTime}</span>
+        <span>Tableau Write Time: {computeTime.tabWrTime}</span>
+        <span>Model Time: {computeTime.modelTime}</span>
+      </div>
+    </>
+  );
+}
+
 function App() {
-  const [computeTime, setComputeTime] = useState("");
-  const [end2EndTime, setEnd2EndTime] = useState("");
-  const [formulaList, setFormulaList] = useState(["∅⨉✓⊥⊤¬□≥◇≤∧∨→↔"]);
+  const defaultTimes = {
+    solveTime: "N/A",
+    serverTime: "N/A",
+    end2EndTime: "N/A",
+    parseTime: "N/A",
+    tabWrTime: "N/A",
+    modelTime: "N/A"
+  };
+  const [searchFormula, setSearchFormula] = useState("_|_");
+  const [computeTime, setComputeTime] = useState(defaultTimes);
+  const [formulaList, setFormulaList] = useState(["Placeholder ∅⨉✓⊥⊤¬□≥◇≤∧∨→↔"]);
   const [graphData, setGraphData] = useState(
     {
       nodes: [
@@ -131,33 +144,37 @@ function App() {
     }
   );
 
-  function setResponseData(responseJsonData) {
-    if (responseJsonData.compute_time !== undefined) {
-      setComputeTime(responseJsonData.compute_time);
+  function setResponseData(responseJsonData, end2EndTime) {
+    if (responseJsonData.times !== undefined) {
+      const compute_times = responseJsonData.times;
+      const computeTimes = {
+        solveTime: compute_times.solve_time !== undefined ? compute_times.solve_time : "N/A",
+        serverTime: compute_times.server_time !== undefined ? compute_times.server_time : "N/A",
+        end2EndTime: end2EndTime,
+        parseTime: compute_times.parse_time !== undefined ? compute_times.parse_time : "N/A",
+        tabWrTime: compute_times.tabwrite_time !== undefined ? compute_times.tabwrite_time : "N/A",
+        modelTime: compute_times.graph_time !== undefined ? compute_times.graph_time : "N/A",
+      };
+      setComputeTime(computeTimes);
+    } else {
+      setComputeTime(defaultTimes);
     }
-
-    if (responseJsonData.graph_data !== undefined) {
-      setGraphData(responseJsonData.graph_data);
+    if (responseJsonData.graph !== undefined) {
+      setGraphData(responseJsonData.graph);
     }
-
-    if (responseJsonData.extra !== undefined) {
-      setFormulaList(responseJsonData.extra);
+    if (responseJsonData.tableau !== undefined) {
+      setFormulaList(responseJsonData.tableau);
+    }
+    if (responseJsonData.formula !== undefined) {
+      setSearchFormula(responseJsonData.formula)
     }
   }
 
   return (
     <>
       <div className="page">
-        <SearchBar setResponseData={setResponseData} setEnd2EndTime={setEnd2EndTime} className="formula-query" />
+        <SearchBar searchFormula={searchFormula} setSearchFormula={setSearchFormula} setResponseData={setResponseData} className="formula-query" />
         <div className="main-grid">
-          {/* <div className="left-column">
-            <div className="top-left">
-              <ModelGraph elements={graphData} />
-            </div>
-            <div className="bottom-left">
-              <ModelGraph elements={graphData} />
-            </div>
-          </div> */}
           <div className="middle-column">
             <ModelGraph elements={graphData} />
           </div>
@@ -165,10 +182,7 @@ function App() {
             <FormulaList formulae={formulaList} />
           </div>
         </div>
-        <div className="compute-times">
-          <span>Compute Time: {computeTime}</span>
-          <span>End-To-End Time: {end2EndTime}</span>
-        </div>
+        <Times computeTime={computeTime} />
       </div>
     </>
   );

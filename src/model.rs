@@ -1,12 +1,9 @@
 use serde::Serialize;
-use std::{
-    cell::RefCell,
-    collections::VecDeque,
-    fmt::{self, Write},
-    rc::Rc,
-};
+use std::{fmt::Write, rc::Rc, time::Instant};
 
 use crate::{
+    api::{ServerOutput, ServerResponse, ServerTimes},
+    formula::Formula,
     tableau2::{DisplayTableau, TabChildren, TableauNode2},
     transit::{Transit, Transit4, Transit5, TransitB5, TransitKOr45, TransitT},
 };
@@ -50,11 +47,21 @@ struct Edge {
 }
 
 impl<T: IntoModelGraph> DisplayTableau<T> {
-    pub(crate) fn model_graph(
+    pub(crate) fn model(
         self,
-    ) -> Result<(Graph, String), fmt::Error> {
-        let mut extra = String::new();
-        write!(&mut extra, "{}", self)?;
+        formula_str: String,
+        solve_time: String,
+        parse_time: String,
+    ) -> ServerResponse {
+        let tabw_start = Instant::now();
+        let mut tableau = String::new();
+        if let Err(e) = write!(&mut tableau, "{}", self) {
+            eprintln!("Error writing tableau.");
+            eprintln!("{e}");
+            return ServerResponse::ServerErr;
+        }
+        let tabwrite_time = format!("{:.3?}", tabw_start.elapsed());
+        let graph_start = Instant::now();
         let mut nodes = vec![Node {
             id: "0".to_string(),
             label: "#0".to_string(),
@@ -76,7 +83,20 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
                 .collect(),
             edges: edges.into_iter().map(|e| EdgeData { data: e }).collect(),
         };
-        Ok((graph, extra))
+        let graph_time = format!("{:.3?}", graph_start.elapsed());
+        ServerResponse::Ok(ServerOutput {
+            formula: formula_str,
+            times: ServerTimes {
+                server_time: String::new(),
+                parse_time,
+                solve_time,
+                tabwrite_time,
+                graph_time,
+            },
+            graph,
+            tableau,
+            success: !self.0.borrow().is_closed(),
+        })
     }
 }
 

@@ -3,7 +3,7 @@ use std::{
     collections::VecDeque,
     fmt, mem,
     ops::RangeInclusive,
-    rc::{Rc, Weak},
+    rc::{Rc},
 };
 
 use good_lp::Variable;
@@ -499,7 +499,7 @@ impl BaseTransit for TransitT {
         writeln!(f)?;
         TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
         if self.reflexion {
-            return writeln!(f)
+            return writeln!(f);
         }
         writeln!(f)?;
         for (i, choice) in self.paraws.choices.iter().enumerate() {
@@ -605,8 +605,13 @@ impl TransitT {
         });
         let modals = Modals::new(labels.iter().filter(|lab| !lab.lemma), false, false);
         if modals.ge.is_empty() && modals.le.is_empty() {
-            if let Some(mut transit) = Self::transition(fruit, labels.iter(), ranges.clone(), src_constraints.collect(), calc)
-            {
+            if let Some(mut transit) = Self::transition(
+                fruit,
+                labels.iter(),
+                ranges.clone(),
+                src_constraints.collect(),
+                calc,
+            ) {
                 let mut choices = Vec::new();
                 Self::get_choices(fruit, &mut choices, &ranges);
                 // transit.set_choices();

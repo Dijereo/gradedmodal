@@ -1,10 +1,11 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{fmt::Write, rc::Rc, str::FromStr, time::Instant};
 
 use crate::{
+    api::ServerResponse,
     formula::Formula,
     rules3::GradedKCalc,
-    tableau2::TableauNode2,
-    transit::{Transit, Transit4, Transit5, TransitB5, TransitKOr45, TransitT},
+    tableau2::DisplayTableau,
+    transit::{Transit5, TransitB5, TransitKOr45, TransitT},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -12,12 +13,12 @@ pub(crate) enum FrameCondition {
     K,
     D,
     T,
-    // KB,
-    // DB,
-    // TB,
+    KB,
+    DB,
+    TB,
     K4,
     D4,
-    // S4,
+    S4,
     K5,
     D5,
     K45,
@@ -26,84 +27,99 @@ pub(crate) enum FrameCondition {
     S5,
 }
 
-pub(crate) trait Frames {
-    type Transt: Transit;
+impl FromStr for FrameCondition {
+    type Err = String;
 
-    fn to_enum(&self) -> FrameCondition;
-
-    fn sat(&self, formulae: Vec<Rc<Formula>>) -> Rc<RefCell<TableauNode2<Self::Transt>>> {
-        GradedKCalc::sat(formulae, self.to_enum())
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim().to_uppercase();
+        Ok(match s.as_str() {
+            "K" | "" => FrameCondition::K,
+            "D" | "KD" => FrameCondition::D,
+            "T" | "KT" => FrameCondition::T,
+            "KB" => FrameCondition::KB,
+            "DB" | "KDB" => FrameCondition::DB,
+            "TB" | "KTB" => FrameCondition::TB,
+            "K4" => FrameCondition::K4,
+            "D4" | "KD4" => FrameCondition::D4,
+            "S4" => FrameCondition::S4,
+            "K5" => FrameCondition::K5,
+            "D5" | "KD5" => FrameCondition::D5,
+            "K45" => FrameCondition::K45,
+            "D45" | "KD45" => FrameCondition::D45,
+            "KB5" | "KB4" | "KB45" => FrameCondition::KB5,
+            "S5" => FrameCondition::S5,
+            _ => Err(s)?,
+        })
     }
 }
 
-pub(crate) struct FramesKOr45<const D: bool, const _45: bool>;
-impl<const D: bool, const _45: bool> Frames for FramesKOr45<D, _45> {
-    type Transt = TransitKOr45;
+macro_rules! time_sat {
+    ($clsr:expr, $satter:expr, $frame:expr, $formula:expr) => {{
+        let start = Instant::now();
+        let tab = $satter($frame, $formula);
+        let time = format!("{:.3?}", start.elapsed());
+        $clsr(tab, time)
+    }};
+}
 
-    fn to_enum(&self) -> FrameCondition {
-        match (D, _45) {
-            (true, true) => FrameCondition::D45,
-            (true, false) => FrameCondition::D,
-            (false, true) => FrameCondition::K45,
-            (false, false) => FrameCondition::K,
+macro_rules! sat_and {
+    ($frame:expr, $formula:expr, $clsr:expr) => {{
+        match $frame {
+            FrameCondition::K | FrameCondition::D | FrameCondition::K45 | FrameCondition::D45 => {
+                time_sat!($clsr, GradedKCalc::sat::<TransitKOr45>, $frame, $formula)
+            }
+            FrameCondition::T =>time_sat!($clsr, GradedKCalc::sat::<TransitT>, $frame, $formula),
+            FrameCondition::KB | FrameCondition::DB => todo!("B"), //$clsr($f::<Transit>($frame, $formula)),
+            FrameCondition::TB => todo!("B"), // $clsr($f::<Transit>($frame, $formula)),
+            FrameCondition::K4 | FrameCondition::D4 => todo!("4"), //$clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
+            FrameCondition::S4 => todo!("S4"), // $clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
+            FrameCondition::K5 | FrameCondition::D5 => time_sat!($clsr, GradedKCalc::sat::<Transit5>, $frame, $formula),
+            FrameCondition::KB5 | FrameCondition::S5 => time_sat!($clsr, GradedKCalc::sat::<TransitB5>, $frame, $formula),
         }
-    }
-}
-
-pub(crate) struct FramesT;
-impl Frames for FramesT {
-    fn to_enum(&self) -> FrameCondition {
-        FrameCondition::T
-    }
-
-    type Transt = TransitT;
-}
-
-pub(crate) struct FramesB5<const D: bool>;
-impl<const D: bool> Frames for FramesB5<D> {
-    type Transt = TransitB5;
-
-    fn to_enum(&self) -> FrameCondition {
-        if D {
-            FrameCondition::S5
-        } else {
-            FrameCondition::KB5
-        }
-    }
-}
-
-pub(crate) struct Frames4<const D: bool>;
-impl<const D: bool> Frames for Frames4<D> {
-    type Transt = Transit4;
-
-    fn to_enum(&self) -> FrameCondition {
-        if D {
-            FrameCondition::D4
-        } else {
-            FrameCondition::K4
-        }
-    }
-}
-
-pub(crate) struct Frames5<const D: bool>;
-impl<const D: bool> Frames for Frames5<D> {
-    type Transt = Transit5;
-
-    fn to_enum(&self) -> FrameCondition {
-        if D {
-            FrameCondition::D5
-        } else {
-            FrameCondition::K5
-        }
-    }
+    }};
 }
 
 impl FrameCondition {
+    pub(crate) fn print_sat(&self, formulae: Vec<Rc<Formula>>) {
+        sat_and!(*self, formulae, |tab, time| {
+            println!("Solve Time: {time}");
+            println!("{}", DisplayTableau(tab))
+        })
+    }
+
+    pub(crate) fn graph_tab_sat(
+        &self,
+        formulae: Vec<Rc<Formula>>,
+        parse_time: String,
+    ) -> ServerResponse {
+        let mut formulae_str = String::new();
+        let mut fs = formulae.iter();
+        if let Some(f) = fs.next() {
+            if let Err(e) = write!(&mut formulae_str, "{}", f.as_ref()) {
+                eprintln!("Error writing formula.");
+                eprintln!("{e}");
+                return ServerResponse::ServerErr;
+            }
+        }
+        for f in fs {
+            if let Err(e) = write!(&mut formulae_str, "{}", f.as_ref()) {
+                eprintln!("Error writing formula.");
+                eprintln!("{e}");
+                return ServerResponse::ServerErr;
+            }
+        }
+        sat_and!(*self, formulae, |tab, solve_time| DisplayTableau(tab)
+            .model(formulae_str, solve_time, parse_time))
+    }
+
     pub(crate) const fn ray(&self) -> bool {
         match self {
             FrameCondition::K
             | FrameCondition::T
+            | FrameCondition::KB
+            | FrameCondition::TB
             | FrameCondition::K4
+            | FrameCondition::S4
             | FrameCondition::K5
             | FrameCondition::K45
             | FrameCondition::KB5 => false,
@@ -112,6 +128,7 @@ impl FrameCondition {
             | FrameCondition::D5
             | FrameCondition::D45
             | FrameCondition::S5 => true,
+            FrameCondition::DB => todo!(),
         }
     }
 
@@ -119,6 +136,8 @@ impl FrameCondition {
         match self {
             FrameCondition::K
             | FrameCondition::D
+            | FrameCondition::KB
+            | FrameCondition::DB
             | FrameCondition::K4
             | FrameCondition::D4
             | FrameCondition::K5
@@ -126,7 +145,9 @@ impl FrameCondition {
             | FrameCondition::K45
             | FrameCondition::D45
             | FrameCondition::KB5 => false,
-            FrameCondition::T | FrameCondition::S5 => true,
+            FrameCondition::T | FrameCondition::TB | FrameCondition::S4 | FrameCondition::S5 => {
+                true
+            }
         }
     }
 
@@ -135,8 +156,12 @@ impl FrameCondition {
             FrameCondition::K
             | FrameCondition::D
             | FrameCondition::T
+            | FrameCondition::KB
+            | FrameCondition::DB
+            | FrameCondition::TB
             | FrameCondition::K4
-            | FrameCondition::D4 => false,
+            | FrameCondition::D4
+            | FrameCondition::S4 => false,
             FrameCondition::K5
             | FrameCondition::D5
             | FrameCondition::K45
@@ -151,8 +176,12 @@ impl FrameCondition {
             FrameCondition::K
             | FrameCondition::D
             | FrameCondition::T
+            | FrameCondition::KB
+            | FrameCondition::DB
+            | FrameCondition::TB
             | FrameCondition::K4
             | FrameCondition::D4
+            | FrameCondition::S4
             | FrameCondition::K45
             | FrameCondition::D45
             | FrameCondition::KB5
@@ -166,8 +195,12 @@ impl FrameCondition {
             FrameCondition::K
             | FrameCondition::D
             | FrameCondition::T
+            | FrameCondition::KB
+            | FrameCondition::DB
+            | FrameCondition::TB
             | FrameCondition::K4
             | FrameCondition::D4
+            | FrameCondition::S4
             | FrameCondition::K5
             | FrameCondition::D5 => false,
             FrameCondition::K45
@@ -182,8 +215,12 @@ impl FrameCondition {
             FrameCondition::K
             | FrameCondition::D
             | FrameCondition::T
+            | FrameCondition::KB
+            | FrameCondition::DB
+            | FrameCondition::TB
             | FrameCondition::K4
             | FrameCondition::D4
+            | FrameCondition::S4
             | FrameCondition::K5
             | FrameCondition::D5
             | FrameCondition::K45
@@ -198,12 +235,16 @@ impl FrameCondition {
             FrameCondition::K
             | FrameCondition::D
             | FrameCondition::T
+            | FrameCondition::KB
+            | FrameCondition::DB
+            | FrameCondition::TB
             | FrameCondition::K5
             | FrameCondition::D5
             | FrameCondition::K45
             | FrameCondition::D45
             | FrameCondition::KB5
             | FrameCondition::S5 => false,
+            FrameCondition::S4 => todo!(),
         }
     }
 }
