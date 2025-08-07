@@ -5,7 +5,7 @@ use crate::{
     rules3::Feasibility,
     tableau2::{TabChildren, TableauNode2},
     transit::{
-        BaseTransit, Constraint, ParaClique, Transit, Transit4, Transit5, TransitB5, TransitKOr45,
+        BaseTransit, Grading, ParaClique, Transit, Transit4, Transit5, TransitB5, TransitKOr45,
         TransitT,
     },
 };
@@ -14,8 +14,8 @@ impl Transit for TransitKOr45 {
     fn solve(&mut self) {
         self.paraws.set_choices(true);
         let mut problem = ProblemVariables::new();
-        let mut exprs = HashMap::with_capacity(self.constraints.len());
-        for c in &self.constraints {
+        let mut exprs = HashMap::with_capacity(self.constraints.gradings.len());
+        for c in &self.constraints.gradings {
             exprs.insert(c.forkid, (c.sense, c.value, vec![]));
         }
         let vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
@@ -116,11 +116,11 @@ impl TransitT {
     ) {
         self.paraws.set_choices(true);
         let mut problem = ProblemVariables::new();
-        let mut exprs = HashMap::with_capacity(self.constraints.len());
-        for c in &self.constraints {
+        let mut exprs = HashMap::with_capacity(self.constraints.gradings.len());
+        for c in &self.constraints.gradings {
             exprs.insert(c.forkid, (c.sense, c.value, vec![]));
         }
-        println!("{:?}", self.constraints);
+        println!("{}", self.constraints);
         let vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
         let rflxvar = problem.add_vector(variable().integer().min(1).max(1).initial(1), 1)[0];
         for (world, var) in self.paraws.choices.iter().zip(vars.iter()) {
@@ -167,7 +167,7 @@ impl Transit for Transit5 {
     fn solve(&mut self) {
         let mut feasibility = Feasibility::NoSolution;
         for paraclique in &mut self.paracliques {
-            paraclique.solve(&self.spotconstraints);
+            paraclique.solve(&self.spotconstraints.gradings);
             feasibility = feasibility.better(&paraclique.feasibility);
         }
         self.feasibility = feasibility;
@@ -175,15 +175,15 @@ impl Transit for Transit5 {
 }
 
 impl<T: BaseTransit> ParaClique<T> {
-    fn solve(&mut self, spotconstraints: &Vec<Constraint>) {
+    fn solve(&mut self, spotconstraints: &Vec<Grading>) {
         let mut problem = ProblemVariables::new();
         self.spotws.set_choices(true);
         self.cliquews.set_choices(true);
         let spotvars = problem.add_vector(variable().integer().min(0), self.spotws.choices.len());
         let cliqvars = problem.add_vector(variable().integer().min(0), self.cliquews.choices.len());
         let mut exprs =
-            HashMap::with_capacity(spotconstraints.len() + self.cliqueconstraints.len());
-        for c in spotconstraints.iter().chain(self.cliqueconstraints.iter()) {
+            HashMap::with_capacity(spotconstraints.len() + self.cliqueconstraints.gradings.len());
+        for c in spotconstraints.iter().chain(self.cliqueconstraints.gradings.iter()) {
             exprs.insert(c.forkid, (c.sense, c.value, vec![]));
         }
         for (world, var) in self
@@ -269,8 +269,8 @@ impl Transit4 {
         exprs: &mut HashMap<usize, (bool, u32, Vec<Variable>)>,
     ) -> Vec<Variable> {
         self.paraws.set_choices(false);
-        exprs.reserve(self.constraints.len());
-        for c in &self.constraints {
+        exprs.reserve(self.constraints.gradings.len());
+        for c in &self.constraints.gradings {
             exprs.insert(c.forkid, (c.sense, c.value, vec![]));
         }
         self.vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
@@ -300,8 +300,8 @@ impl Transit4 {
     pub(crate) fn check(&mut self) {
         self.paraws.set_choices(false);
         let mut problem = ProblemVariables::new();
-        let mut exprs = HashMap::with_capacity(self.constraints.len());
-        for c in &self.constraints {
+        let mut exprs = HashMap::with_capacity(self.constraints.gradings.len());
+        for c in &self.constraints.gradings {
             exprs.insert(c.forkid, (c.sense, c.value, vec![]));
         }
         let vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
@@ -340,8 +340,8 @@ impl Transit for TransitB5 {
         let vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
         self.reflexion.set_choices(true);
         let rvars = problem.add_vector(variable().binary(), self.reflexion.choices.len());
-        let mut exprs = HashMap::with_capacity(self.constraints.len());
-        for c in &self.constraints {
+        let mut exprs = HashMap::with_capacity(self.constraints.gradings.len());
+        for c in &self.constraints.gradings {
             exprs.insert(c.forkid, (c.sense, c.value, vec![]));
         }
         for (world, var) in self

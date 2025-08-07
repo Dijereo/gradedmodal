@@ -109,7 +109,7 @@ impl FrameCondition {
             }
         }
         sat_and!(*self, formulae, |tab, solve_time| DisplayTableau(tab)
-            .model(formulae_str, solve_time, parse_time))
+            .model(formulae_str, solve_time, parse_time, self.symmetric()))
     }
 
     pub(crate) const fn ray(&self) -> bool {
@@ -148,6 +148,26 @@ impl FrameCondition {
             FrameCondition::T | FrameCondition::TB | FrameCondition::S4 | FrameCondition::S5 => {
                 true
             }
+        }
+    }
+
+    pub(crate) const fn symmetric(&self) -> bool {
+        match self {
+            FrameCondition::K
+            | FrameCondition::D
+            | FrameCondition::T
+            | FrameCondition::K4
+            | FrameCondition::D4
+            | FrameCondition::K5
+            | FrameCondition::D5
+            | FrameCondition::K45
+            | FrameCondition::D45
+            | FrameCondition::S4 => false,
+            FrameCondition::KB
+            | FrameCondition::DB
+            | FrameCondition::TB
+            | FrameCondition::KB5
+            | FrameCondition::S5 => true,
         }
     }
 

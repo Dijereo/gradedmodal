@@ -37,6 +37,7 @@ pub(crate) struct ServerOutput {
     pub(crate) times: ServerTimes,
     pub(crate) graph: Graph,
     pub(crate) tableau: String,
+    pub(crate) symmetric: bool,
     pub(crate) success: bool,
 }
 

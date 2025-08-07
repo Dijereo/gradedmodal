@@ -3,11 +3,33 @@ import './App.css'
 import CytoscapeComponent from 'react-cytoscapejs';
 
 
-function ModelGraph({ elements }) {
+function ModelGraph({ elements, symmetric }) {
   return (
-    <CytoscapeComponent elements={CytoscapeComponent.normalizeElements(elements)} layout={{ name: "breadthfirst" }} style={{
-      width: '300px', height: '400px'
-    }} />
+    <CytoscapeComponent
+      elements={CytoscapeComponent.normalizeElements(elements)}
+      layout={{ name: "breadthfirst" }}
+      style={{ width: '300px', height: '400px' }}
+      stylesheet={[
+        {
+          selector: 'node',
+          style: {
+            'background-color': 'data(bg)'
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 3,
+            'line-color': '#000',
+            'target-arrow-color': '#000',
+            'target-arrow-shape': 'triangle',
+            'source-arrow-color': '#000',
+            'source-arrow-shape': symmetric ? 'triangle' : 'none',
+            'curve-style': 'bezier',
+          }
+        }
+      ]}
+    />
   );
 }
 
@@ -38,7 +60,7 @@ function FormulaList({ formulae }) {
     <>
       <textarea
         value={formulae}
-        rows="22" cols="100"></textarea>
+        rows="22" cols="100" readOnly></textarea>
     </>
   );
 }
@@ -135,12 +157,18 @@ function App() {
   const [searchFormula, setSearchFormula] = useState("_|_");
   const [computeTime, setComputeTime] = useState(defaultTimes);
   const [formulaList, setFormulaList] = useState(["Placeholder ∅⨉✓⊥⊤¬□≥◇≤∧∨→↔"]);
+  const [symmetric, setSymmetric] =  useState(true);
   const [graphData, setGraphData] = useState(
     {
       nodes: [
-        { data: { id: 'one', label: 'Node 1' }, position: { x: 100, y: 100 } },
-        { data: { id: 'two', label: 'Node 2' }, position: { x: 200, y: 100 } },],
-      edges: [{ data: { source: 'one', target: 'two', label: 'Edge from Node1 to Node2' } }],
+        { data: { id: '1', label: 'Node 1', bg: 'red' }, position: { x: 100, y: 100 } },
+        { data: { id: '2', label: 'Node 2', bg: 'blue' }, position: { x: 200, y: 100 } },
+        { data: { id: '3', label: 'Node 3', bg: 'green' }, position: { x: 300, y: 100 } },
+      ],
+      edges: [
+        { data: { source: '1', target: '2', label: 'Edge from Node1 to Node2' } },
+        { data: { source: '2', target: '3', label: 'Edge from Node2 to Node3' } }
+      ],
     }
   );
 
@@ -168,6 +196,9 @@ function App() {
     if (responseJsonData.formula !== undefined) {
       setSearchFormula(responseJsonData.formula)
     }
+    if (responseJsonData.symmetric !== undefined) {
+      setSymmetric(responseJsonData.symmetric)
+    }
   }
 
   return (
@@ -176,7 +207,7 @@ function App() {
         <SearchBar searchFormula={searchFormula} setSearchFormula={setSearchFormula} setResponseData={setResponseData} className="formula-query" />
         <div className="main-grid">
           <div className="middle-column">
-            <ModelGraph elements={graphData} />
+            <ModelGraph elements={graphData} symmetric={symmetric} />
           </div>
           <div className="right-column">
             <FormulaList formulae={formulaList} />

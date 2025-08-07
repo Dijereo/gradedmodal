@@ -52,6 +52,7 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
         formula_str: String,
         solve_time: String,
         parse_time: String,
+        symmetric: bool,
     ) -> ServerResponse {
         let tabw_start = Instant::now();
         let mut tableau = String::new();
@@ -95,6 +96,7 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
             },
             graph,
             tableau,
+            symmetric,
             success: !self.0.borrow().is_closed(),
         })
     }
