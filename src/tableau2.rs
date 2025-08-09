@@ -192,10 +192,38 @@ impl<T: BaseTransit> TableauNode2<T> {
                     Self::get_fruits(&child.node, fruits);
                 }
             }
-            TabChildren::Transition(transit) => match transit.feasibility() {
-                Feasibility::Feasible => fruits.push(this.clone()),
-                Feasibility::Contradiction | Feasibility::NoSolution | Feasibility::Infeasible => {}
-            },
+            TabChildren::Transition(transit) => {
+                if !transit.is_closed() {
+                    fruits.push(this.clone());
+                }
+            }
+        }
+    }
+
+    pub(crate) fn set_feasibility_rec(this: &Rc<RefCell<Self>>) -> Feasibility {
+        match this.borrow().feasibility {
+            Feasibility::Feasible => {
+                let mut thismut = this.borrow_mut();
+                match &thismut.children {
+                    TabChildren::Leaf => todo!(),
+                    TabChildren::Fork { branches, .. } => {
+                        let mut feasibility = Feasibility::Contradiction;
+                        for branch in branches {
+                            feasibility =
+                                feasibility.better(&Self::set_feasibility_rec(&branch.node));
+                        }
+                        thismut.feasibility = feasibility;
+                        feasibility
+                    }
+                    TabChildren::Transition(transit) => {
+                        thismut.feasibility = transit.feasibility();
+                        thismut.feasibility
+                    }
+                }
+            }
+            Feasibility::NoSolution | Feasibility::Contradiction => {
+                this.borrow().feasibility
+            }
         }
     }
 
@@ -276,7 +304,7 @@ impl<T: BaseTransit> TableauNode2<T> {
             let mut i = 0;
             let mut skip = false;
             while let Some(j) = js.next() {
-                while i < j-1 {
+                while i < j - 1 {
                     write!(f, "  ")?;
                     i += 1;
                 }
@@ -291,7 +319,7 @@ impl<T: BaseTransit> TableauNode2<T> {
                 }
             }
             if !skip && depth > 0 {
-                while i < depth-1 {
+                while i < depth - 1 {
                     write!(f, "  ")?;
                     i += 1;
                 }
@@ -303,7 +331,7 @@ impl<T: BaseTransit> TableauNode2<T> {
             let mut js = next_depths.iter().cloned();
             let mut i = 0;
             while let Some(j) = js.next() {
-                while i < j-1 {
+                while i < j - 1 {
                     write!(f, "  ")?;
                     i += 1;
                 }
@@ -344,7 +372,7 @@ impl<T: BaseTransit> TableauNode2<T> {
         let mut i = 0;
         let mut skip = false;
         while let Some(j) = js.next() {
-            while i < j-1 {
+            while i < j - 1 {
                 write!(f, "  ")?;
                 i += 1;
             }
@@ -359,7 +387,7 @@ impl<T: BaseTransit> TableauNode2<T> {
             }
         }
         if !skip && depth > 0 {
-            while i < depth-1 {
+            while i < depth - 1 {
                 write!(f, "  ")?;
                 i += 1;
             }

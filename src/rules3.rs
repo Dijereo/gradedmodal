@@ -8,11 +8,9 @@ use crate::{
     transit::{BaseTransit, Modals, Transit},
 };
 
-// TODO: Combine No Solution and Infeasible
 #[derive(Clone, Copy)]
 pub(crate) enum Feasibility {
     Feasible,
-    Infeasible,
     NoSolution,
     Contradiction,
 }
@@ -80,30 +78,23 @@ impl GradedKCalc {
         if tab.borrow().is_closed() {
             return tab;
         }
-        calc.first_transition(&tab);
+        calc.transition(&tab);
         tab
     }
 
-    pub(crate) fn first_transition<T: Transit>(&mut self, tab: &Rc<RefCell<TableauNode2<T>>>) {
+    pub(crate) fn transition<T: Transit>(&mut self, tab: &Rc<RefCell<TableauNode2<T>>>) {
         if tab.borrow().is_closed() {
             return;
         }
         let mut flowers = Vec::new();
         TableauNode2::get_flowers(tab, &mut flowers);
-        let mut feasibility = Feasibility::Infeasible;
         for flower in flowers {
-            if let Some(transit) = T::first_transit(&flower, self) {
-                if let Feasibility::Feasible = transit.feasibility() {
-                    feasibility = Feasibility::Feasible;
-                }
+            if let Some(transit) = T::transit(&flower, self) {
                 flower.borrow_mut().feasibility = transit.feasibility();
                 flower.borrow_mut().children = TabChildren::Transition(transit);
-            } else {
-                feasibility = Feasibility::Feasible;
             }
         }
-        // TODO: Set entire tree of feasibility
-        tab.borrow_mut().feasibility = feasibility;
+        TableauNode2::set_feasibility_rec(tab);
     }
 
     pub(crate) fn expand_static<T: BaseTransit>(
@@ -448,14 +439,15 @@ impl Feasibility {
             Feasibility::Feasible => "✓",
             Feasibility::Contradiction => "⊥",
             Feasibility::NoSolution => "∅",
-            Feasibility::Infeasible => "⨉",
+            // Feasibility::Uknown => "?",
+            // Feasibility::Infeasible => "⨉",
             // ✅❌🚫
         }
     }
 
     pub(crate) const fn is_bad(&self) -> bool {
         match self {
-            Feasibility::Contradiction | Feasibility::Infeasible | Feasibility::NoSolution => true,
+            Feasibility::Contradiction | Feasibility::NoSolution => true,
             Feasibility::Feasible => false,
         }
     }
@@ -463,9 +455,9 @@ impl Feasibility {
     pub(crate) const fn better(&self, other: &Self) -> Self {
         match (self, other) {
             (_, Feasibility::Feasible) | (Feasibility::Feasible, _) => Feasibility::Feasible,
-            (_, Feasibility::Infeasible) | (Feasibility::Infeasible, _) => Feasibility::Infeasible,
             (_, Feasibility::NoSolution) | (Feasibility::NoSolution, _) => Feasibility::NoSolution,
             _ => Feasibility::Contradiction,
+            // (_, Feasibility::Uknown) | (Feasibility::Uknown, _) => Feasibility::Uknown,
         }
     }
 }

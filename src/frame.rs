@@ -87,9 +87,10 @@ impl FrameCondition {
         })
     }
 
-    pub(crate) fn graph_tab_sat(
+    pub(crate) fn graph_tab(
         &self,
-        formulae: Vec<Rc<Formula>>,
+        mut formulae: Vec<Rc<Formula>>,
+        validate: bool,
         parse_time: String,
     ) -> ServerResponse {
         let mut formulae_str = String::new();
@@ -107,6 +108,9 @@ impl FrameCondition {
                 eprintln!("{e}");
                 return ServerResponse::ServerErr;
             }
+        }
+        if validate {
+            formulae = formulae.into_iter().map(|f| f.not()).collect();
         }
         sat_and!(*self, formulae, |tab, solve_time| DisplayTableau(tab)
             .model(formulae_str, solve_time, parse_time, self.symmetric()))

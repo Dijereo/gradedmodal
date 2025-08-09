@@ -13,6 +13,7 @@ use crate::{formula::full_parser, frame::FrameCondition, model::Graph, token::to
 pub(crate) struct UserSubmission {
     formula: String,
     frames: String,
+    action: String,
 }
 
 #[derive(Serialize)]
@@ -26,6 +27,7 @@ pub(crate) struct ServerTimes {
 
 pub(crate) enum ServerResponse {
     Ok(ServerOutput),
+    ActionErr(String),
     FrameErr(String),
     ParseErr(String),
     ServerErr,
@@ -47,22 +49,28 @@ impl IntoResponse for ServerResponse {
             ServerResponse::Ok(output) => (StatusCode::OK, Json(output)).into_response(),
             ServerResponse::FrameErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
             ServerResponse::ParseErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
+            ServerResponse::ActionErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
             ServerResponse::ServerErr => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         }
     }
 }
 
-pub(crate) async fn satisfy(Json(json): Json<UserSubmission>) -> ServerResponse {
+pub(crate) async fn solve_endpt(Json(json): Json<UserSubmission>) -> ServerResponse {
     let start = Instant::now();
     println!("{} {}", json.formula, json.frames);
-    let mut response = solve(&json.formula, &json.frames);
+    let validate = match json.action.to_lowercase().as_str() {
+        "sat" => false,
+        "val" => true,
+        _ => return ServerResponse::ActionErr(json.action),
+    };
+    let mut response = solve(&json.formula, &json.frames, validate);
     if let ServerResponse::Ok(output) = &mut response {
         output.times.server_time = format!("{:.3?}", start.elapsed());
     }
     response
 }
 
-fn solve(formula: &str, frames: &str) -> ServerResponse {
+fn solve(formula: &str, frames: &str, validate: bool) -> ServerResponse {
     let parse_start = Instant::now();
     let framecond: FrameCondition = {
         match frames.parse() {
@@ -97,6 +105,6 @@ fn solve(formula: &str, frames: &str) -> ServerResponse {
         }
     };
     let parse_time = format!("{:.3?}", parse_start.elapsed());
-    let resp = framecond.graph_tab_sat(vec![formula], parse_time);
+    let resp = framecond.graph_tab(vec![formula], validate, parse_time);
     resp
 }

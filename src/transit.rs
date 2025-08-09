@@ -45,7 +45,6 @@ pub(crate) struct TransitKOr45 {
 pub(crate) struct TransitT {
     pub(crate) reflexion: bool,
     pub(crate) feasibility: Feasibility,
-    // TODO: Change constraints to include boxed formulae
     pub(crate) paraws: ParallelWorlds<Self>,
     pub(crate) constraints: Constraints,
     pub(crate) ranges: Vec<RangeInclusive<usize>>,
@@ -335,10 +334,7 @@ pub(crate) trait BaseTransit: Sized {
         self.feasibility().is_bad()
     }
 
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self>;
+    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut GradedKCalc) -> Option<Self>;
 
     fn from_modals(
         modals: Modals,
@@ -363,13 +359,10 @@ impl BaseTransit for TransitKOr45 {
     }
 
     fn recurse(&mut self, calc: &mut GradedKCalc) {
-        calc.first_transition(&self.paraws.tab)
+        calc.transition(&self.paraws.tab)
     }
 
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
+    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut GradedKCalc) -> Option<Self> {
         calc.first_transit(fruit)
     }
 
@@ -426,10 +419,7 @@ impl BaseTransit for TransitT {
         self.feasibility
     }
 
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
+    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut GradedKCalc) -> Option<Self> {
         Self::reflect(fruit, vec![], None.into_iter(), calc)
     }
 
@@ -439,7 +429,6 @@ impl BaseTransit for TransitT {
         }
         let mut flowers = Vec::new();
         TableauNode2::get_flowers(&self.paraws.tab, &mut flowers);
-        let mut feasibility = Feasibility::Infeasible;
         for flower in flowers {
             let subtransit = if self.reflexion {
                 Self::reflect(
@@ -452,18 +441,11 @@ impl BaseTransit for TransitT {
                 Self::reflect(&flower, self.ranges.clone(), None.into_iter(), calc)
             };
             if let Some(subtransit) = subtransit {
-                if let Feasibility::Feasible = subtransit.feasibility {
-                    feasibility = Feasibility::Feasible;
-                }
                 flower.borrow_mut().feasibility = subtransit.feasibility;
                 flower.borrow_mut().children = TabChildren::Transition(subtransit);
-            } else {
-                feasibility = Feasibility::Feasible;
             }
         }
-        // TODO: Set entire tree of feasibility
-        self.paraws.tab.borrow_mut().feasibility = feasibility;
-        self.feasibility = feasibility;
+        self.feasibility = TableauNode2::set_feasibility_rec(&self.paraws.tab);
     }
 
     fn display_transit(
@@ -671,10 +653,7 @@ impl BaseTransit for TransitB5 {
 
     fn recurse(&mut self, _calc: &mut GradedKCalc) {}
 
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
+    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut GradedKCalc) -> Option<Self> {
         calc.first_transit(fruit)
     }
 
@@ -731,7 +710,7 @@ impl BaseTransit for TransitB5 {
             writeln!(f)?;
         }
         match self.feasibility {
-            Feasibility::Contradiction | Feasibility::Infeasible | Feasibility::NoSolution => {
+            Feasibility::Contradiction | Feasibility::NoSolution => {
                 writeln!(f, "No solution")?
             }
             Feasibility::Feasible => {
@@ -772,10 +751,7 @@ impl BaseTransit for Transit5 {
 
     fn recurse(&mut self, _calc: &mut GradedKCalc) {}
 
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
+    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut GradedKCalc) -> Option<Self> {
         calc.first_transit(fruit)
     }
 
@@ -926,10 +902,7 @@ impl BaseTransit for Transit4 {
         self.feasibility
     }
 
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
+    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut GradedKCalc) -> Option<Self> {
         calc.first_transit(fruit)
     }
 
@@ -939,23 +912,14 @@ impl BaseTransit for Transit4 {
         }
         let mut flowers = Vec::new();
         TableauNode2::get_flowers(&self.paraws.tab, &mut flowers);
-        let mut feasibility = Feasibility::Infeasible;
         for flower in flowers {
             let subtransit = self.diffract(&flower, calc);
-            match subtransit {
-                Some(subtransit) => {
-                    if let Feasibility::Feasible = subtransit.feasibility {
-                        feasibility = Feasibility::Feasible;
-                    }
-                    flower.borrow_mut().feasibility = subtransit.feasibility;
-                    flower.borrow_mut().children = TabChildren::Transition(subtransit);
-                }
-                None => feasibility = Feasibility::Feasible,
+            if let Some(subtransit) = subtransit {
+                flower.borrow_mut().feasibility = subtransit.feasibility;
+                flower.borrow_mut().children = TabChildren::Transition(subtransit);
             }
         }
-        // TODO: Set entire tree of feasibility
-        self.feasibility = feasibility;
-        self.paraws.tab.borrow_mut().feasibility = feasibility;
+        self.feasibility = TableauNode2::set_feasibility_rec(&self.paraws.tab);
     }
 
     fn display_transit(

@@ -66,6 +66,7 @@ function FormulaList({ formulae }) {
 }
 
 function SearchBar({ setResponseData, searchFormula, setSearchFormula }) {
+  const [submissionType, setSubmissionType] = useState("sat");
   const [frameClass, setFrameClass] = useState("K");
 
   const handleSubmit = async (e) => {
@@ -75,6 +76,7 @@ function SearchBar({ setResponseData, searchFormula, setSearchFormula }) {
     const payload = {
       formula: searchFormula,
       frames: frameClass,
+      action: submissionType,
     };
 
     try {
@@ -107,7 +109,8 @@ function SearchBar({ setResponseData, searchFormula, setSearchFormula }) {
         <textarea
           value={searchFormula}
           onChange={(e) => setSearchFormula(e.target.value)} rows="3" cols="100" placeholder="Enter formula here..."></textarea>
-        <button type="submit">Satisfy</button>
+        <button type="submit" onClick={() => setSubmissionType("sat")}>Satisfy</button>
+        <button type="submit" onClick={() => setSubmissionType("val")}>Validate</button>
       </div>
       <div className="frame-options">
         <label><input type="radio" name="frames" value="K" checked={frameClass === "K"} onChange={() => setFrameClass("K")} />K</label>

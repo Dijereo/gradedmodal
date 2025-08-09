@@ -36,7 +36,7 @@ pub fn init_router() -> Router {
 
     Router::new()
         // .route("/", get(hello_world))
-        .route("/api", post(api::satisfy))
+        .route("/api", post(api::solve_endpt))
         // .route_service("/", ServeFile::new("dist/index.html"))
         // .route_service(
         //     "/assets/index-BrQhOZ60.js",
