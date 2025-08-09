@@ -217,8 +217,29 @@ impl<T: BaseTransit> TableauNode2<T> {
         )
     }
 
-    pub(crate) fn get_depths_rec(&self, out: &mut VecDeque<usize>, depth: usize) {
-        out.push_back(depth);
+    pub(crate) fn get_depths(&self) -> VecDeque<Vec<usize>> {
+        let mut flat_depths = vec![];
+        self.get_depths_rec(&mut flat_depths, 0);
+        println!("{:?}", flat_depths);
+        let mut nested_depths = VecDeque::new();
+        for (i, &curr_depth) in flat_depths.iter().enumerate() {
+            let mut future_depths = vec![];
+            let mut min_future = None;
+            for &future_depth in flat_depths[i + 1..].iter() {
+                if min_future.map_or(future_depth <= curr_depth, |m| future_depth < m) {
+                    future_depths.push(future_depth);
+                    min_future = Some(future_depth);
+                }
+            }
+            future_depths.reverse();
+            nested_depths.push_back(future_depths);
+        }
+        println!("{:?}", nested_depths);
+        nested_depths
+    }
+
+    pub(crate) fn get_depths_rec(&self, out: &mut Vec<usize>, depth: usize) {
+        out.push(depth);
         match &self.children {
             TabChildren::Leaf => {}
             TabChildren::Fork { branches, .. } => {
@@ -226,7 +247,7 @@ impl<T: BaseTransit> TableauNode2<T> {
                     branch.node.borrow().get_depths_rec(out, depth + 1);
                 }
             }
-            TabChildren::Transition(..) => out.push_back(depth + 1),
+            TabChildren::Transition(..) => out.push(depth + 1),
         }
     }
 
@@ -236,69 +257,74 @@ impl<T: BaseTransit> TableauNode2<T> {
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
     ) -> fmt::Result {
-        let thisref = this.borrow();
-        let mut next_depths = VecDeque::new();
-        thisref.get_depths_rec(&mut next_depths, 1);
-        Self::display_rec(
-            this,
-            f,
-            next_depths
-                .pop_front()
-                .expect("Should have at least one element"),
-            &mut next_depths,
-            curri,
-            roots,
-        )
+        let mut depths = this.borrow().get_depths();
+        Self::display_rec(this, f, 0, &mut depths, curri, roots)
     }
 
     pub(crate) fn display_rec(
         this: &Rc<RefCell<Self>>,
         f: &mut impl fmt::Write,
         depth: usize,
-        next_depths: &mut VecDeque<usize>,
+        depths_iter: &mut VecDeque<Vec<usize>>,
         curri: &mut usize,
         fruits: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
     ) -> fmt::Result {
         let thisref = this.borrow();
-        let next_depth = next_depths.pop_front();
-        if depth > 1 {
-            write!(f, "{:indent$}|-+ ", "", indent = depth * 2 - 4)?
-        } else if depth == 1 {
-            write!(f, "+ ")?
-        }
+        let next_depths = depths_iter.pop_front().unwrap_or_default();
         if let Some(label) = thisref.formulae.first() {
-            writeln!(f, "{}", label.formula)?
+            let mut js = next_depths.iter().cloned();
+            let mut i = 0;
+            let mut skip = false;
+            while let Some(j) = js.next() {
+                while i < j-1 {
+                    write!(f, "  ")?;
+                    i += 1;
+                }
+                if j == depth {
+                    write!(f, "┣━")?;
+                    i += 1;
+                    skip = true;
+                    break;
+                } else {
+                    write!(f, "┃ ")?;
+                    i += 1;
+                }
+            }
+            if !skip && depth > 0 {
+                while i < depth-1 {
+                    write!(f, "  ")?;
+                    i += 1;
+                }
+                write!(f, "┗━")?;
+            }
+            writeln!(f, "✱ {}", label.formula)?;
         }
         for label in &thisref.formulae[1..] {
-            if let Some(next_depth) = next_depth {
-                if next_depth > 1 {
-                    writeln!(
-                        f,
-                        "{:indent$}|{:width$}{}",
-                        "",
-                        "",
-                        label.formula,
-                        indent = next_depth * 2 - 4,
-                        width = 2 * (depth + 1 - next_depth) + 1
-                    )?
-                } else if depth > 0 {
-                    writeln!(f, "|{:width$}{}", "", label.formula, width = 2 * depth - 1)?
-                } else {
-                    writeln!(f, "{}", label.formula)?
+            let mut js = next_depths.iter().cloned();
+            let mut i = 0;
+            while let Some(j) = js.next() {
+                while i < j-1 {
+                    write!(f, "  ")?;
+                    i += 1;
                 }
-            } else {
-                writeln!(f, "{:indent$}{}", "", label.formula, indent = 2 * depth)?
+                write!(f, "┃ ")?;
+                i += 1;
             }
+            while i < depth {
+                write!(f, "  ")?;
+                i += 1;
+            }
+            writeln!(f, "✱ {}", label.formula)?;
         }
         match &thisref.children {
             TabChildren::Leaf => {}
             TabChildren::Fork { branches, .. } => {
                 for branch in branches {
-                    Self::display_rec(&branch.node, f, depth + 1, next_depths, curri, fruits)?
+                    Self::display_rec(&branch.node, f, depth + 1, depths_iter, curri, fruits)?
                 }
             }
             TabChildren::Transition(transit) => {
-                Self::display_transition(f, transit.feasibility(), depth + 1, next_depths, *curri)?;
+                Self::display_transition(f, transit.feasibility(), depth + 1, depths_iter, *curri)?;
                 fruits.push_back((*curri, this.clone()));
                 *curri += 1;
             }
@@ -310,21 +336,36 @@ impl<T: BaseTransit> TableauNode2<T> {
         f: &mut impl fmt::Write,
         feasiblity: Feasibility,
         depth: usize,
-        next_depths: &mut VecDeque<usize>,
+        depths_iter: &mut VecDeque<Vec<usize>>,
         rooti: usize,
     ) -> fmt::Result {
-        let _next_depth = next_depths.pop_front();
-        let specchar = feasiblity.symbol();
-        if depth > 1 {
-            writeln!(
-                f,
-                "{:indent$}|-> {rooti} {specchar}",
-                "",
-                indent = depth * 2 - 4
-            )
-        } else {
-            writeln!(f, "{rooti} {specchar}")
+        let next_depths = depths_iter.pop_front().unwrap_or_default();
+        let mut js = next_depths.iter().cloned();
+        let mut i = 0;
+        let mut skip = false;
+        while let Some(j) = js.next() {
+            while i < j-1 {
+                write!(f, "  ")?;
+                i += 1;
+            }
+            if j == depth {
+                write!(f, "┣━")?;
+                i += 1;
+                skip = true;
+                break;
+            } else {
+                write!(f, "┃ ")?;
+                i += 1;
+            }
         }
+        if !skip && depth > 0 {
+            while i < depth-1 {
+                write!(f, "  ")?;
+                i += 1;
+            }
+            write!(f, "┗━")?;
+        }
+        writeln!(f, "➤ {rooti} {}", feasiblity.symbol())
     }
 }
 

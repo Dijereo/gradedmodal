@@ -60,7 +60,7 @@ function FormulaList({ formulae }) {
     <>
       <textarea
         value={formulae}
-        rows="22" cols="100" readOnly></textarea>
+        rows="22" cols="100" readOnly wrap="off"></textarea>
     </>
   );
 }

@@ -56,15 +56,8 @@ pub(crate) async fn satisfy(Json(json): Json<UserSubmission>) -> ServerResponse 
     let start = Instant::now();
     println!("{} {}", json.formula, json.frames);
     let mut response = solve(&json.formula, &json.frames);
-    if let ServerResponse::Ok(ServerOutput {
-        times: ServerTimes {
-            ref mut server_time,
-            ..
-        },
-        ..
-    }) = response
-    {
-        *server_time = format!("{:.3?}", start.elapsed());
+    if let ServerResponse::Ok(output) = &mut response {
+        output.times.server_time = format!("{:.3?}", start.elapsed());
     }
     response
 }
