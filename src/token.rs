@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Token {
     BOTTOM,
+    TOP,
     NOT,
     AND,
     OR,
@@ -12,6 +13,10 @@ pub(crate) enum Token {
     DIAMOND,
     LTE,
     GTE,
+    LT,
+    GT,
+    EQ,
+    NEQ,
     PROPVAR(char),
     NUM(u32),
 }
@@ -54,34 +59,97 @@ pub(crate) fn tokenize(input: &str) -> Result<Vec<Token>, (usize, char)> {
                 tokens.push(Token::RPAREN);
                 chars.next();
             }
-            '~' => {
+            '~' | '¬' => {
                 tokens.push(Token::NOT);
                 chars.next();
             }
-            '&' => {
+            '^' | '∧' => {
                 tokens.push(Token::AND);
                 chars.next();
             }
-            '|' => {
+            '&' => {
+                chars.next();
+                while let Some((_, '&')) = chars.peek() {
+                    chars.next();
+                }
+                tokens.push(Token::AND);
+            }
+            'V' | '∨' => {
                 tokens.push(Token::OR);
                 chars.next();
             }
+            '|' => {
+                chars.next();
+                while let Some((_, '|')) = chars.peek() {
+                    chars.next();
+                }
+                tokens.push(Token::OR);
+            }
             '<' => {
                 chars.next();
-                match chars.next() {
-                    Some((_, '-')) => match chars.next() {
-                        Some((_, '>')) => tokens.push(Token::IFF),
-                        _ => return Err((i, ch)),
-                    },
-                    Some((_, '>')) => tokens.push(Token::DIAMOND),
-                    Some((_, '=')) => tokens.push(Token::LTE),
-                    _ => return Err((i, ch)),
+                match chars.peek() {
+                    Some((_, '-')) => {
+                        chars.next();
+                        match chars.next() {
+                            Some((_, '>')) => tokens.push(Token::IFF),
+                            _ => return Err((i, ch)),
+                        }
+                    }
+                    Some((_, '>')) => {
+                        chars.next();
+                        tokens.push(Token::DIAMOND)
+                    }
+                    Some((_, '=')) => {
+                        chars.next();
+                        tokens.push(Token::LTE)
+                    }
+                    _ => tokens.push(Token::LT),
                 }
+            }
+            '!' => {
+                chars.next();
+                match chars.peek() {
+                    Some((_, '=')) => {
+                        while let Some((_, '=')) = chars.peek() {
+                            chars.next();
+                        }
+                        tokens.push(Token::NEQ);
+                    }
+                    Some((_, p)) if p.is_ascii_lowercase() => tokens.push(Token::NOT),
+                    _ => tokens.push(Token::BOTTOM),
+                }
+            }
+            '≠' => {
+                tokens.push(Token::NEQ);
+                chars.next();
+            }
+            '=' => {
+                chars.next();
+                while let Some((_, '=')) = chars.peek() {
+                    chars.next();
+                }
+                tokens.push(Token::EQ);
+            }
+            '≤' => {
+                tokens.push(Token::LTE);
+                chars.next();
+            }
+            '≥' => {
+                tokens.push(Token::GTE);
+                chars.next();
+            }
+            '◇' => {
+                tokens.push(Token::DIAMOND);
+                chars.next();
+            }
+            '□' => {
+                tokens.push(Token::BOX);
+                chars.next();
             }
             '[' => {
                 chars.next();
                 match chars.peek() {
-                    Some(&(_, ']')) => {
+                    Some((_, ']')) => {
                         chars.next();
                         tokens.push(Token::BOX);
                     }
@@ -91,12 +159,22 @@ pub(crate) fn tokenize(input: &str) -> Result<Vec<Token>, (usize, char)> {
             '-' => {
                 chars.next();
                 match chars.peek() {
-                    Some(&(_, '>')) => {
+                    Some((_, '>')) => {
                         chars.next();
                         tokens.push(Token::IMPLY);
                     }
-                    _ => return Err((i, ch)),
+                    _ => {
+                        tokens.push(Token::NOT);
+                    }
                 }
+            }
+            '→' => {
+                tokens.push(Token::IMPLY);
+                chars.next();
+            }
+            '↔' => {
+                tokens.push(Token::IFF);
+                chars.next();
             }
             '>' => {
                 chars.next();
@@ -105,7 +183,7 @@ pub(crate) fn tokenize(input: &str) -> Result<Vec<Token>, (usize, char)> {
                         chars.next();
                         tokens.push(Token::GTE);
                     }
-                    _ => return Err((i, ch)),
+                    _ => tokens.push(Token::GT),
                 }
             }
             '_' => {
@@ -114,6 +192,14 @@ pub(crate) fn tokenize(input: &str) -> Result<Vec<Token>, (usize, char)> {
                     (Some((_, '|')), Some((_, '_'))) => tokens.push(Token::BOTTOM),
                     _ => return Err((i, ch)),
                 }
+            }
+            'T' | '⊤' => {
+                tokens.push(Token::TOP);
+                chars.next();
+            }
+            '⊥' => {
+                tokens.push(Token::BOTTOM);
+                chars.next();
             }
             _ => return Err((i, ch)),
         };
@@ -127,16 +213,11 @@ mod tests {
 
     #[test]
     fn test_single_tokens() {
+        assert_eq!(tokenize("⊤").unwrap(), vec![Token::TOP]);
+        assert_eq!(tokenize("T").unwrap(), vec![Token::TOP]);
+        assert_eq!(tokenize("⊥").unwrap(), vec![Token::BOTTOM]);
+        assert_eq!(tokenize("!").unwrap(), vec![Token::BOTTOM]);
         assert_eq!(tokenize("_|_").unwrap(), vec![Token::BOTTOM]);
-        assert_eq!(tokenize("~").unwrap(), vec![Token::NOT]);
-        assert_eq!(tokenize("&").unwrap(), vec![Token::AND]);
-        assert_eq!(tokenize("|").unwrap(), vec![Token::OR]);
-        assert_eq!(tokenize("->").unwrap(), vec![Token::IMPLY]);
-        assert_eq!(tokenize("<->").unwrap(), vec![Token::IFF]);
-        assert_eq!(tokenize("(").unwrap(), vec![Token::LPAREN]);
-        assert_eq!(tokenize(")").unwrap(), vec![Token::RPAREN]);
-        assert_eq!(tokenize("<>").unwrap(), vec![Token::DIAMOND]);
-        assert_eq!(tokenize("[]").unwrap(), vec![Token::BOX]);
         assert_eq!(tokenize("p").unwrap(), vec![Token::PROPVAR('p')]);
         assert_eq!(
             tokenize("q0").unwrap(),
@@ -146,11 +227,45 @@ mod tests {
             tokenize("x123").unwrap(),
             vec![Token::PROPVAR('x'), Token::NUM(123)]
         );
+        assert_eq!(tokenize("¬").unwrap(), vec![Token::NOT]);
+        assert_eq!(tokenize("~").unwrap(), vec![Token::NOT]);
+        assert_eq!(
+            tokenize("!p").unwrap(),
+            vec![Token::NOT, Token::PROPVAR('p')]
+        );
+        assert_eq!(tokenize("∧").unwrap(), vec![Token::AND]);
+        assert_eq!(tokenize("^").unwrap(), vec![Token::AND]);
+        assert_eq!(tokenize("&").unwrap(), vec![Token::AND]);
+        assert_eq!(tokenize("&&").unwrap(), vec![Token::AND]);
+        assert_eq!(tokenize("∨").unwrap(), vec![Token::OR]);
+        assert_eq!(tokenize("V").unwrap(), vec![Token::OR]);
+        assert_eq!(tokenize("|").unwrap(), vec![Token::OR]);
+        assert_eq!(tokenize("||").unwrap(), vec![Token::OR]);
+        assert_eq!(tokenize("=").unwrap(), vec![Token::EQ]);
+        assert_eq!(tokenize("==").unwrap(), vec![Token::EQ]);
+        assert_eq!(tokenize("===").unwrap(), vec![Token::EQ]);
+        assert_eq!(tokenize("≠").unwrap(), vec![Token::NEQ]);
+        assert_eq!(tokenize("!=").unwrap(), vec![Token::NEQ]);
+        assert_eq!(tokenize("!==").unwrap(), vec![Token::NEQ]);
+        assert_eq!(tokenize("≤").unwrap(), vec![Token::LTE]);
+        assert_eq!(tokenize("<").unwrap(), vec![Token::LT]);
+        assert_eq!(tokenize("≥").unwrap(), vec![Token::GTE]);
+        assert_eq!(tokenize(">").unwrap(), vec![Token::GT]);
+        assert_eq!(tokenize("◇").unwrap(), vec![Token::DIAMOND]);
+        assert_eq!(tokenize("<>").unwrap(), vec![Token::DIAMOND]);
+        assert_eq!(tokenize("□").unwrap(), vec![Token::BOX]);
+        assert_eq!(tokenize("[]").unwrap(), vec![Token::BOX]);
+        assert_eq!(tokenize("→").unwrap(), vec![Token::IMPLY]);
+        assert_eq!(tokenize("->").unwrap(), vec![Token::IMPLY]);
+        assert_eq!(tokenize("↔").unwrap(), vec![Token::IFF]);
+        assert_eq!(tokenize("<->").unwrap(), vec![Token::IFF]);
+        assert_eq!(tokenize("(").unwrap(), vec![Token::LPAREN]);
+        assert_eq!(tokenize(")").unwrap(), vec![Token::RPAREN]);
     }
 
     #[test]
     fn test_multiple_tokens() {
-        let input = "~ p1 & []~( p23 | z |_|_ ) -> <>p4 <-> o5";
+        let input = "~ p1 & []~( l23 | i |_|_ ) -> <>≥6q4 <-> -o5 && !v1 ^ □¬( t23 V z ∨ ! ) → ◇≤7a4 ↔ T";
         let expected = vec![
             Token::NOT,
             Token::PROPVAR('p'),
@@ -159,7 +274,32 @@ mod tests {
             Token::BOX,
             Token::NOT,
             Token::LPAREN,
-            Token::PROPVAR('p'),
+            Token::PROPVAR('l'),
+            Token::NUM(23),
+            Token::OR,
+            Token::PROPVAR('i'),
+            Token::OR,
+            Token::BOTTOM,
+            Token::RPAREN,
+            Token::IMPLY,
+            Token::DIAMOND,
+            Token::GTE,
+            Token::NUM(6),
+            Token::PROPVAR('q'),
+            Token::NUM(4),
+            Token::IFF,
+            Token::NOT,
+            Token::PROPVAR('o'),
+            Token::NUM(5),
+            Token::AND,
+            Token::NOT,
+            Token::PROPVAR('v'),
+            Token::NUM(1),
+            Token::AND,
+            Token::BOX,
+            Token::NOT,
+            Token::LPAREN,
+            Token::PROPVAR('t'),
             Token::NUM(23),
             Token::OR,
             Token::PROPVAR('z'),
@@ -168,34 +308,14 @@ mod tests {
             Token::RPAREN,
             Token::IMPLY,
             Token::DIAMOND,
-            Token::PROPVAR('p'),
+            Token::LTE,
+            Token::NUM(7),
+            Token::PROPVAR('a'),
             Token::NUM(4),
             Token::IFF,
-            Token::PROPVAR('o'),
-            Token::NUM(5),
+            Token::TOP,
         ];
         assert_eq!(tokenize(input).unwrap(), expected);
-    }
-
-    #[test]
-    fn test_invalid_character() {
-        let input = "p1 ^ p2";
-        let result = tokenize(input);
-        assert_eq!(result, Err((3, '^')));
-    }
-
-    #[test]
-    fn test_incomplete_arrow() {
-        let input = "p1 - p2";
-        let result = tokenize(input);
-        assert_eq!(result, Err((3, '-')));
-    }
-
-    #[test]
-    fn test_incomplete_iff() {
-        let input = "p1 < - > p2";
-        let result = tokenize(input);
-        assert_eq!(result, Err((3, '<')));
     }
 
     #[test]

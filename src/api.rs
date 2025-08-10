@@ -93,7 +93,7 @@ fn solve(formula: &str, frames: &str, validate: bool) -> ServerResponse {
     };
     let stream = tokens.into_iter().enumerate();
     let formula = match full_parser(stream) {
-        Ok(f) => Rc::new(f),
+        Ok(f) => f,
         Err(Some((i, tok))) => {
             return ServerResponse::ParseErr(format!(
                 "Error: bad token sequence '{:#?}' at index {}.",

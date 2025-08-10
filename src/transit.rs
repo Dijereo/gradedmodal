@@ -5,7 +5,7 @@ use good_lp::Variable;
 use crate::{
     flatformula::FlatFormula,
     formula::Formula,
-    rules3::{Feasibility, ForkStore, ForkType, Calculus},
+    rules3::{Calculus, Feasibility, ForkStore, ForkType},
     tableau2::{LabeledFormula, TabChildren, TableauNode2},
 };
 
@@ -33,6 +33,28 @@ pub(crate) struct ParallelWorlds<T> {
     pub(crate) tab: Rc<RefCell<TableauNode2<T>>>,
     pub(crate) forkids: Vec<RangeInclusive<usize>>,
     pub(crate) choices: Vec<Vec<(usize, usize)>>,
+}
+
+pub(crate) trait BaseTransit: Sized {
+    fn feasibility(&self) -> Feasibility;
+
+    fn is_closed(&self) -> bool {
+        self.feasibility().is_bad()
+    }
+
+    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self>;
+
+    fn from_modals(
+        modals: Modals,
+        leaf: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut Calculus,
+    ) -> Self;
+
+    fn recurse(&mut self, calc: &mut Calculus);
+}
+
+pub(crate) trait Transit: BaseTransit {
+    fn solve(&mut self);
 }
 
 pub(crate) struct TransitKOr45 {
@@ -272,9 +294,13 @@ impl<T: BaseTransit> ParallelWorlds<T> {
         parent: Option<&Rc<RefCell<TableauNode2<T>>>>,
         calc: &mut Calculus,
     ) -> (Self, Constraints) {
-        let box_subform = modals.bx.clone();
         let (forkranges, constraints) = modals.to_forks_constraints(&mut calc.forks);
-        let this = Self::from_forks(box_subform, forkranges.into_iter().collect(), parent, calc);
+        let this = Self::from_forks(
+            constraints.boxsubforms.clone(),
+            forkranges.into_iter().collect(),
+            parent,
+            calc,
+        );
         (this, constraints)
     }
 
@@ -330,35 +356,6 @@ impl<T: BaseTransit> ParallelWorlds<T> {
         }
     }
 }
-pub(crate) trait Transit: BaseTransit {
-    fn solve(&mut self);
-}
-
-pub(crate) trait BaseTransit: Sized {
-    fn feasibility(&self) -> Feasibility;
-
-    fn is_closed(&self) -> bool {
-        self.feasibility().is_bad()
-    }
-
-    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self>;
-
-    fn from_modals(
-        modals: Modals,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut Calculus,
-    ) -> Self;
-
-    fn recurse(&mut self, calc: &mut Calculus);
-
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result;
-}
 
 impl BaseTransit for TransitKOr45 {
     fn feasibility(&self) -> Feasibility {
@@ -371,38 +368,6 @@ impl BaseTransit for TransitKOr45 {
 
     fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
         calc.first_transit(fruit)
-    }
-
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        writeln!(f, "{}", self.constraints)?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
-        writeln!(f)?;
-        for (i, choice) in self.paraws.choices.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        if self.feasibility.is_bad() {
-            writeln!(f, "No solution")?
-        } else {
-            write!(f, "Solution: ")?;
-            for (i, val) in self.solution.iter().enumerate() {
-                write!(f, "{val}*w{i} ")?;
-            }
-            writeln!(f)?;
-        }
-        writeln!(f)
     }
 
     fn from_modals(
@@ -455,46 +420,6 @@ impl BaseTransit for TransitT {
         self.feasibility = TableauNode2::set_feasibility_rec(&self.paraws.tab);
     }
 
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(
-            f,
-            "{rooti} {}: {}",
-            if self.reflexion { "[self]" } else { "" },
-            self.feasibility.symbol()
-        )?;
-        writeln!(f, "{}", self.constraints)?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
-        if self.reflexion {
-            return writeln!(f);
-        }
-        writeln!(f)?;
-        for (i, choice) in self.paraws.choices.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        if self.feasibility.is_bad() {
-            writeln!(f, "No solution")?
-        } else {
-            write!(f, "Solution: ")?;
-            for (i, val) in self.solution.iter().enumerate() {
-                write!(f, "{val}*w{i} ")?;
-            }
-            writeln!(f)?;
-        }
-        writeln!(f)
-    }
-
     fn from_modals(
         modals: Modals,
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
@@ -537,10 +462,6 @@ impl TransitT {
         for lab in labels.iter_mut() {
             lab.lemma = true;
         }
-        for lab in &labels {
-            println!("L: {} L: {}", lab.formula, lab.lemma);
-        }
-        println!("R: {:?}", forkids);
         let paraws = ParallelWorlds::<Self>::from_forks(
             labels,
             forkids.clone().map_or(vec![], |f| vec![f]),
@@ -550,9 +471,6 @@ impl TransitT {
         ranges.extend(forkids.into_iter());
         constraints.gradings.extend(src_constraints);
         let feasibility = paraws.tab.borrow().feasibility;
-        for lab in &paraws.tab.borrow().formulae {
-            println!("F: {} L: {}", lab.formula, lab.lemma);
-        }
         Self {
             reflexion: true,
             feasibility,
@@ -669,13 +587,12 @@ impl BaseTransit for TransitB5 {
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut Calculus,
     ) -> Self {
-        let boxsubforms = modals.bx.clone();
         let (paraws, constraints) = ParallelWorlds::from_modals(modals, Some(leaf), calc);
         let feasibility = paraws.tab.borrow().feasibility;
         let reflexion = if paraws.tab.borrow().is_closed() {
             ParallelWorlds::from_forks(vec![], vec![], Some(leaf), calc)
         } else {
-            Self::get_reflexion(boxsubforms, &paraws, leaf, calc)
+            Self::get_reflexion(constraints.boxsubforms.clone(), &paraws, leaf, calc)
         };
         Self {
             feasibility,
@@ -685,54 +602,6 @@ impl BaseTransit for TransitB5 {
             rfxsolution: 0,
             reflexion,
         }
-    }
-
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        writeln!(f, "{}", self.constraints)?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.reflexion.tab, f, curri, roots)?;
-        writeln!(f)?;
-        for (i, choice) in self.paraws.choices.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        for (i, choice) in self.reflexion.choices.iter().enumerate() {
-            write!(f, "u{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        match self.feasibility {
-            Feasibility::Contradiction | Feasibility::NoSolution => {
-                writeln!(f, "No solution")?
-            }
-            Feasibility::Feasible => {
-                write!(f, "Solution: ")?;
-                for (i, val) in self.solution.iter().enumerate() {
-                    if i == self.rfxsolution {
-                        write!(f, "{val}*w{i}+u ")?;
-                    } else {
-                        write!(f, "{val}*w{i} ")?;
-                    }
-                }
-                writeln!(f)?;
-            }
-        }
-        writeln!(f)
     }
 }
 
@@ -762,64 +631,11 @@ impl BaseTransit for Transit5 {
         calc.first_transit(fruit)
     }
 
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        writeln!(f, "{}", self.spotconstraints)?;
-        writeln!(f)?;
-        writeln!(f, "Second Transition Modals:")?;
-        for (i, submodal) in self.submodals.iter().enumerate() {
-            writeln!(f, "ψ{i} := {}", submodal.formula)?;
-        }
-        writeln!(f)?;
-        for (i, paracliq) in self.paracliques.iter().enumerate() {
-            writeln!(f, "Clique {i}:")?;
-            TableauNode2::display_root(&paracliq.spotws.tab, f, curri, roots)?;
-            writeln!(f)?;
-            TableauNode2::display_root(&paracliq.cliquews.tab, f, curri, roots)?;
-            for (i, choice) in paracliq.spotws.choices.iter().enumerate() {
-                write!(f, "u{i}: ")?;
-                for (forkid, branchid) in choice {
-                    write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-                }
-                writeln!(f)?;
-            }
-            for (i, choice) in paracliq.cliquews.choices.iter().enumerate() {
-                write!(f, "w{i}: ")?;
-                for (forkid, branchid) in choice {
-                    write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-                }
-                writeln!(f)?;
-            }
-            if paracliq.spotsolution.is_empty() {
-                writeln!(f, "No solution")?;
-            } else {
-                write!(f, "Solution: ")?;
-                for (i, val) in paracliq.spotsolution.iter().enumerate() {
-                    write!(f, "{val}*u{i} ")?;
-                }
-                writeln!(f)?;
-                for (i, val) in paracliq.cliquesolution.iter().enumerate() {
-                    write!(f, "{val}*w{i} ")?;
-                }
-                writeln!(f)?;
-            }
-        }
-        Ok(())
-    }
-
     fn from_modals(
         modals: Modals,
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut Calculus,
     ) -> Self {
-        let boxsubforms = modals.bx.clone();
         let submodals = modals.submodals();
         let mut settings = vec![true; submodals.len()];
         let mut paracliques = vec![];
@@ -830,7 +646,7 @@ impl BaseTransit for Transit5 {
             let paraclique = ParaClique::new(
                 submodals.iter(),
                 &settings,
-                boxsubforms.iter().cloned(),
+                spotconstraints.boxsubforms.iter().cloned(),
                 Vec::from_iter(spotranges.iter().cloned()),
                 leaf,
                 calc,
@@ -927,38 +743,6 @@ impl BaseTransit for Transit4 {
             }
         }
         self.feasibility = TableauNode2::set_feasibility_rec(&self.paraws.tab);
-    }
-
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        writeln!(f, "{}", self.constraints)?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
-        writeln!(f)?;
-        for (i, choice) in self.paraws.choices.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        if self.feasibility.is_bad() {
-            writeln!(f, "No solution")?
-        } else {
-            write!(f, "Solution: ")?;
-            for (i, val) in self.solution.iter().enumerate() {
-                write!(f, "{val}*w{i} ")?;
-            }
-            writeln!(f)?;
-        }
-        writeln!(f)
     }
 
     fn from_modals(

@@ -87,7 +87,6 @@ pub fn run_cli() {
                 let stream = tokens.into_iter().enumerate();
                 match full_parser(stream) {
                     Ok(f) => {
-                        let f = Rc::new(f);
                         println!("{}", f);
                         println!();
                         framecond.print_sat(f);

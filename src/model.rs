@@ -1,11 +1,10 @@
 use serde::Serialize;
-use std::{fmt::Write, rc::Rc, time::Instant};
+use std::{fmt::Write, time::Instant};
 
 use crate::{
     api::{ServerOutput, ServerResponse, ServerTimes},
-    formula::Formula,
-    tableau2::{DisplayTableau, TabChildren, TableauNode2},
-    transit::{Transit, Transit4, Transit5, TransitB5, TransitKOr45, TransitT},
+    tableau2::{DisplayTableau, DisplayTransit, TabChildren, TableauNode2},
+    transit::{Transit4, Transit5, TransitB5, TransitKOr45, TransitT},
 };
 
 #[derive(Serialize)]
@@ -44,6 +43,10 @@ struct Edge {
     target: String,
     label: String,
     extra: String,
+}
+
+trait IntoModelGraph: DisplayTransit {
+    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>);
 }
 
 impl<T: IntoModelGraph> DisplayTableau<T> {
@@ -100,10 +103,6 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
             success: !self.0.borrow().is_closed(),
         })
     }
-}
-
-trait IntoModelGraph: Transit {
-    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>);
 }
 
 impl<T: IntoModelGraph> TableauNode2<T> {

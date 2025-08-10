@@ -304,14 +304,14 @@ impl Formula {
     }
 }
 
-pub(crate) fn full_parser<S>(stream: S) -> Result<Formula, Option<(usize, Token)>>
+pub(crate) fn full_parser<S>(stream: S) -> Result<Rc<Formula>, Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
     parse_entire(stream, formula_parser)
 }
 
-fn var_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn var_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -319,23 +319,23 @@ where
         stream,
         |s| {
             parse_unit(s, |token| match token {
-                Token::PROPVAR(c) => Ok(c),
+                Token::PROPVAR(p) => Ok(p),
                 _ => Err(token),
             })
         },
         |s| {
             parse_option(s, |s2| {
                 parse_unit(s2, |token| match token {
-                    Token::NUM(n) => Ok(n as usize),
+                    Token::NUM(i) => Ok(i as usize),
                     _ => Err(token),
                 })
             })
         },
-        |c, n| Formula::PropVar(c, n),
+        |p, i| i.map_or(Formula::prop(p), |i| Formula::propi(p, i)),
     )
 }
 
-fn paren_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn paren_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -346,7 +346,7 @@ where
     )
 }
 
-fn atom_parser<'a, S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn atom_parser<'a, S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone + 'a,
 {
@@ -359,14 +359,18 @@ where
             Box::new(diamond_parser),
             Box::new(dmge_parser),
             Box::new(dmle_parser),
+            Box::new(dmgt_parser),
+            Box::new(dmlt_parser),
+            Box::new(dmeq_parser),
+            Box::new(dmne_parser),
             Box::new(var_parser),
             Box::new(bottom_parser),
-        ] as [Box<DynParser<'a, Token, Formula, S>>; 8])
+        ] as [Box<DynParser<'a, Token, Rc<Formula>, S>>; 12])
             .into_iter(),
     )
 }
 
-fn not_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn not_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -374,11 +378,11 @@ where
         stream,
         |s| parse_eq(s, &Token::NOT, ()),
         atom_parser,
-        |_, formula| Formula::Not(Rc::new(formula)),
+        |_, formula| formula.not(),
     )
 }
 
-fn box_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn box_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -386,11 +390,11 @@ where
         stream,
         |s| parse_eq(s, &Token::BOX, ()),
         atom_parser,
-        |_, formula| Formula::Box(Rc::new(formula)),
+        |_, formula| formula.box_(),
     )
 }
 
-fn diamond_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn diamond_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -398,11 +402,11 @@ where
         stream,
         |s| parse_eq(s, &Token::DIAMOND, ()),
         atom_parser,
-        |_, formula| Formula::Diamond(Rc::new(formula)),
+        |_, formula| formula.diamond(),
     )
 }
 
-fn dmge_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn dmge_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -427,11 +431,40 @@ where
             )
         },
         atom_parser,
-        |n, formula| Formula::DiamondGe(n, Rc::new(formula)),
+        |n, formula| formula.dmge(n),
     )
 }
 
-fn dmle_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn dmgt_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| {
+            parse_snd(
+                s,
+                |s2| parse_eq(s2, &Token::DIAMOND, ()),
+                |s2| {
+                    parse_snd(
+                        s2,
+                        |s3| parse_eq(s3, &Token::GT, ()),
+                        |s3| {
+                            parse_unit(s3, |token| match token {
+                                Token::NUM(n) => Ok(n),
+                                _ => Err(token),
+                            })
+                        },
+                    )
+                },
+            )
+        },
+        atom_parser,
+        |n, formula| formula.dmge(n + 1),
+    )
+}
+
+fn dmle_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -456,46 +489,145 @@ where
             )
         },
         atom_parser,
-        |n, formula| Formula::DiamondLe(n, Rc::new(formula)),
+        |n, formula| formula.dmle(n),
     )
 }
 
-fn bottom_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn dmlt_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| {
+            parse_snd(
+                s,
+                |s2| parse_eq(s2, &Token::DIAMOND, ()),
+                |s2| {
+                    parse_snd(
+                        s2,
+                        |s3| parse_eq(s3, &Token::LT, ()),
+                        |s3| {
+                            parse_unit(s3, |token| match token {
+                                Token::NUM(n) => Ok(n),
+                                _ => Err(token),
+                            })
+                        },
+                    )
+                },
+            )
+        },
+        atom_parser,
+        |n, formula| {
+            if n == 0 {
+                Formula::bottom()
+            } else {
+                formula.dmle(n - 1)
+            }
+        },
+    )
+}
+
+fn dmeq_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| {
+            parse_snd(
+                s,
+                |s2| parse_eq(s2, &Token::DIAMOND, ()),
+                |s2| {
+                    parse_snd(
+                        s2,
+                        |s3| parse_eq(s3, &Token::EQ, ()),
+                        |s3| {
+                            parse_unit(s3, |token| match token {
+                                Token::NUM(n) => Ok(n),
+                                _ => Err(token),
+                            })
+                        },
+                    )
+                },
+            )
+        },
+        atom_parser,
+        |n, formula| formula.dmge(n).and(&formula.dmle(n)),
+    )
+}
+
+fn dmne_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| {
+            parse_snd(
+                s,
+                |s2| parse_eq(s2, &Token::DIAMOND, ()),
+                |s2| {
+                    parse_snd(
+                        s2,
+                        |s3| parse_eq(s3, &Token::NEQ, ()),
+                        |s3| {
+                            parse_unit(s3, |token| match token {
+                                Token::NUM(n) => Ok(n),
+                                _ => Err(token),
+                            })
+                        },
+                    )
+                },
+            )
+        },
+        atom_parser,
+        |n, formula| {
+            if n == 0 {
+                formula.diamond()
+            } else {
+                formula.dmge(n + 1).or(&formula.dmle(n - 1))
+            }
+        },
+    )
+}
+
+fn bottom_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)>,
 {
-    parse_eq(stream, &Token::BOTTOM, Formula::Bottom)
+    parse_eq(stream, &Token::BOTTOM, Formula::bottom())
 }
 
-fn imply_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn imply_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
     parse_snd(stream, |s| parse_eq(s, &Token::IMPLY, ()), formula_parser)
 }
 
-fn iff_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn iff_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
     parse_snd(stream, |s| parse_eq(s, &Token::IFF, ()), nimply_parser)
 }
 
-fn or_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn or_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
     parse_snd(stream, |s| parse_eq(s, &Token::OR, ()), ncond_parser)
 }
 
-fn and_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn and_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
     parse_snd(stream, |s| parse_eq(s, &Token::AND, ()), conj_parser)
 }
 
-fn conj_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn conj_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -504,13 +636,13 @@ where
         atom_parser,
         |s| parse_option(s, and_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::And(Rc::new(f1), Rc::new(f2)),
+            Some(f2) => f1.and(&f2),
             None => f1,
         },
     )
 }
 
-fn ncond_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn ncond_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -519,13 +651,13 @@ where
         conj_parser,
         |s| parse_option(s, or_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::Or(Rc::new(f1), Rc::new(f2)),
+            Some(f2) => f1.or(&f2),
             None => f1,
         },
     )
 }
 
-fn nimply_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn nimply_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -534,13 +666,13 @@ where
         ncond_parser,
         |s| parse_option(s, iff_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::Iff(Rc::new(f1), Rc::new(f2)),
+            Some(f2) => f1.iff(&f2),
             None => f1,
         },
     )
 }
 
-pub(crate) fn formula_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+pub(crate) fn formula_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -549,7 +681,7 @@ where
         nimply_parser,
         |s| parse_option(s, imply_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::Imply(Rc::new(f1), Rc::new(f2)),
+            Some(f2) => f1.imply(&f2),
             None => f1,
         },
     )
@@ -565,7 +697,7 @@ mod tests {
 
     fn parse_str(input: &str) -> Rc<Formula> {
         let tokens = tokenize(input).unwrap();
-        Rc::new(full_parser(tokens.into_iter().enumerate()).unwrap())
+        full_parser(tokens.into_iter().enumerate()).unwrap()
     }
 
     #[test]
