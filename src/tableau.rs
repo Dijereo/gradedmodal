@@ -95,7 +95,7 @@ impl TableauNode {
     fn check_dup(&self, new_formula: &Rc<Formula>) -> bool {
         let mut dup = false;
         self.traverse_anc_formulae(&mut |formula| {
-            if new_formula == formula {
+            if new_formula.directly_equivalent(formula) {
                 dup = true;
                 false
             } else {
@@ -108,7 +108,7 @@ impl TableauNode {
     fn check_contra(&self, new_formula: &Rc<Formula>) -> bool {
         let mut contra = false;
         self.traverse_anc_formulae(&mut |formula| {
-            if new_formula.is_negation(formula) {
+            if new_formula.directly_contradicts(formula) {
                 contra = true;
                 false
             } else {

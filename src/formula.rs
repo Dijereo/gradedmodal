@@ -8,11 +8,11 @@ use crate::{
     token::Token,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub(crate) enum Formula {
     Bottom,
     Top,
-    PropVar(char, Option<u32>),
+    PropVar(char, Option<usize>),
     Not(Rc<Formula>),
     Box(Rc<Formula>),
     Diamond(Rc<Formula>),
@@ -189,6 +189,14 @@ impl Formula {
         Rc::new(Formula::Bottom)
     }
 
+    pub(crate) fn propi(p: char, i: usize) -> Rc<Formula> {
+        Rc::new(Formula::PropVar(p, Some(i)))
+    }
+
+    pub(crate) fn prop(p: char) -> Rc<Formula> {
+        Rc::new(Formula::PropVar(p, None))
+    }
+
     pub(crate) fn not(self: &Rc<Formula>) -> Rc<Formula> {
         Rc::new(Formula::Not(self.clone()))
     }
@@ -233,12 +241,66 @@ impl Formula {
         Rc::new(Formula::Box(self.clone()))
     }
 
-    pub(crate) fn is_negation(&self, other: &Formula) -> bool {
-        match (self, other) {
-            (Formula::Not(phi1), phi2) => phi1.as_ref() == phi2,
-            (phi1, Formula::Not(phi2)) => phi1 == phi2.as_ref(),
-            _ => false,
-        }
+    pub(crate) fn directly_equivalent(self: &Rc<Self>, other: &Rc<Self>) -> bool {
+        Rc::as_ptr(self) == Rc::as_ptr(other)
+            || match (self.as_ref(), other.as_ref()) {
+                (Formula::Not(phi1), _) => phi1.directly_contradicts(other),
+                (_, Formula::Not(phi2)) => self.directly_contradicts(phi2),
+                (Formula::Bottom, Formula::Bottom) => true,
+                (Formula::Top, Formula::Top) => true,
+                (Formula::Top, Formula::DiamondGe(0, _)) => true,
+                (Formula::DiamondGe(0, _), Formula::Top) => true,
+                (Formula::PropVar(c1, i1), Formula::PropVar(c2, i2)) => c1 == c2 && i1 == i2,
+                (Formula::Box(phi1), Formula::Box(phi2)) => phi1.directly_equivalent(phi2),
+                (Formula::Box(phi1), Formula::DiamondLe(0, phi2)) => {
+                    phi1.directly_contradicts(phi2)
+                }
+                (Formula::DiamondLe(0, phi1), Formula::Box(phi2)) => {
+                    phi1.directly_contradicts(phi2)
+                }
+                (Formula::Diamond(phi1), Formula::Diamond(phi2)) => phi1.directly_equivalent(phi2),
+                (Formula::Diamond(phi1), Formula::DiamondGe(1, phi2)) => {
+                    phi1.directly_equivalent(phi2)
+                }
+                (Formula::DiamondGe(1, phi1), Formula::Diamond(phi2)) => {
+                    phi1.directly_equivalent(phi2)
+                }
+                (Formula::DiamondGe(c1, phi1), Formula::DiamondGe(c2, phi2)) => {
+                    c1 == c2 && phi1.directly_equivalent(phi2)
+                }
+                (Formula::And(phi0, phi1), Formula::And(phi2, phi3)) => {
+                    phi0.directly_equivalent(phi2) && phi1.directly_equivalent(phi3)
+                }
+                (Formula::Or(phi0, phi1), Formula::Or(phi2, phi3)) => {
+                    phi0.directly_equivalent(phi2) && phi1.directly_equivalent(phi3)
+                }
+                (Formula::Imply(phi0, phi1), Formula::Imply(phi2, phi3)) => {
+                    phi0.directly_equivalent(phi2) && phi1.directly_equivalent(phi3)
+                }
+                (Formula::Iff(phi0, phi1), Formula::Iff(phi2, phi3)) => {
+                    phi0.directly_equivalent(phi2) && phi1.directly_equivalent(phi3)
+                }
+                _ => false,
+            }
+    }
+
+    pub(crate) fn directly_contradicts(self: &Rc<Formula>, other: &Rc<Formula>) -> bool {
+        Rc::as_ptr(self) != Rc::as_ptr(other)
+            && match (self.as_ref(), other.as_ref()) {
+                (Formula::Not(phi1), _) => phi1.directly_equivalent(other),
+                (_, Formula::Not(phi2)) => self.directly_equivalent(phi2),
+                (Formula::DiamondGe(c1, phi1), Formula::DiamondLe(c2, phi2)) => {
+                    c1 > c2 && phi1.directly_equivalent(phi2)
+                }
+                (Formula::Diamond(phi1), Formula::DiamondLe(c2, phi2)) => {
+                    *c2 < 1 && phi1.directly_equivalent(phi2)
+                }
+                (Formula::DiamondGe(c1, phi1), Formula::Box(phi2)) => {
+                    *c1 > 0 && phi1.directly_contradicts(phi2)
+                }
+                (Formula::Diamond(phi1), Formula::Box(phi2)) => phi1.directly_contradicts(phi2),
+                _ => false,
+            }
     }
 }
 
@@ -264,7 +326,7 @@ where
         |s| {
             parse_option(s, |s2| {
                 parse_unit(s2, |token| match token {
-                    Token::NUM(n) => Ok(n),
+                    Token::NUM(n) => Ok(n as usize),
                     _ => Err(token),
                 })
             })
@@ -495,116 +557,98 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::rc::Rc;
+
     use crate::token::tokenize;
 
     use super::*;
 
-    fn prop(c: char) -> Formula {
-        Formula::PropVar(c, None)
-    }
-
-    fn prop_n(c: char, n: u32) -> Formula {
-        Formula::PropVar(c, Some(n))
-    }
-
-    fn not(f: Formula) -> Formula {
-        Formula::Not(Rc::new(f))
-    }
-
-    fn boxm(f: Formula) -> Formula {
-        Formula::Box(Rc::new(f))
-    }
-
-    fn diamond(f: Formula) -> Formula {
-        Formula::Diamond(Rc::new(f))
-    }
-
-    fn and(l: Formula, r: Formula) -> Formula {
-        Formula::And(Rc::new(l), Rc::new(r))
-    }
-
-    fn or(l: Formula, r: Formula) -> Formula {
-        Formula::Or(Rc::new(l), Rc::new(r))
-    }
-
-    fn imply(l: Formula, r: Formula) -> Formula {
-        Formula::Imply(Rc::new(l), Rc::new(r))
-    }
-
-    fn iff(l: Formula, r: Formula) -> Formula {
-        Formula::Iff(Rc::new(l), Rc::new(r))
-    }
-
-    fn parse_str(input: &str) -> Formula {
+    fn parse_str(input: &str) -> Rc<Formula> {
         let tokens = tokenize(input).unwrap();
-        full_parser(tokens.into_iter().enumerate()).unwrap()
+        Rc::new(full_parser(tokens.into_iter().enumerate()).unwrap())
     }
 
     #[test]
     fn test_parse_propvar() {
-        assert_eq!(parse_str("_|_"), Formula::Bottom);
-        assert_eq!(parse_str("p"), prop('p'));
-        assert_eq!(parse_str("p42"), prop_n('p', 42));
+        assert!(parse_str("_|_").directly_equivalent(&Formula::bottom()));
+        assert!(parse_str("p").directly_equivalent(&Formula::prop('p')));
+        assert!(parse_str("p42").directly_equivalent(&Formula::propi('p', 42)));
     }
 
     #[test]
     fn test_parse_not() {
-        assert_eq!(parse_str("~q1"), not(prop_n('q', 1)));
-        assert_eq!(parse_str("~~q2"), not(not(prop_n('q', 2))));
+        assert!(parse_str("~q1").directly_equivalent(&Formula::propi('q', 1).not()));
+        assert!(parse_str("~~q2").directly_equivalent(&Formula::propi('q', 2).not().not()));
     }
 
     #[test]
     fn test_parse_modals() {
-        assert_eq!(parse_str("<>p"), diamond(prop('p')));
-        assert_eq!(parse_str("[]p0"), boxm(prop_n('p', 0)));
-        assert_eq!(
-            parse_str("<>~[]<>x2"),
-            diamond(not(boxm(diamond(prop_n('x', 2)))))
+        assert!(parse_str("<>p").directly_equivalent(&Formula::prop('p').diamond()));
+        assert!(parse_str("[]p0").directly_equivalent(&Formula::propi('p', 0).box_()));
+        assert!(
+            parse_str("<>~[]<>x2")
+                .directly_equivalent(&Formula::propi('x', 2).diamond().box_().not().diamond())
         );
     }
 
     #[test]
     fn test_parse_and_or() {
-        assert_eq!(parse_str("x1 & y2"), and(prop_n('x', 1), prop_n('y', 2)));
-        assert_eq!(parse_str("x1 | y"), or(prop_n('x', 1), prop('y')));
-        assert_eq!(
-            parse_str("x1 & y2 | z"),
-            or(and(prop_n('x', 1), prop_n('y', 2)), prop('z'))
+        println!("{}", parse_str("x1 & y2"));
+        println!("{}", &Formula::propi('x', 1).and(&Formula::propi('y', 2)));
+        assert!(
+            parse_str("x1 & y2")
+                .directly_equivalent(&Formula::propi('x', 1).and(&Formula::propi('y', 2)))
         );
-        assert_eq!(
-            parse_str("x1 | y2 & z3"),
-            or(prop_n('x', 1), and(prop_n('y', 2), prop_n('z', 3)))
+        assert!(
+            parse_str("x1 | y")
+                .directly_equivalent(&Formula::propi('x', 1).or(&Formula::prop('y')))
         );
+        assert!(
+            parse_str("x1 & y2 | z").directly_equivalent(
+                &Formula::propi('x', 1)
+                    .and(&Formula::propi('y', 2))
+                    .or(&Formula::prop('z'))
+            )
+        );
+        assert!(parse_str("x1 | y2 & z3").directly_equivalent(
+            &Formula::propi('x', 1).or(&Formula::propi('y', 2).and(&Formula::propi('z', 3)))
+        ));
     }
 
     #[test]
     fn test_parse_imply_iff() {
-        assert_eq!(parse_str("p1 -> p2"), imply(prop_n('p', 1), prop_n('p', 2)));
-        assert_eq!(parse_str("p1 <-> p2"), iff(prop_n('p', 1), prop_n('p', 2)));
-        assert_eq!(
-            parse_str("p1 -> p2 -> p3"),
-            imply(prop_n('p', 1), imply(prop_n('p', 2), prop_n('p', 3)))
+        assert!(
+            parse_str("p1 -> p2")
+                .directly_equivalent(&Formula::propi('p', 1).imply(&Formula::propi('p', 2)))
         );
-        assert_eq!(
-            parse_str("p <-> p2 <-> _|_"),
-            iff(prop('p',), iff(prop_n('p', 2), Formula::Bottom))
+        assert!(
+            parse_str("p1 <-> p2")
+                .directly_equivalent(&Formula::propi('p', 1).iff(&Formula::propi('p', 2)))
         );
+        assert!(parse_str("p1 -> p2 -> p3").directly_equivalent(
+            &Formula::propi('p', 1).imply(&Formula::propi('p', 2).imply(&Formula::propi('p', 3)))
+        ));
+        assert!(parse_str("p <-> p2 <-> _|_").directly_equivalent(
+            &Formula::prop('p',).iff(&Formula::propi('p', 2).iff(&Formula::bottom()))
+        ));
     }
 
     #[test]
     fn test_parse_grouping() {
-        assert_eq!(
-            parse_str("~(p1 & p2)"),
-            not(and(prop_n('p', 1), prop_n('p', 2)))
+        assert!(
+            parse_str("~(p1 & p2)")
+                .directly_equivalent(&Formula::propi('p', 1).and(&Formula::propi('p', 2)).not())
         );
-        assert_eq!(
-            parse_str("(p1 -> _|_) & p3"),
-            and(imply(prop_n('p', 1), Formula::Bottom), prop_n('p', 3))
+        assert!(
+            parse_str("(p1 -> _|_) & p3").directly_equivalent(
+                &Formula::propi('p', 1)
+                    .imply(&Formula::bottom())
+                    .and(&Formula::propi('p', 3))
+            )
         );
-        assert_eq!(
-            parse_str("p1 -> (p2 & p3)"),
-            imply(prop_n('p', 1), and(prop_n('p', 2), prop_n('p', 3)))
-        );
+        assert!(parse_str("p1 -> (p2 & p3)").directly_equivalent(
+            &Formula::propi('p', 1).imply(&Formula::propi('p', 2).and(&Formula::propi('p', 3)))
+        ));
     }
 
     #[test]

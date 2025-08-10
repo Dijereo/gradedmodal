@@ -91,7 +91,7 @@ impl<T: BaseTransit> TableauNode2<T> {
     fn check_dup(&self, new_formula: &Rc<Formula>) -> Option<Vec<Conflict>> {
         let mut dup = None;
         self.traverse_anc_formulae(&mut |label| {
-            if new_formula == &label.formula {
+            if new_formula.directly_equivalent(&label.formula) {
                 dup = Some(label.conflictset.clone());
                 false
             } else {
@@ -105,7 +105,7 @@ impl<T: BaseTransit> TableauNode2<T> {
         let mut conflicts = None;
         self.traverse_anc_formulae(&mut |label| {
             // println!("Check contra: {new_formula} vs {}", label.formula);
-            if new_formula.is_negation(&label.formula) {
+            if new_formula.directly_contradicts(&label.formula) {
                 conflicts = Some(label.conflictset.clone());
                 // println!("Contra");
                 false

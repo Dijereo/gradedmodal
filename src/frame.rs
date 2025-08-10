@@ -3,7 +3,7 @@ use std::{fmt::Write, rc::Rc, str::FromStr, time::Instant};
 use crate::{
     api::ServerResponse,
     formula::Formula,
-    rules3::GradedKCalc,
+    rules3::Calculus,
     tableau2::DisplayTableau,
     transit::{Transit5, TransitB5, TransitKOr45, TransitT},
 };
@@ -48,7 +48,7 @@ impl FromStr for FrameCondition {
             "D45" | "KD45" => FrameCondition::D45,
             "KB5" | "KB4" | "KB45" => FrameCondition::KB5,
             "S5" => FrameCondition::S5,
-            _ => Err(s)?,
+            _ => return Err(s),
         })
     }
 }
@@ -66,22 +66,22 @@ macro_rules! sat_and {
     ($frame:expr, $formula:expr, $clsr:expr) => {{
         match $frame {
             FrameCondition::K | FrameCondition::D | FrameCondition::K45 | FrameCondition::D45 => {
-                time_sat!($clsr, GradedKCalc::sat::<TransitKOr45>, $frame, $formula)
+                time_sat!($clsr, Calculus::sat::<TransitKOr45>, $frame, $formula)
             }
-            FrameCondition::T =>time_sat!($clsr, GradedKCalc::sat::<TransitT>, $frame, $formula),
+            FrameCondition::T => time_sat!($clsr, Calculus::sat::<TransitT>, $frame, $formula),
             FrameCondition::KB | FrameCondition::DB => todo!("B"), //$clsr($f::<Transit>($frame, $formula)),
-            FrameCondition::TB => todo!("B"), // $clsr($f::<Transit>($frame, $formula)),
+            FrameCondition::TB => todo!("TB"), // $clsr($f::<Transit>($frame, $formula)),
             FrameCondition::K4 | FrameCondition::D4 => todo!("4"), //$clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
             FrameCondition::S4 => todo!("S4"), // $clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
-            FrameCondition::K5 | FrameCondition::D5 => time_sat!($clsr, GradedKCalc::sat::<Transit5>, $frame, $formula),
-            FrameCondition::KB5 | FrameCondition::S5 => time_sat!($clsr, GradedKCalc::sat::<TransitB5>, $frame, $formula),
+            FrameCondition::K5 | FrameCondition::D5 => time_sat!($clsr, Calculus::sat::<Transit5>, $frame, $formula),
+            FrameCondition::KB5 | FrameCondition::S5 => time_sat!($clsr, Calculus::sat::<TransitB5>, $frame, $formula),
         }
     }};
 }
 
 impl FrameCondition {
-    pub(crate) fn print_sat(&self, formulae: Vec<Rc<Formula>>) {
-        sat_and!(*self, formulae, |tab, time| {
+    pub(crate) fn print_sat(&self, formula: Rc<Formula>) {
+        sat_and!(*self, formula, |tab, time| {
             println!("Solve Time: {time}");
             println!("{}", DisplayTableau(tab))
         })
@@ -89,31 +89,25 @@ impl FrameCondition {
 
     pub(crate) fn graph_tab(
         &self,
-        mut formulae: Vec<Rc<Formula>>,
+        mut formula: Rc<Formula>,
         validate: bool,
         parse_time: String,
     ) -> ServerResponse {
         let mut formulae_str = String::new();
-        let mut fs = formulae.iter();
-        if let Some(f) = fs.next() {
-            if let Err(e) = write!(&mut formulae_str, "{}", f.as_ref()) {
-                eprintln!("Error writing formula.");
-                eprintln!("{e}");
-                return ServerResponse::ServerErr;
-            }
-        }
-        for f in fs {
-            if let Err(e) = write!(&mut formulae_str, "{}", f.as_ref()) {
-                eprintln!("Error writing formula.");
-                eprintln!("{e}");
-                return ServerResponse::ServerErr;
-            }
+        if let Err(e) = write!(&mut formulae_str, "{}", formula.as_ref()) {
+            eprintln!("Error writing formula.");
+            eprintln!("{e}");
+            return ServerResponse::ServerErr;
         }
         if validate {
-            formulae = formulae.into_iter().map(|f| f.not()).collect();
+            formula = formula.not();
         }
-        sat_and!(*self, formulae, |tab, solve_time| DisplayTableau(tab)
-            .model(formulae_str, solve_time, parse_time, self.symmetric()))
+        sat_and!(*self, formula, |tab, solve_time| DisplayTableau(tab).model(
+            formulae_str,
+            solve_time,
+            parse_time,
+            self.symmetric()
+        ))
     }
 
     pub(crate) const fn ray(&self) -> bool {

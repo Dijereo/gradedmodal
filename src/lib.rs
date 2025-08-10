@@ -90,7 +90,7 @@ pub fn run_cli() {
                         let f = Rc::new(f);
                         println!("{}", f);
                         println!();
-                        framecond.print_sat(vec![f]);
+                        framecond.print_sat(f);
                     }
                     Err(Some((i, tok))) => {
                         eprintln!("Error: bad token sequence '{:#?}' at index {}", tok, i)

@@ -105,6 +105,6 @@ fn solve(formula: &str, frames: &str, validate: bool) -> ServerResponse {
         }
     };
     let parse_time = format!("{:.3?}", parse_start.elapsed());
-    let resp = framecond.graph_tab(vec![formula], validate, parse_time);
+    let resp = framecond.graph_tab(formula, validate, parse_time);
     resp
 }

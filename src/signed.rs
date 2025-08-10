@@ -50,7 +50,7 @@ impl SignedTableau {
                 //     form2,
                 //     (*sign1 != *sign2) && form1 == form2
                 // );
-                if (*sign1 != *sign2) && form1 == form2 {
+                if (*sign1 != *sign2) && form1.directly_equivalent(form2) {
                     self.set_closed();
                     return false;
                 }
@@ -65,7 +65,7 @@ impl SignedTableau {
                     //     form2,
                     //     (*sign1 != *sign2) && form1 == form2
                     // );
-                    if (*sign1 != *sign2) && form1 == form2 {
+                    if (*sign1 != *sign2) && form1.directly_equivalent(form2) {
                         self.set_closed();
                         return false;
                     }

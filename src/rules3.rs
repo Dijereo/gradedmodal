@@ -38,8 +38,7 @@ pub(crate) struct Fork {
     pub(crate) branches: Vec<Branch>,
 }
 
-// TODO: Rename
-pub(crate) struct GradedKCalc {
+pub(crate) struct Calculus {
     pub(crate) framecond: FrameCondition,
     pub(crate) forks: ForkStore,
 }
@@ -48,25 +47,20 @@ pub(crate) struct ForkStore {
     pub(crate) forks: Vec<Fork>,
 }
 
-impl GradedKCalc {
+impl Calculus {
     pub(crate) fn sat<T: Transit>(
         framecond: FrameCondition,
-        mut formulae: Vec<Rc<Formula>>,
+        mut formula: Rc<Formula>,
     ) -> Rc<RefCell<TableauNode2<T>>> {
         if framecond.luminal() {
-            for f in formulae.iter_mut() {
-                *f = FlatFormula::from(f.clone()).into();
-            }
+            formula = FlatFormula::from(formula.clone()).into();
         }
-        let labels = formulae
-            .into_iter()
-            .map(|f| LabeledFormula {
-                formula: f,
-                conflictset: vec![],
-                lemma: false,
-            })
-            .collect();
-        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(labels, None)));
+        let formula = LabeledFormula {
+            formula,
+            conflictset: vec![],
+            lemma: false,
+        };
+        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(vec![formula], None)));
         let mut calc = Self {
             framecond,
             forks: ForkStore { forks: vec![] },
