@@ -9,7 +9,7 @@ use std::{
 use crate::{
     formula::Formula,
     rules3::Feasibility,
-    transit::{BaseTransit, DisplayTransit, SolveTransit, TransitTB},
+    transit::{BaseTransit, DisplayTransit, SolveTransit},
 };
 
 pub(crate) enum TabChildren<T> {
@@ -420,18 +420,6 @@ impl<T: BaseTransit + DisplayTransit> fmt::Display for DisplayTableau<T> {
             }
         }
         Ok(())
-    }
-}
-
-impl DisplayTransit for TransitTB {
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        todo!();
     }
 }
 

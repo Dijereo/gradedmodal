@@ -68,33 +68,6 @@ pub(crate) trait DisplayTransit: Sized {
     ) -> fmt::Result;
 }
 
-pub(crate) struct TransitB {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) paraws: ParallelWorlds<Self>,
-    pub(crate) constraints: Constraints,
-    pub(crate) solution: Vec<u32>,
-}
-
-pub(crate) struct TransitTB {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) paraws: Vec<ParallelWorlds<TransitTB>>,
-    pub(crate) constraints: Vec<Vec<Grading>>,
-    pub(crate) solutions: Vec<TBSolution>,
-}
-
-// pub(crate) struct MetaTransitTB {
-//     pub(crate) feasibility: Feasibility,
-//     pub(crate) paraws: Vec<ParallelWorlds<TransitTB>>,
-//     pub(crate) constraints: Vec<Vec<Grading>>,
-//     pub(crate) solutions: Vec<>,
-// }
-
-pub(crate) enum TBSolution {
-    None,
-    Forward(Vec<u32>),
-    Backward(Vec<(Vec<u32>, usize, Option<usize>)>),
-}
-
 pub(crate) fn general_transit<T: BaseTransit + SolveTransit>(
     calc: &mut Calculus,
     fruit: &Rc<RefCell<TableauNode2<T>>>,
@@ -417,49 +390,5 @@ impl<T: BaseTransit> ParallelWorlds<T> {
         if dedup {
             self.choices.dedup(); // ?
         }
-    }
-}
-
-impl BaseTransit for TransitTB {
-    fn feasibility(&self) -> Feasibility {
-        self.feasibility
-    }
-
-    fn transit(fruit: &Rc<RefCell<TableauNode2<TransitTB>>>, calc: &mut Calculus) -> Option<Self> {
-        let mut formulae = vec![];
-        fruit.borrow().traverse_anc_formulae(&mut |label| {
-            formulae.push(label.clone());
-            true
-        });
-        let modals = Modals::new(formulae.iter(), false, false);
-        if modals.ge.is_empty() {
-            return None;
-        }
-        let (forks, constraintsets) = modals.to_deep_forks_constraints(&mut calc.forks);
-        for formula in &mut formulae {
-            formula.lemma = true;
-        }
-        let reflexion = ParallelWorlds::from_forks(formulae, forks[0].clone(), Some(fruit), calc);
-        let feasibility = reflexion.tab.borrow().feasibility;
-        let (gradings, boxsubforms): (Vec<_>, Vec<_>) = constraintsets
-            .into_iter()
-            .map(|cns| (cns.gradings, cns.boxsubforms))
-            .unzip();
-        let mut this = TransitTB {
-            feasibility,
-            paraws: vec![reflexion],
-            constraints: gradings,
-            solutions: vec![],
-        };
-        for (fks, formulae) in forks.into_iter().zip(boxsubforms) {
-            let paraws = ParallelWorlds::from_forks(formulae, fks, None, calc);
-            if paraws.tab.borrow().is_closed() {
-                this.paraws.push(paraws);
-                return Some(this);
-            }
-            this.paraws.push(paraws);
-        }
-        this.solve();
-        Some(this)
     }
 }
