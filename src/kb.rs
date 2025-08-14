@@ -1,4 +1,7 @@
-use crate::{rules3::Feasibility, transit::{Constraints, ParallelWorlds}};
+use crate::{
+    rules3::Feasibility,
+    transit::{Constraints, ParallelWorlds},
+};
 
 pub(crate) struct TransitB {
     pub(crate) feasibility: Feasibility,

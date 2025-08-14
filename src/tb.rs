@@ -1,8 +1,18 @@
-use std::{cell::RefCell, collections::{HashMap, VecDeque}, fmt, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, VecDeque},
+    fmt,
+    rc::Rc,
+};
 
-use good_lp::{solvers, variable, Expression, ProblemVariables, Solution, SolverModel, Variable};
+use good_lp::{Expression, ProblemVariables, Solution, SolverModel, Variable, solvers, variable};
 
-use crate::{model::{Edge, IntoModelGraph, Node}, rules3::{Calculus, Feasibility}, tableau2::TableauNode2, transit::{BaseTransit, DisplayTransit, Grading, Modals, ParallelWorlds}};
+use crate::{
+    model::{Edge, IntoModelGraph, Node},
+    rules3::{Calculus, Feasibility},
+    tableau2::TableauNode2,
+    transit::{BaseTransit, DisplayTransit, Grading, Modals, ParallelWorlds},
+};
 
 pub(crate) struct TransitTB {
     pub(crate) feasibility: Feasibility,
@@ -10,13 +20,6 @@ pub(crate) struct TransitTB {
     pub(crate) constraints: Vec<Vec<Grading>>,
     pub(crate) solutions: Vec<TBSolution>,
 }
-
-// pub(crate) struct MetaTransitTB {
-//     pub(crate) feasibility: Feasibility,
-//     pub(crate) paraws: Vec<ParallelWorlds<TransitTB>>,
-//     pub(crate) constraints: Vec<Vec<Grading>>,
-//     pub(crate) solutions: Vec<>,
-// }
 
 pub(crate) enum TBSolution {
     None,

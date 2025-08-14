@@ -3,10 +3,7 @@ use axum::{
     http::{Method, header},
     routing::post,
 };
-use std::{
-    io::{self, Write},
-    rc::Rc,
-};
+use std::io::{self, Write};
 use tower_http::cors::{self, CorsLayer};
 
 use crate::{formula::full_parser, frame::FrameCondition, token::tokenize};

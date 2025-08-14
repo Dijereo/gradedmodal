@@ -9,7 +9,7 @@ use std::{
 use crate::{
     formula::Formula,
     rules3::Feasibility,
-    transit::{BaseTransit, DisplayTransit, SolveTransit},
+    transit::{BaseTransit, DisplayTransit},
 };
 
 pub(crate) enum TabChildren<T> {

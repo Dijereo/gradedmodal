@@ -5,7 +5,7 @@ use crate::{
     formula::Formula,
     frame::FrameCondition,
     tableau2::{Conflict, DupContra, LabeledFormula, TabBranch, TabChildren, TableauNode2},
-    transit::{BaseTransit, Modals, SolveTransit},
+    transit::BaseTransit,
 };
 
 #[derive(Clone, Copy)]
@@ -60,7 +60,10 @@ impl Calculus {
             conflictset: vec![],
             lemma: false,
         };
-        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(vec![formula], None)));
+        let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(
+            vec![formula],
+            None,
+        )));
         let mut calc = Self {
             framecond,
             forks: ForkStore { forks: vec![] },

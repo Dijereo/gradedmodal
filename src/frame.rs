@@ -1,7 +1,8 @@
 use std::{fmt::Write, rc::Rc, str::FromStr, time::Instant};
 
 use crate::{
-    api::ServerResponse, b5::TransitB5, formula::Formula, k45::TransitKOr45, k5::Transit5, rules3::Calculus, tableau2::DisplayTableau, tb::TransitTB, tt::TransitT
+    api::ServerResponse, b5::TransitB5, formula::Formula, k5::Transit5, k45::TransitKOr45,
+    rules3::Calculus, tableau2::DisplayTableau, tb::TransitTB, tt::TransitT,
 };
 
 #[derive(Clone, Copy, Debug)]

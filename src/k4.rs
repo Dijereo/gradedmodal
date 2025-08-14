@@ -1,8 +1,22 @@
-use std::{cell::RefCell, collections::{HashMap, VecDeque}, fmt, ops::RangeInclusive, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, VecDeque},
+    fmt,
+    ops::RangeInclusive,
+    rc::Rc,
+};
 
-use good_lp::{solvers, variable, Expression, ProblemVariables, Solution, SolverModel, Variable};
+use good_lp::{Expression, ProblemVariables, Solution, SolverModel, Variable, solvers, variable};
 
-use crate::{model::{Edge, IntoModelGraph, Node}, rules3::{Calculus, Feasibility}, tableau2::{TabChildren, TableauNode2}, transit::{general_transit, BaseTransit, Constraints, DisplayTransit, Modals, ParallelWorlds, SolveTransit}};
+use crate::{
+    model::{Edge, IntoModelGraph, Node},
+    rules3::{Calculus, Feasibility},
+    tableau2::{TabChildren, TableauNode2},
+    transit::{
+        BaseTransit, Constraints, DisplayTransit, Modals, ParallelWorlds, SolveTransit,
+        general_transit,
+    },
+};
 
 pub(crate) struct Transit4 {
     pub(crate) feasibility: Feasibility,

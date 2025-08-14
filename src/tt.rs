@@ -1,8 +1,20 @@
-use std::{cell::RefCell, collections::{HashMap, VecDeque}, fmt, ops::RangeInclusive, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, VecDeque},
+    fmt,
+    ops::RangeInclusive,
+    rc::Rc,
+};
 
-use good_lp::{solvers, variable, Expression, ProblemVariables, Solution, SolverModel, Variable};
+use good_lp::{Expression, ProblemVariables, Solution, SolverModel, Variable, solvers, variable};
 
-use crate::{formula::Formula, model::{Edge, IntoModelGraph, Node}, rules3::{Calculus, Feasibility}, tableau2::{LabeledFormula, TabChildren, TableauNode2}, transit::{BaseTransit, Constraints, DisplayTransit, Grading, Modals, ParallelWorlds}};
+use crate::{
+    formula::Formula,
+    model::{Edge, IntoModelGraph, Node},
+    rules3::{Calculus, Feasibility},
+    tableau2::{LabeledFormula, TabChildren, TableauNode2},
+    transit::{BaseTransit, Constraints, DisplayTransit, Grading, Modals, ParallelWorlds},
+};
 
 pub(crate) struct TransitT {
     pub(crate) reflexion: bool,
@@ -277,7 +289,6 @@ impl TransitT {
     }
 }
 
-
 impl DisplayTransit for TransitT {
     fn display_transit(
         &self,
@@ -320,7 +331,6 @@ impl DisplayTransit for TransitT {
     }
 }
 
-
 impl IntoModelGraph for TransitT {
     fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>) {
         if !self.reflexion {
@@ -343,4 +353,3 @@ impl IntoModelGraph for TransitT {
         }
     }
 }
-

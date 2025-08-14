@@ -1,12 +1,10 @@
 use std::{cell::RefCell, collections::VecDeque, fmt, mem, ops::RangeInclusive, rc::Rc};
 
-use good_lp::Variable;
-
 use crate::{
     flatformula::FlatFormula,
     formula::Formula,
     rules3::{Calculus, Feasibility, ForkStore, ForkType},
-    tableau2::{Conflict, LabeledFormula, TabChildren, TableauNode2},
+    tableau2::{LabeledFormula, TableauNode2},
 };
 
 #[derive(Debug)]
