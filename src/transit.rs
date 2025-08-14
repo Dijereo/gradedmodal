@@ -68,15 +68,6 @@ pub(crate) trait DisplayTransit: Sized {
     ) -> fmt::Result;
 }
 
-pub(crate) struct Transit4 {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) paraws: ParallelWorlds<Self>,
-    pub(crate) constraints: Constraints,
-    pub(crate) ranges: Vec<RangeInclusive<usize>>,
-    pub(crate) vars: Vec<Variable>,
-    pub(crate) solution: Vec<u32>,
-}
-
 pub(crate) struct TransitB {
     pub(crate) feasibility: Feasibility,
     pub(crate) paraws: ParallelWorlds<Self>,
@@ -470,70 +461,5 @@ impl BaseTransit for TransitTB {
         }
         this.solve();
         Some(this)
-    }
-}
-
-impl BaseTransit for Transit4 {
-    fn feasibility(&self) -> Feasibility {
-        self.feasibility
-    }
-
-    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        general_transit(calc, fruit)
-    }
-}
-
-impl Transit4 {
-    fn from_diffraction(
-        modals: Modals,
-        mut ranges: Vec<RangeInclusive<usize>>,
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut Calculus,
-    ) -> Self {
-        let (forkids, constraints) = modals.to_forks_constraints(&mut calc.forks);
-        ranges.extend(forkids.into_iter());
-        let paraws = ParallelWorlds::from_forks(
-            constraints.boxsubforms.clone(),
-            ranges.clone(),
-            Some(fruit),
-            calc,
-        );
-        let feasibility = paraws.tab.borrow().feasibility;
-        Self {
-            feasibility,
-            paraws,
-            constraints,
-            vars: vec![],
-            solution: vec![],
-            ranges,
-        }
-    }
-
-    pub(crate) fn diffract(
-        &self,
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut Calculus,
-    ) -> Option<Transit4> {
-        let mut labels = vec![];
-        fruit.borrow().traverse_anc_formulae(&mut |label| {
-            labels.push(label.clone());
-            true
-        });
-        labels.extend(self.constraints.boxsubforms.iter().cloned());
-        let modals = Modals::new(labels.iter(), calc.framecond.ray(), false);
-        // sleep(Duration::from_secs(3));
-        if modals.ge.is_empty() {
-            return None;
-        }
-        let mut subtransit = Self::from_diffraction(modals, self.ranges.clone(), fruit, calc);
-        if subtransit.feasibility.is_bad() {
-            return Some(subtransit);
-        }
-        subtransit.recurse(calc);
-        if subtransit.feasibility.is_bad() {
-            return Some(subtransit);
-        }
-        subtransit.check();
-        Some(subtransit)
     }
 }

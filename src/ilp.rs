@@ -5,8 +5,7 @@ use crate::{
     rules3::{Calculus, Feasibility},
     tableau2::{LabeledFormula, TabChildren, TableauNode2},
     transit::{
-        BaseTransit, Grading, Modals, ParallelWorlds, SolveTransit, TBSolution, Transit4, TransitB,
-        TransitTB,
+        BaseTransit, Grading, Modals, ParallelWorlds, SolveTransit, TBSolution, TransitB, TransitTB,
     },
 };
 
@@ -145,139 +144,6 @@ impl TransitTB {
         match model.solve() {
             Ok(solution) => Some(vars.into_iter().map(|v| solution.value(v) as u32).collect()),
             Err(_) => None,
-        }
-    }
-}
-
-impl SolveTransit for Transit4 {
-    fn solve(&mut self) {
-        let mut problem = ProblemVariables::new();
-        let mut exprs = HashMap::new();
-        let allvars = self.build_rec(&mut problem, &mut exprs);
-        let mut model = solvers::scip::scip(problem.minimise(allvars.iter().sum::<Expression>()));
-        for (_, (ge, count, worlds)) in exprs {
-            let expr = worlds.into_iter().sum::<Expression>();
-            let constr = if ge {
-                expr.geq(count as f64)
-            } else {
-                expr.leq(count)
-            };
-            model.add_constraint(constr);
-        }
-        match model.solve() {
-            Ok(solution) => {
-                self.solution = self
-                    .vars
-                    .iter()
-                    .map(|v| solution.value(v.clone()) as u32)
-                    .collect();
-                self.feasibility = Feasibility::Feasible;
-            }
-            Err(_) => self.feasibility = Feasibility::NoSolution,
-        }
-    }
-
-    fn recurse(&mut self, calc: &mut Calculus) {
-        if self.feasibility.is_bad() {
-            return;
-        }
-        let mut flowers = Vec::new();
-        TableauNode2::get_flowers(&self.paraws.tab, &mut flowers);
-        for flower in flowers {
-            let subtransit = self.diffract(&flower, calc);
-            if let Some(subtransit) = subtransit {
-                flower.borrow_mut().feasibility = subtransit.feasibility;
-                flower.borrow_mut().children = TabChildren::Transition(subtransit);
-            }
-        }
-        self.feasibility = TableauNode2::set_feasibility_rec(&self.paraws.tab);
-    }
-
-    fn from_modals(
-        modals: Modals,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut Calculus,
-    ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(modals, Some(leaf), calc);
-        let feasibility = paraws.tab.borrow().feasibility;
-        Self {
-            feasibility,
-            ranges: paraws.forkids.clone(),
-            paraws,
-            constraints,
-            vars: vec![],
-            solution: vec![],
-        }
-    }
-}
-
-impl Transit4 {
-    fn build_rec(
-        &mut self,
-        problem: &mut ProblemVariables,
-        exprs: &mut HashMap<usize, (bool, u32, Vec<Variable>)>,
-    ) -> Vec<Variable> {
-        self.paraws.set_choices(false);
-        exprs.reserve(self.constraints.gradings.len());
-        for c in &self.constraints.gradings {
-            exprs.insert(c.forkid, (c.sense, c.value, vec![]));
-        }
-        self.vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
-        let mut allvars = self.vars.clone();
-        let mut fruits = vec![];
-        TableauNode2::get_fruits(&self.paraws.tab, &mut fruits);
-        for fruit in fruits {
-            match &mut fruit.borrow_mut().children {
-                TabChildren::Transition(child) => allvars.extend(child.build_rec(problem, exprs)),
-                _ => {}
-            }
-        }
-        for (world, var) in self.paraws.choices.iter().zip(self.vars.iter()) {
-            for (forkid, branchid) in world {
-                if *branchid == 1 {
-                    exprs
-                        .get_mut(forkid)
-                        .expect("Forkid should have been entered into hashmap")
-                        .2
-                        .push(var.clone());
-                }
-            }
-        }
-        allvars
-    }
-
-    pub(crate) fn check(&mut self) {
-        self.paraws.set_choices(false);
-        let mut problem = ProblemVariables::new();
-        let mut exprs = HashMap::with_capacity(self.constraints.gradings.len());
-        for c in &self.constraints.gradings {
-            exprs.insert(c.forkid, (c.sense, c.value, vec![]));
-        }
-        let vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
-        for (world, var) in self.paraws.choices.iter().zip(vars.iter()) {
-            for (forkid, branchid) in world {
-                if *branchid == 1 {
-                    exprs
-                        .get_mut(forkid)
-                        .expect("Forkid should have been entered into hashmap")
-                        .2
-                        .push(var);
-                }
-            }
-        }
-        let mut model = solvers::scip::scip(problem.minimise(vars.iter().sum::<Expression>()));
-        for (_, (ge, count, worlds)) in exprs {
-            let expr = worlds.into_iter().sum::<Expression>();
-            let constr = if ge {
-                expr.geq(count as f64)
-            } else {
-                expr.leq(count)
-            };
-            model.add_constraint(constr);
-        }
-        match model.solve() {
-            Ok(_) => self.feasibility = Feasibility::Feasible,
-            Err(_) => self.feasibility = Feasibility::NoSolution,
         }
     }
 }

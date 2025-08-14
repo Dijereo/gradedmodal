@@ -9,7 +9,7 @@ use std::{
 use crate::{
     formula::Formula,
     rules3::Feasibility,
-    transit::{BaseTransit, DisplayTransit, SolveTransit, Transit4, TransitTB},
+    transit::{BaseTransit, DisplayTransit, SolveTransit, TransitTB},
 };
 
 pub(crate) enum TabChildren<T> {
@@ -432,40 +432,6 @@ impl DisplayTransit for TransitTB {
         roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
     ) -> fmt::Result {
         todo!();
-    }
-}
-
-impl DisplayTransit for Transit4 {
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        writeln!(f, "{}", self.constraints)?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
-        writeln!(f)?;
-        for (i, choice) in self.paraws.choices.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        if self.feasibility.is_bad() {
-            writeln!(f, "No solution")?
-        } else {
-            write!(f, "Solution: ")?;
-            for (i, val) in self.solution.iter().enumerate() {
-                write!(f, "{val}*w{i} ")?;
-            }
-            writeln!(f)?;
-        }
-        writeln!(f)
     }
 }
 

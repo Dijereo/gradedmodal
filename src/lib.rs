@@ -18,6 +18,7 @@ mod flatformula;
 mod formula;
 mod frame;
 mod ilp;
+mod k4;
 mod k45;
 mod k5;
 mod model;
