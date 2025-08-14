@@ -5,7 +5,7 @@ use crate::{
     formula::Formula,
     rules3::Calculus,
     tableau2::DisplayTableau,
-    transit::{Transit5, TransitB5, TransitKOr45, TransitT},
+    transit::{Transit5, TransitB5, TransitKOr45, TransitT, TransitTB},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -70,7 +70,7 @@ macro_rules! sat_and {
             }
             FrameCondition::T => time_sat!($clsr, Calculus::sat::<TransitT>, $frame, $formula),
             FrameCondition::KB | FrameCondition::DB => todo!("B"), //$clsr($f::<Transit>($frame, $formula)),
-            FrameCondition::TB => todo!("TB"), // $clsr($f::<Transit>($frame, $formula)),
+            FrameCondition::TB => time_sat!($clsr, Calculus::sat::<TransitTB>, $frame, $formula),
             FrameCondition::K4 | FrameCondition::D4 => todo!("4"), //$clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
             FrameCondition::S4 => todo!("S4"), // $clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
             FrameCondition::K5 | FrameCondition::D5 => time_sat!($clsr, Calculus::sat::<Transit5>, $frame, $formula),

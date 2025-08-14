@@ -5,7 +5,7 @@ use crate::{
     formula::Formula,
     frame::FrameCondition,
     tableau2::{Conflict, DupContra, LabeledFormula, TabBranch, TabChildren, TableauNode2},
-    transit::{BaseTransit, Modals, Transit},
+    transit::{BaseTransit, Modals, SolveTransit},
 };
 
 #[derive(Clone, Copy)]
@@ -48,7 +48,7 @@ pub(crate) struct ForkStore {
 }
 
 impl Calculus {
-    pub(crate) fn sat<T: Transit>(
+    pub(crate) fn sat<T: BaseTransit>(
         framecond: FrameCondition,
         mut formula: Rc<Formula>,
     ) -> Rc<RefCell<TableauNode2<T>>> {
@@ -76,7 +76,7 @@ impl Calculus {
         tab
     }
 
-    pub(crate) fn transition<T: Transit>(&mut self, tab: &Rc<RefCell<TableauNode2<T>>>) {
+    pub(crate) fn transition<T: BaseTransit>(&mut self, tab: &Rc<RefCell<TableauNode2<T>>>) {
         if tab.borrow().is_closed() {
             return;
         }
@@ -275,7 +275,7 @@ impl Calculus {
         tab.borrow_mut().feasibility = feasibility;
     }
 
-    pub(crate) fn first_transit<T: Transit>(
+    pub(crate) fn first_transit<T: BaseTransit + SolveTransit>(
         &mut self,
         fruit: &Rc<RefCell<TableauNode2<T>>>,
     ) -> Option<T> {

@@ -4,7 +4,7 @@ use std::{fmt::Write, time::Instant};
 use crate::{
     api::{ServerOutput, ServerResponse, ServerTimes},
     tableau2::{DisplayTableau, DisplayTransit, TabChildren, TableauNode2},
-    transit::{Transit4, Transit5, TransitB5, TransitKOr45, TransitT},
+    transit::{BaseTransit, Transit4, Transit5, TransitB5, TransitKOr45, TransitT, TransitTB},
 };
 
 #[derive(Serialize)]
@@ -45,7 +45,7 @@ struct Edge {
     extra: String,
 }
 
-trait IntoModelGraph: DisplayTransit {
+trait IntoModelGraph: BaseTransit + DisplayTransit {
     fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>);
 }
 
@@ -158,6 +158,12 @@ impl IntoModelGraph for TransitT {
         } else {
             self.paraws.tab.borrow().model_graph(parenti, nodes, edges);
         }
+    }
+}
+
+impl IntoModelGraph for TransitTB {
+    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>) {
+        todo!()
     }
 }
 

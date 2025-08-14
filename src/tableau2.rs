@@ -9,7 +9,9 @@ use std::{
 use crate::{
     formula::Formula,
     rules3::Feasibility,
-    transit::{BaseTransit, Transit, Transit4, Transit5, TransitB5, TransitKOr45, TransitT},
+    transit::{
+        BaseTransit, SolveTransit, Transit4, Transit5, TransitB5, TransitKOr45, TransitT, TransitTB
+    },
 };
 
 pub(crate) enum TabChildren<T> {
@@ -47,7 +49,7 @@ pub(crate) struct TableauNode2<T> {
     pub(crate) parent: Weak<RefCell<TableauNode2<T>>>,
 }
 
-pub(crate) trait DisplayTransit: Transit {
+pub(crate) trait DisplayTransit: Sized {
     fn display_transit(
         &self,
         f: &mut fmt::Formatter<'_>,
@@ -57,7 +59,7 @@ pub(crate) trait DisplayTransit: Transit {
     ) -> fmt::Result;
 }
 
-impl<T: BaseTransit> TableauNode2<T> {
+impl<T> TableauNode2<T> {
     pub(crate) fn from_formulae(
         labels: Vec<LabeledFormula>,
         parent: Option<&Rc<RefCell<Self>>>,
@@ -189,7 +191,10 @@ impl<T: BaseTransit> TableauNode2<T> {
         }
     }
 
-    pub(crate) fn get_fruits(this: &Rc<RefCell<Self>>, fruits: &mut Vec<Rc<RefCell<Self>>>) {
+    pub(crate) fn get_fruits(this: &Rc<RefCell<Self>>, fruits: &mut Vec<Rc<RefCell<Self>>>)
+    where
+        T: BaseTransit,
+    {
         if this.borrow().is_closed() {
             return;
         }
@@ -210,28 +215,28 @@ impl<T: BaseTransit> TableauNode2<T> {
         }
     }
 
-    pub(crate) fn set_feasibility_rec(this: &Rc<RefCell<Self>>) -> Feasibility {
-        match this.borrow().feasibility {
-            Feasibility::Feasible => {
-                let mut thismut = this.borrow_mut();
-                match &thismut.children {
-                    TabChildren::Leaf => todo!(),
-                    TabChildren::Fork { branches, .. } => {
-                        let mut feasibility = Feasibility::Contradiction;
-                        for branch in branches {
-                            feasibility =
-                                feasibility.better(&Self::set_feasibility_rec(&branch.node));
-                        }
-                        thismut.feasibility = feasibility;
-                        feasibility
+    pub(crate) fn set_feasibility_rec(this: &Rc<RefCell<Self>>) -> Feasibility
+    where
+        T: BaseTransit,
+    {
+        let mut thismut = this.borrow_mut();
+        match thismut.feasibility {
+            Feasibility::Feasible => match &thismut.children {
+                TabChildren::Leaf => Feasibility::Feasible,
+                TabChildren::Fork { branches, .. } => {
+                    let mut feasibility = Feasibility::Contradiction;
+                    for branch in branches {
+                        feasibility = feasibility.better(&Self::set_feasibility_rec(&branch.node));
                     }
-                    TabChildren::Transition(transit) => {
-                        thismut.feasibility = transit.feasibility();
-                        thismut.feasibility
-                    }
+                    thismut.feasibility = feasibility;
+                    feasibility
                 }
-            }
-            Feasibility::NoSolution | Feasibility::Contradiction => this.borrow().feasibility,
+                TabChildren::Transition(transit) => {
+                    thismut.feasibility = transit.feasibility();
+                    thismut.feasibility
+                }
+            },
+            Feasibility::NoSolution | Feasibility::Contradiction => thismut.feasibility,
         }
     }
 
@@ -256,7 +261,7 @@ impl<T: BaseTransit> TableauNode2<T> {
     pub(crate) fn get_depths(&self) -> VecDeque<Vec<usize>> {
         let mut flat_depths = vec![];
         self.get_depths_rec(&mut flat_depths, 0);
-        println!("{:?}", flat_depths);
+        // println!("{:?}", flat_depths);
         let mut nested_depths = VecDeque::new();
         for (i, &curr_depth) in flat_depths.iter().enumerate() {
             let mut future_depths = vec![];
@@ -270,7 +275,7 @@ impl<T: BaseTransit> TableauNode2<T> {
             future_depths.reverse();
             nested_depths.push_back(future_depths);
         }
-        println!("{:?}", nested_depths);
+        // println!("{:?}", nested_depths);
         nested_depths
     }
 
@@ -292,7 +297,7 @@ impl<T: BaseTransit> TableauNode2<T> {
         f: &mut fmt::Formatter<'_>,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
-    ) -> fmt::Result {
+    ) -> fmt::Result where T: BaseTransit {
         let mut depths = this.borrow().get_depths();
         Self::display_rec(this, f, 0, &mut depths, curri, roots)
     }
@@ -304,7 +309,7 @@ impl<T: BaseTransit> TableauNode2<T> {
         depths_iter: &mut VecDeque<Vec<usize>>,
         curri: &mut usize,
         fruits: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
-    ) -> fmt::Result {
+    ) -> fmt::Result where T: BaseTransit {
         let thisref = this.borrow();
         let next_depths = depths_iter.pop_front().unwrap_or_default();
         if let Some(label) = thisref.formulae.first() {
@@ -407,7 +412,7 @@ impl<T: BaseTransit> TableauNode2<T> {
 
 pub(crate) struct DisplayTableau<T>(pub(crate) Rc<RefCell<TableauNode2<T>>>);
 
-impl<T: DisplayTransit> fmt::Display for DisplayTableau<T> {
+impl<T: BaseTransit + DisplayTransit> fmt::Display for DisplayTableau<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut i = 1;
         let mut seeds = VecDeque::new();
@@ -497,6 +502,18 @@ impl DisplayTransit for TransitT {
             writeln!(f)?;
         }
         writeln!(f)
+    }
+}
+
+impl DisplayTransit for TransitTB {
+    fn display_transit(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        rooti: usize,
+        curri: &mut usize,
+        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
+    ) -> fmt::Result {
+        todo!();
     }
 }
 

@@ -725,8 +725,6 @@ mod tests {
 
     #[test]
     fn test_parse_and_or() {
-        println!("{}", parse_str("x1 & y2"));
-        println!("{}", &Formula::propi('x', 1).and(&Formula::propi('y', 2)));
         assert!(
             parse_str("x1 & y2")
                 .directly_equivalent(&Formula::propi('x', 1).and(&Formula::propi('y', 2)))
