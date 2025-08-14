@@ -9,9 +9,7 @@ use std::{
 use crate::{
     formula::Formula,
     rules3::Feasibility,
-    transit::{
-        BaseTransit, DisplayTransit, SolveTransit, Transit4, Transit5, TransitB5, TransitTB
-    },
+    transit::{BaseTransit, DisplayTransit, SolveTransit, Transit4, TransitB5, TransitTB},
 };
 
 pub(crate) enum TabChildren<T> {
@@ -287,7 +285,10 @@ impl<T> TableauNode2<T> {
         f: &mut fmt::Formatter<'_>,
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
-    ) -> fmt::Result where T: BaseTransit {
+    ) -> fmt::Result
+    where
+        T: BaseTransit,
+    {
         let mut depths = this.borrow().get_depths();
         Self::display_rec(this, f, 0, &mut depths, curri, roots)
     }
@@ -299,7 +300,10 @@ impl<T> TableauNode2<T> {
         depths_iter: &mut VecDeque<Vec<usize>>,
         curri: &mut usize,
         fruits: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
-    ) -> fmt::Result where T: BaseTransit {
+    ) -> fmt::Result
+    where
+        T: BaseTransit,
+    {
         let thisref = this.borrow();
         let next_depths = depths_iter.pop_front().unwrap_or_default();
         if let Some(label) = thisref.formulae.first() {
@@ -475,60 +479,6 @@ impl DisplayTransit for TransitB5 {
             writeln!(f)?;
         }
         writeln!(f)
-    }
-}
-
-impl DisplayTransit for Transit5 {
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        writeln!(f, "{}", self.spotconstraints)?;
-        writeln!(f)?;
-        writeln!(f, "Second Transition Modals:")?;
-        for (i, submodal) in self.submodals.iter().enumerate() {
-            writeln!(f, "ψ{i} := {}", submodal.formula)?;
-        }
-        writeln!(f)?;
-        for (i, paracliq) in self.paracliques.iter().enumerate() {
-            writeln!(f, "Clique {i}:")?;
-            TableauNode2::display_root(&paracliq.spotws.tab, f, curri, roots)?;
-            writeln!(f)?;
-            TableauNode2::display_root(&paracliq.cliquews.tab, f, curri, roots)?;
-            for (i, choice) in paracliq.spotws.choices.iter().enumerate() {
-                write!(f, "u{i}: ")?;
-                for (forkid, branchid) in choice {
-                    write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-                }
-                writeln!(f)?;
-            }
-            for (i, choice) in paracliq.cliquews.choices.iter().enumerate() {
-                write!(f, "w{i}: ")?;
-                for (forkid, branchid) in choice {
-                    write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-                }
-                writeln!(f)?;
-            }
-            if paracliq.spotsolution.is_empty() {
-                writeln!(f, "No solution")?;
-            } else {
-                write!(f, "Solution: ")?;
-                for (i, val) in paracliq.spotsolution.iter().enumerate() {
-                    write!(f, "{val}*u{i} ")?;
-                }
-                writeln!(f)?;
-                for (i, val) in paracliq.cliquesolution.iter().enumerate() {
-                    write!(f, "{val}*w{i} ")?;
-                }
-                writeln!(f)?;
-            }
-        }
-        Ok(())
     }
 }
 

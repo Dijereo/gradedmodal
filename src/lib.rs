@@ -18,6 +18,7 @@ mod formula;
 mod frame;
 mod ilp;
 mod k45;
+mod k5;
 mod model;
 mod parser;
 mod reflx;

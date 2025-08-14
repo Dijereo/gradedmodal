@@ -77,23 +77,6 @@ pub(crate) struct TransitB5 {
     pub(crate) rfxsolution: usize,
 }
 
-pub(crate) struct Transit5 {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) submodals: Vec<LabeledFormula>,
-    pub(crate) spotconstraints: Constraints,
-    pub(crate) paracliques: Vec<ParaClique<Self>>,
-}
-
-pub(crate) struct ParaClique<T> {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) settings: Vec<bool>,
-    pub(crate) spotws: ParallelWorlds<T>,
-    pub(crate) cliquews: ParallelWorlds<T>,
-    pub(crate) cliqueconstraints: Constraints,
-    pub(crate) spotsolution: Vec<u32>,
-    pub(crate) cliquesolution: Vec<u32>,
-}
-
 pub(crate) struct Transit4 {
     pub(crate) feasibility: Feasibility,
     pub(crate) paraws: ParallelWorlds<Self>,
@@ -506,58 +489,6 @@ impl BaseTransit for TransitB5 {
 
     fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
         general_transit(calc, fruit)
-    }
-}
-
-impl BaseTransit for Transit5 {
-    fn feasibility(&self) -> Feasibility {
-        self.feasibility
-    }
-
-    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        general_transit(calc, fruit)
-    }
-}
-
-impl<T: BaseTransit> ParaClique<T> {
-    pub(crate) fn new<'a>(
-        submodals: impl Iterator<Item = &'a LabeledFormula>,
-        signs: &Vec<bool>,
-        modalboxes: impl Iterator<Item = LabeledFormula>,
-        mut spotranges: Vec<RangeInclusive<usize>>,
-        leaf: &Rc<RefCell<TableauNode2<T>>>,
-        calc: &mut Calculus,
-    ) -> Self {
-        let settings: Vec<_> = submodals
-            .zip(signs.iter())
-            .map(|(label, sign)| LabeledFormula {
-                formula: if *sign {
-                    label.formula.clone()
-                } else {
-                    label.formula.not()
-                },
-                conflictset: label.conflictset.clone(),
-                lemma: false,
-            })
-            .collect();
-        let cliquemodals = Modals::new(settings.iter(), false, false);
-        let mut spotformulae = settings;
-        spotformulae.extend(cliquemodals.bx.iter().cloned());
-        spotformulae.extend(modalboxes);
-        let (cliquews, cliqueconstraints) =
-            ParallelWorlds::from_modals(cliquemodals, Some(leaf), calc);
-        spotranges.extend_from_slice(&cliquews.forkids);
-        let spotws = ParallelWorlds::from_forks(spotformulae, spotranges, Some(leaf), calc);
-        let cliquefeas = spotws.tab.borrow().feasibility;
-        ParaClique {
-            settings: signs.clone(),
-            feasibility: cliquefeas,
-            spotws,
-            cliquews,
-            cliqueconstraints,
-            spotsolution: vec![],
-            cliquesolution: vec![],
-        }
     }
 }
 

@@ -5,8 +5,8 @@ use crate::{
     rules3::{Calculus, Feasibility},
     tableau2::{LabeledFormula, TabChildren, TableauNode2},
     transit::{
-        BaseTransit, Grading, Modals, ParaClique, ParallelWorlds, SolveTransit, TBSolution,
-        Transit4, Transit5, TransitB, TransitB5, TransitTB,
+        BaseTransit, Grading, Modals, ParallelWorlds, SolveTransit, TBSolution, Transit4, TransitB,
+        TransitB5, TransitTB,
     },
 };
 
@@ -145,127 +145,6 @@ impl TransitTB {
         match model.solve() {
             Ok(solution) => Some(vars.into_iter().map(|v| solution.value(v) as u32).collect()),
             Err(_) => None,
-        }
-    }
-}
-
-impl SolveTransit for Transit5 {
-    fn recurse(&mut self, _calc: &mut Calculus) {}
-
-    fn from_modals(
-        modals: Modals,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut Calculus,
-    ) -> Self {
-        let submodals = modals.submodals();
-        let mut settings = vec![true; submodals.len()];
-        let mut paracliques = vec![];
-        let (spotranges, spotconstraints) = modals.to_forks_constraints(&mut calc.forks);
-        let mut feasibility = Feasibility::Contradiction;
-        // OPT: Get initial spotlight para worlds and break if contradiction
-        loop {
-            let paraclique = ParaClique::new(
-                submodals.iter(),
-                &settings,
-                spotconstraints.boxsubforms.iter().cloned(),
-                Vec::from_iter(spotranges.iter().cloned()),
-                leaf,
-                calc,
-            );
-            feasibility = feasibility.better(&paraclique.feasibility);
-            paracliques.push(paraclique);
-            if !Self::next_setting(&mut settings) {
-                break;
-            }
-        }
-        Self {
-            submodals,
-            spotconstraints,
-            paracliques,
-            feasibility,
-        }
-    }
-
-    fn solve(&mut self) {
-        let mut feasibility = Feasibility::NoSolution;
-        for paraclique in &mut self.paracliques {
-            paraclique.solve(&self.spotconstraints.gradings);
-            feasibility = feasibility.better(&paraclique.feasibility);
-        }
-        self.feasibility = feasibility;
-    }
-}
-
-impl Transit5 {
-    fn next_setting(settings: &mut Vec<bool>) -> bool {
-        for st in settings {
-            *st = !*st;
-            if !*st {
-                return true;
-            }
-        }
-        return false;
-    }
-}
-
-impl<T: BaseTransit> ParaClique<T> {
-    fn solve(&mut self, spotconstraints: &Vec<Grading>) {
-        let mut problem = ProblemVariables::new();
-        self.spotws.set_choices(true);
-        self.cliquews.set_choices(true);
-        let spotvars = problem.add_vector(variable().integer().min(0), self.spotws.choices.len());
-        let cliqvars = problem.add_vector(variable().integer().min(0), self.cliquews.choices.len());
-        let mut exprs =
-            HashMap::with_capacity(spotconstraints.len() + self.cliqueconstraints.gradings.len());
-        for c in spotconstraints
-            .iter()
-            .chain(self.cliqueconstraints.gradings.iter())
-        {
-            exprs.insert(c.forkid, (c.sense, c.value, vec![]));
-        }
-        for (world, var) in self
-            .spotws
-            .choices
-            .iter()
-            .zip(spotvars.iter())
-            .chain(self.cliquews.choices.iter().zip(cliqvars.iter()))
-        {
-            for (forkid, branchid) in world {
-                if *branchid == 1 {
-                    exprs
-                        .get_mut(forkid)
-                        .expect("Forkid should have been entered into hashmap")
-                        .2
-                        .push(var);
-                }
-            }
-        }
-        let mut model =
-            solvers::scip::scip(problem.minimise(
-                spotvars.iter().sum::<Expression>() + cliqvars.iter().sum::<Expression>(),
-            ));
-        for (_, (ge, count, worlds)) in exprs {
-            let expr = worlds.into_iter().sum::<Expression>();
-            let constr = if ge {
-                expr.geq(count as f64)
-            } else {
-                expr.leq(count)
-            };
-            model.add_constraint(constr);
-        }
-        match model.solve() {
-            Ok(solution) => {
-                self.spotsolution = spotvars
-                    .into_iter()
-                    .map(|v| solution.value(v) as u32)
-                    .collect();
-                self.cliquesolution = cliqvars
-                    .into_iter()
-                    .map(|v| solution.value(v) as u32)
-                    .collect();
-                self.feasibility = Feasibility::Feasible;
-            }
-            Err(_) => self.feasibility = Feasibility::NoSolution,
         }
     }
 }
