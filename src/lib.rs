@@ -20,6 +20,7 @@ mod ilp;
 mod k45;
 mod model;
 mod parser;
+mod reflx;
 mod rules;
 mod rules3;
 mod signed;
