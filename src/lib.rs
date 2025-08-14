@@ -12,6 +12,7 @@ use tower_http::cors::{self, CorsLayer};
 use crate::{formula::full_parser, frame::FrameCondition, token::tokenize};
 
 mod api;
+mod b5;
 mod dnf;
 mod flatformula;
 mod formula;
@@ -21,7 +22,6 @@ mod k45;
 mod k5;
 mod model;
 mod parser;
-mod reflx;
 mod rules;
 mod rules3;
 mod signed;
@@ -29,6 +29,7 @@ mod tableau;
 mod tableau2;
 mod token;
 mod transit;
+mod tt;
 mod util;
 
 pub fn init_router() -> Router {

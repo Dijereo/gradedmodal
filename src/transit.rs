@@ -68,15 +68,6 @@ pub(crate) trait DisplayTransit: Sized {
     ) -> fmt::Result;
 }
 
-pub(crate) struct TransitB5 {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) paraws: ParallelWorlds<Self>,
-    pub(crate) reflexion: ParallelWorlds<Self>,
-    pub(crate) constraints: Constraints,
-    pub(crate) solution: Vec<u32>,
-    pub(crate) rfxsolution: usize,
-}
-
 pub(crate) struct Transit4 {
     pub(crate) feasibility: Feasibility,
     pub(crate) paraws: ParallelWorlds<Self>,
@@ -479,16 +470,6 @@ impl BaseTransit for TransitTB {
         }
         this.solve();
         Some(this)
-    }
-}
-
-impl BaseTransit for TransitB5 {
-    fn feasibility(&self) -> Feasibility {
-        self.feasibility
-    }
-
-    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        general_transit(calc, fruit)
     }
 }
 

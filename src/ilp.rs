@@ -6,7 +6,7 @@ use crate::{
     tableau2::{LabeledFormula, TabChildren, TableauNode2},
     transit::{
         BaseTransit, Grading, Modals, ParallelWorlds, SolveTransit, TBSolution, Transit4, TransitB,
-        TransitB5, TransitTB,
+        TransitTB,
     },
 };
 
@@ -279,105 +279,5 @@ impl Transit4 {
             Ok(_) => self.feasibility = Feasibility::Feasible,
             Err(_) => self.feasibility = Feasibility::NoSolution,
         }
-    }
-}
-
-impl SolveTransit for TransitB5 {
-    fn recurse(&mut self, _calc: &mut Calculus) {}
-
-    fn from_modals(
-        modals: Modals,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut Calculus,
-    ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(modals, Some(leaf), calc);
-        let feasibility = paraws.tab.borrow().feasibility;
-        let reflexion = if paraws.tab.borrow().is_closed() {
-            ParallelWorlds::from_forks(vec![], vec![], Some(leaf), calc)
-        } else {
-            Self::get_reflexion(constraints.boxsubforms.clone(), &paraws, leaf, calc)
-        };
-        Self {
-            feasibility,
-            paraws,
-            constraints,
-            solution: vec![],
-            rfxsolution: 0,
-            reflexion,
-        }
-    }
-
-    fn solve(&mut self) {
-        let mut problem = ProblemVariables::new();
-        self.paraws.set_choices(true);
-        let vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
-        self.reflexion.set_choices(true);
-        let rvars = problem.add_vector(variable().binary(), self.reflexion.choices.len());
-        let mut exprs = HashMap::with_capacity(self.constraints.gradings.len());
-        for c in &self.constraints.gradings {
-            exprs.insert(c.forkid, (c.sense, c.value, vec![]));
-        }
-        for (world, var) in self
-            .paraws
-            .choices
-            .iter()
-            .zip(vars.iter())
-            .chain(self.reflexion.choices.iter().zip(rvars.iter()))
-        {
-            for (forkid, branchid) in world {
-                if *branchid == 1 {
-                    exprs
-                        .get_mut(forkid)
-                        .expect("Forkid should have been entered into hashmap")
-                        .2
-                        .push(var);
-                }
-            }
-        }
-        let mut model = solvers::scip::scip(problem.minimise(vars.iter().sum::<Expression>()));
-        for (_, (ge, count, worlds)) in exprs {
-            let expr = worlds.into_iter().sum::<Expression>();
-            let constr = if ge {
-                expr.geq(count as f64)
-            } else {
-                expr.leq(count)
-            };
-            model.add_constraint(constr);
-        }
-        model.add_constraint(rvars.iter().sum::<Expression>().eq(1));
-        match model.solve() {
-            Ok(solution) => {
-                self.solution = vars.into_iter().map(|v| solution.value(v) as u32).collect();
-                self.rfxsolution = rvars
-                    .into_iter()
-                    .enumerate()
-                    .filter_map(|(i, v)| {
-                        if solution.value(v) == 1.0 {
-                            Some(i)
-                        } else {
-                            None
-                        }
-                    })
-                    .next()
-                    .expect("There must be one variable set to 1");
-                self.feasibility = Feasibility::Feasible;
-            }
-            Err(_) => self.feasibility = Feasibility::NoSolution,
-        }
-    }
-}
-
-impl TransitB5 {
-    fn get_reflexion(
-        mut boxsubforms: Vec<LabeledFormula>,
-        paraws: &ParallelWorlds<Self>,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut Calculus,
-    ) -> ParallelWorlds<Self> {
-        leaf.borrow().traverse_anc_formulae(&mut |l| {
-            boxsubforms.push(l.clone());
-            true
-        });
-        ParallelWorlds::from_forks(boxsubforms, paraws.forkids.clone(), Some(leaf), calc)
     }
 }
