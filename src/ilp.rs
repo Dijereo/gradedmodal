@@ -6,69 +6,9 @@ use crate::{
     tableau2::{LabeledFormula, TabChildren, TableauNode2},
     transit::{
         BaseTransit, Grading, Modals, ParaClique, ParallelWorlds, SolveTransit, TBSolution,
-        Transit4, Transit5, TransitB, TransitB5, TransitKOr45, TransitT, TransitTB,
+        Transit4, Transit5, TransitB, TransitB5, TransitT, TransitTB,
     },
 };
-
-impl SolveTransit for TransitKOr45 {
-    fn recurse(&mut self, calc: &mut Calculus) {
-        calc.transition(&self.paraws.tab)
-    }
-
-    fn from_modals(
-        modals: Modals,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut Calculus,
-    ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(modals, Some(leaf), calc);
-        let feasibility = paraws.tab.borrow().feasibility;
-        Self {
-            feasibility,
-            paraws,
-            constraints,
-            solution: vec![],
-        }
-    }
-
-    fn solve(&mut self) {
-        self.paraws.set_choices(true);
-        let mut problem = ProblemVariables::new();
-        let mut exprs = HashMap::with_capacity(self.constraints.gradings.len());
-        for c in &self.constraints.gradings {
-            exprs.insert(c.forkid, (c.sense, c.value, vec![]));
-        }
-        let vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
-        for (world, var) in self.paraws.choices.iter().zip(vars.iter()) {
-            for (forkid, branchid) in world {
-                if *branchid == 1 {
-                    exprs
-                        .get_mut(forkid)
-                        .expect("Forkid should have been entered into hashmap")
-                        .2
-                        .push(var);
-                }
-            }
-        }
-        let mut model = solvers::scip::scip(problem.minimise(vars.iter().sum::<Expression>()));
-        for (_, (ge, count, worlds)) in exprs {
-            let expr = worlds.into_iter().sum::<Expression>();
-            let constr = if ge {
-                expr.geq(count as f64)
-            } else {
-                expr.leq(count)
-            };
-            model.add_constraint(constr);
-        }
-        match model.solve() {
-            Ok(solution) => {
-                self.solution = vars.into_iter().map(|v| solution.value(v) as u32).collect();
-                self.feasibility = Feasibility::Feasible;
-            }
-            Err(_) => self.feasibility = Feasibility::NoSolution,
-        }
-    }
-}
-
 impl TransitT {
     pub(crate) fn get_choices(
         tab: &Rc<RefCell<TableauNode2<TransitT>>>,

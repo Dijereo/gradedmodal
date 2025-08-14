@@ -1,11 +1,7 @@
 use std::{fmt::Write, rc::Rc, str::FromStr, time::Instant};
 
 use crate::{
-    api::ServerResponse,
-    formula::Formula,
-    rules3::Calculus,
-    tableau2::DisplayTableau,
-    transit::{Transit5, TransitB5, TransitKOr45, TransitT, TransitTB},
+    api::ServerResponse, formula::Formula, k45::TransitKOr45, rules3::Calculus, tableau2::DisplayTableau, transit::{Transit5, TransitB5, TransitT, TransitTB}
 };
 
 #[derive(Clone, Copy, Debug)]

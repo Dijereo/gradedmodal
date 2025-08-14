@@ -3,8 +3,8 @@ use std::{fmt::Write, time::Instant};
 
 use crate::{
     api::{ServerOutput, ServerResponse, ServerTimes},
-    tableau2::{DisplayTableau, DisplayTransit, TabChildren, TableauNode2},
-    transit::{BaseTransit, Transit4, Transit5, TransitB5, TransitKOr45, TransitT, TransitTB},
+    tableau2::{DisplayTableau, TabChildren, TableauNode2},
+    transit::{BaseTransit, DisplayTransit, Transit4, Transit5, TransitB5, TransitT, TransitTB},
 };
 
 #[derive(Serialize)]
@@ -20,10 +20,10 @@ struct NodeData {
 }
 
 #[derive(Serialize)]
-struct Node {
-    id: String,
-    label: String,
-    extra: String,
+pub(crate) struct Node {
+    pub(crate) id: String,
+    pub(crate) label: String,
+    pub(crate) extra: String,
 }
 
 #[derive(Serialize)]
@@ -38,14 +38,14 @@ struct EdgeData {
 }
 
 #[derive(Serialize)]
-struct Edge {
-    source: String,
-    target: String,
-    label: String,
-    extra: String,
+pub(crate) struct Edge {
+    pub(crate) source: String,
+    pub(crate) target: String,
+    pub(crate) label: String,
+    pub(crate) extra: String,
 }
 
-trait IntoModelGraph: BaseTransit + DisplayTransit {
+pub(crate) trait IntoModelGraph: BaseTransit + DisplayTransit {
     fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>);
 }
 
@@ -106,7 +106,7 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
 }
 
 impl<T: IntoModelGraph> TableauNode2<T> {
-    fn model_graph(&self, selfi: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>) {
+    pub(crate) fn model_graph(&self, selfi: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>) {
         match &self.children {
             TabChildren::Leaf => {}
             TabChildren::Fork { branches, .. } => {
@@ -116,25 +116,6 @@ impl<T: IntoModelGraph> TableauNode2<T> {
             }
             TabChildren::Transition(transit) => transit.model_graph_rec(selfi, nodes, edges),
         }
-    }
-}
-
-impl IntoModelGraph for TransitKOr45 {
-    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>) {
-        let selfi = nodes.len();
-        let selfid = selfi.to_string();
-        nodes.push(Node {
-            id: selfid.clone(),
-            label: format!("#{selfi}"),
-            extra: String::new(),
-        });
-        edges.push(Edge {
-            source: parenti.to_string(),
-            target: selfid,
-            label: String::new(),
-            extra: String::new(),
-        });
-        self.paraws.tab.borrow().model_graph(selfi, nodes, edges);
     }
 }
 

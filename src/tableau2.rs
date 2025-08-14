@@ -10,7 +10,7 @@ use crate::{
     formula::Formula,
     rules3::Feasibility,
     transit::{
-        BaseTransit, SolveTransit, Transit4, Transit5, TransitB5, TransitKOr45, TransitT, TransitTB
+        BaseTransit, DisplayTransit, SolveTransit, Transit4, Transit5, TransitB5, TransitT, TransitTB
     },
 };
 
@@ -47,16 +47,6 @@ pub(crate) struct TableauNode2<T> {
     pub(crate) choices: Vec<(usize, usize)>,
     pub(crate) children: TabChildren<T>,
     pub(crate) parent: Weak<RefCell<TableauNode2<T>>>,
-}
-
-pub(crate) trait DisplayTransit: Sized {
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result;
 }
 
 impl<T> TableauNode2<T> {
@@ -426,40 +416,6 @@ impl<T: BaseTransit + DisplayTransit> fmt::Display for DisplayTableau<T> {
             }
         }
         Ok(())
-    }
-}
-
-impl DisplayTransit for TransitKOr45 {
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        writeln!(f, "{}", self.constraints)?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
-        writeln!(f)?;
-        for (i, choice) in self.paraws.choices.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        if self.feasibility.is_bad() {
-            writeln!(f, "No solution")?
-        } else {
-            write!(f, "Solution: ")?;
-            for (i, val) in self.solution.iter().enumerate() {
-                write!(f, "{val}*w{i} ")?;
-            }
-            writeln!(f)?;
-        }
-        writeln!(f)
     }
 }
 

@@ -17,6 +17,7 @@ mod flatformula;
 mod formula;
 mod frame;
 mod ilp;
+mod k45;
 mod model;
 mod parser;
 mod rules;

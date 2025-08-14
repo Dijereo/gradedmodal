@@ -274,35 +274,6 @@ impl Calculus {
         }
         tab.borrow_mut().feasibility = feasibility;
     }
-
-    pub(crate) fn first_transit<T: BaseTransit + SolveTransit>(
-        &mut self,
-        fruit: &Rc<RefCell<TableauNode2<T>>>,
-    ) -> Option<T> {
-        let mut labels = vec![];
-        fruit.borrow().traverse_anc_formulae(&mut |label| {
-            labels.push(label.clone());
-            true
-        });
-        let modals = Modals::new(
-            labels.iter(),
-            self.framecond.ray(),
-            self.framecond.spotlit(),
-        );
-        if modals.ge.is_empty() {
-            return None;
-        }
-        let mut transit = T::from_modals(modals, fruit, self);
-        if transit.is_closed() {
-            return Some(transit);
-        }
-        transit.recurse(self);
-        if transit.is_closed() {
-            return Some(transit);
-        }
-        transit.solve();
-        Some(transit)
-    }
 }
 
 impl ForkStore {

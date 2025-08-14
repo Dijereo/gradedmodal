@@ -58,11 +58,14 @@ pub(crate) trait SolveTransit: BaseTransit {
     fn recurse(&mut self, calc: &mut Calculus);
 }
 
-pub(crate) struct TransitKOr45 {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) paraws: ParallelWorlds<Self>,
-    pub(crate) constraints: Constraints,
-    pub(crate) solution: Vec<u32>,
+pub(crate) trait DisplayTransit: Sized {
+    fn display_transit(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        rooti: usize,
+        curri: &mut usize,
+        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
+    ) -> fmt::Result;
 }
 
 pub(crate) struct TransitT {
@@ -135,6 +138,35 @@ pub(crate) enum TBSolution {
     None,
     Forward(Vec<u32>),
     Backward(Vec<(Vec<u32>, usize, Option<usize>)>),
+}
+
+pub(crate) fn general_transit<T: BaseTransit + SolveTransit>(
+    calc: &mut Calculus,
+    fruit: &Rc<RefCell<TableauNode2<T>>>,
+) -> Option<T> {
+    let mut labels = vec![];
+    fruit.borrow().traverse_anc_formulae(&mut |label| {
+        labels.push(label.clone());
+        true
+    });
+    let modals = Modals::new(
+        labels.iter(),
+        calc.framecond.ray(),
+        calc.framecond.spotlit(),
+    );
+    if modals.ge.is_empty() {
+        return None;
+    }
+    let mut transit = T::from_modals(modals, fruit, calc);
+    if transit.is_closed() {
+        return Some(transit);
+    }
+    transit.recurse(calc);
+    if transit.is_closed() {
+        return Some(transit);
+    }
+    transit.solve();
+    Some(transit)
 }
 
 impl Modals {
@@ -433,16 +465,6 @@ impl<T: BaseTransit> ParallelWorlds<T> {
     }
 }
 
-impl BaseTransit for TransitKOr45 {
-    fn feasibility(&self) -> Feasibility {
-        self.feasibility
-    }
-
-    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        calc.first_transit(fruit)
-    }
-}
-
 impl BaseTransit for TransitT {
     fn feasibility(&self) -> Feasibility {
         self.feasibility
@@ -650,7 +672,7 @@ impl BaseTransit for TransitB5 {
     }
 
     fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        calc.first_transit(fruit)
+        general_transit(calc, fruit)
     }
 }
 
@@ -660,7 +682,7 @@ impl BaseTransit for Transit5 {
     }
 
     fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        calc.first_transit(fruit)
+        general_transit(calc, fruit)
     }
 }
 
@@ -712,7 +734,7 @@ impl BaseTransit for Transit4 {
     }
 
     fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        calc.first_transit(fruit)
+        general_transit(calc, fruit)
     }
 }
 
