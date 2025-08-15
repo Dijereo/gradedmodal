@@ -10,6 +10,7 @@ use crate::{formula::full_parser, frame::FrameCondition, token::tokenize};
 
 mod api;
 mod b5;
+mod cli;
 mod dnf;
 mod flatformula;
 mod formula;
@@ -63,50 +64,5 @@ pub fn init_router() -> Router {
 }
 
 pub fn run_cli() {
-    let mut framecond = FrameCondition::K;
-    loop {
-        print!("Choose Frame Class: ");
-        io::stdout().flush().unwrap();
-        let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() {
-            eprintln!("Failed to read input");
-            return;
-        }
-        framecond = input.parse().unwrap_or(framecond);
-        println!("Chosen Frame Class: {:?}", framecond);
-        print!("Enter a formula: ");
-        io::stdout().flush().unwrap();
-        let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() {
-            eprintln!("Failed to read input");
-            return;
-        }
-        match tokenize(input.trim()) {
-            Ok(tokens) => {
-                for token in &tokens {
-                    print!("{:?} ", token);
-                }
-                println!();
-                println!();
-                let stream = tokens.into_iter().enumerate();
-                match full_parser(stream) {
-                    Ok(f) => {
-                        println!("{}", f);
-                        println!();
-                        framecond.print_sat(f);
-                    }
-                    Err(Some((i, tok))) => {
-                        eprintln!("Error: bad token sequence '{:#?}' at index {}", tok, i)
-                    }
-                    Err(None) => eprintln!("Error: unterminated token sequence"),
-                }
-            }
-            Err((idx, ch)) => {
-                eprintln!(
-                    "Error: bad character sequence '{}' at byte index {}",
-                    ch, idx
-                );
-            }
-        }
-    }
+    cli::run();
 }

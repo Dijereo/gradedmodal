@@ -85,3 +85,27 @@ transit: given formulae, produce list of viable parallel worlds
 - utilise better constraining
 
 tableauview: contains data to display tableau and sat model
+
+FT(phi) := ST(phi, w)
+ST(_|_, x) := x != x
+ST(T, x) := x = x
+ST(pi, x) := pi(x)
+ST(~phi, x) := ~(ST(phi, x))
+ST(phi | psi, x) := (ST(phi, x)) | (ST(psi, x))
+same for &, ->, <->
+ST(<>phi, x) := ?[Y]: (rel(x, Y) & (ST(phi, Y)))
+ST([]phi, x) := ![Y]: (rel(x, Y) -> (ST(phi, Y)))
+ST(<>>=n phi, x) := ?[Y1,Y2,...,Yn]: (rel(x, Y1) & rel(x, Y2) & ... & rel(x, Yn) & ST(phi, Y1) & ST(phi, Y2) & ... & ST(phi, Yn) & Y1 != Y2 & ... & Y1 != Yn & ... & Y2 != Yn & ... & Yn-1 != Yn)
+ST(<><=n phi, x) := ![Y0,Y1,...,Yn]: (~rel(x, Y0) | ~rel(x, Y1) | ... | ~rel(x, Yn) | ~(ST(phi, Y0)) | ~(ST(phi, Y1)) | ... | ~(ST(phi, Yn)) | Y0 == Y1 | ... | Y0 == Yn | ... | Y1 == Yn | ... | Yn-1 == Yn)
+FT(D) := ![X]: ?[Y]: rel(X, Y)
+FT(T) := ![X]: rel(X, X)
+FT(B) := ![X, Y]: rel(X, Y) => rel(Y, X)
+FT(4) := ![X, Y, Z]: rel(X, Y) & rel(Y, Z) => rel(X, Z)
+FT(5) := ![X, Y, Z]: rel(X, Y) & rel(X, Z) => rel(Y, Z)
+
+[](p->q)->[]p->[]q
+p
+p&~p
+
+?[X]: (![Y]: rel(X, Y) -> (p(Y) -> q(Y))) -> ((![Y]: rel(X, Y) -> p(Y)) -> (![Y]: rel(X, Y) -> q(Y)))
+![X]: ((![Y]: rel(x, Y) => (p(Y) => q(Y))) => ((![Y]: rel(x, Y) => p(Y)) => (![Y]: rel(x, Y) => q(Y))))
