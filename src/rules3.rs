@@ -18,6 +18,7 @@ pub(crate) enum Feasibility {
 struct PropLinear;
 struct PropFork;
 struct TLinear;
+struct BLinear;
 
 #[derive(Clone, Debug)]
 pub(crate) enum ForkType {
@@ -101,7 +102,7 @@ impl Calculus {
         isroot: bool,
     ) {
         let reflexive = self.framecond.reflexive() || !isroot && self.framecond.euclidean();
-        self.expand_linear(&mut tab.borrow_mut(), reflexive);
+        self.expand_linear(&mut tab.borrow_mut(), reflexive, self.framecond.symmetric());
         if tab.borrow().is_closed() {
             return;
         }
@@ -113,12 +114,15 @@ impl Calculus {
         self.apply_forks(tab, forks, isroot);
     }
 
-    fn expand_linear<T: BaseTransit>(&self, tab: &mut TableauNode2<T>, reflexive: bool) {
+    fn expand_linear<T: BaseTransit>(&self, tab: &mut TableauNode2<T>, reflexive: bool, symmetric: bool) {
         let mut i = 0;
         while let Some(label) = tab.formulae.get(i).cloned() {
             let mut new_formulae = PropLinear.expand(&label.formula);
             if reflexive {
                 new_formulae.extend(TLinear.expand(&label.formula));
+            }
+            if symmetric {
+                new_formulae.extend(BLinear.expand(&label.formula));
             }
             for new_formula in new_formulae {
                 tab.add_check_dup_contra(LabeledFormula {
@@ -392,6 +396,34 @@ impl TLinear {
             | Formula::Diamond(_)
             | Formula::DiamondGe(..)
             | Formula::DiamondLe(..)
+            | Formula::Not(_)
+            | Formula::Or(_, _)
+            | Formula::And(..)
+            | Formula::Imply(_, _)
+            | Formula::Iff(_, _) => vec![],
+        }
+    }
+}
+
+impl BLinear {
+    fn expand(&self, formula: &Rc<Formula>) -> Vec<Rc<Formula>> {
+        match formula.as_ref() {
+            Formula::Diamond(phi) => match phi.as_ref() {
+                Formula::Box(psi) => vec![psi.clone()],
+                Formula::DiamondLe(0, psi) => vec![psi.not()],
+                _ => vec![],
+            },
+            Formula::DiamondGe(c, phi) if *c > 0 => match phi.as_ref() {
+                Formula::Box(psi) => vec![psi.clone()],
+                Formula::DiamondLe(0, psi) => vec![psi.not()],
+                _ => vec![],
+            },
+            Formula::Bottom
+            | Formula::Top
+            | Formula::PropVar(..)
+            | Formula::Box(..)
+            | Formula::DiamondLe(..)
+            | Formula::DiamondGe(..)
             | Formula::Not(_)
             | Formula::Or(_, _)
             | Formula::And(..)
