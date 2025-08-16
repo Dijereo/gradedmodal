@@ -29,6 +29,7 @@ mod tableau;
 mod tableau2;
 mod tb;
 mod token;
+mod translate;
 mod transit;
 mod tt;
 mod util;

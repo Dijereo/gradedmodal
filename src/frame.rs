@@ -166,6 +166,26 @@ impl FrameCondition {
         }
     }
 
+    pub(crate) const fn transitive(&self) -> bool {
+        match self {
+            FrameCondition::K
+            | FrameCondition::D
+            | FrameCondition::T
+            | FrameCondition::KB
+            | FrameCondition::DB
+            | FrameCondition::TB
+            | FrameCondition::K5
+            | FrameCondition::D5 => false,
+            FrameCondition::K4
+            | FrameCondition::D4
+            | FrameCondition::S4
+            | FrameCondition::K45
+            | FrameCondition::D45
+            | FrameCondition::KB5
+            | FrameCondition::S5 => true,
+        }
+    }
+
     pub(crate) const fn euclidean(&self) -> bool {
         match self {
             FrameCondition::K

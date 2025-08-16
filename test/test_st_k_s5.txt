@@ -1,0 +1,5 @@
+fof(t,axiom,(![X]: rel(X, X))).
+fof(b,axiom,(![X,Y]: (rel(X, Y) => rel(Y, X)))).
+fof(ax4,axiom,(![X,Y,Z]: ((rel(X, Y) & rel(Y, Z)) => rel(X, Z)))).
+fof(ax5,axiom,(![X,Y,Z]: ((rel(X, Y) & rel(X, Z)) => rel(Y, Z)))).
+fof(phi,conjecture,(![X0]: ((![X1]: (rel(X0, X1) => ((p(X1)) => (q(X1))))) => ((![X2]: (rel(X0, X2) => (p(X2)))) => (![X3]: (rel(X0, X3) => (q(X3))))))))
