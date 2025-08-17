@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crate::{formula::full_parser, frame::FrameCondition, token::tokenize};
+use crate::{eval::eval_vampire, formula::full_parser, frame::FrameCondition, token::tokenize};
 
 use std::env;
 
@@ -18,6 +18,11 @@ pub fn run() {
                 std::process::exit(1);
             }
             file_mode(&args[2], &args[3]);
+        }
+        "-e" => {
+            if let Err(e) = eval_vampire("eval/problems.txt", "eval/output.json") {
+                eprintln!("{e}");
+            }
         }
         _ => {
             eprintln!("Unknown option: {}", args[1]);

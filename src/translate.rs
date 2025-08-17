@@ -1,6 +1,15 @@
-use std::{cell::Cell, fmt, rc::Rc};
+use crate::{
+    formula::{Formula, full_parser},
+    frame::FrameCondition,
+    token::tokenize,
+};
+use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
-use crate::{formula::Formula, frame::FrameCondition};
+#[derive(Debug)]
+pub(crate) struct ToTPTP<'a> {
+    pub(crate) formula: Cow<'a, str>,
+    pub(crate) frames: FrameCondition,
+}
 
 struct STFrames<'a> {
     formula: &'a Rc<Formula>,
@@ -8,6 +17,36 @@ struct STFrames<'a> {
 }
 
 struct ST<'a>(&'a Rc<Formula>, &'a Cell<usize>, usize);
+
+impl fmt::Display for ToTPTP<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let tokens = match tokenize(&self.formula.as_ref()) {
+            Ok(tokens) => tokens,
+            Err(_) => return Err(fmt::Error),
+        };
+        let formula = match full_parser(tokens.into_iter().enumerate()) {
+            Ok(formula) => formula,
+            Err(_) => return Err(fmt::Error),
+        };
+        write!(
+            f,
+            "{}",
+            STFrames {
+                formula: &formula,
+                frames: self.frames,
+            }
+        )
+    }
+}
+
+impl ToTPTP<'_> {
+    pub(crate) fn unbind_lifetime<'b>(self) -> ToTPTP<'b> {
+        ToTPTP {
+            formula: Cow::Owned(self.formula.into_owned()),
+            ..self
+        }
+    }
+}
 
 impl fmt::Display for STFrames<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -34,7 +73,7 @@ impl fmt::Display for STFrames<'_> {
         let cell = Cell::new(0);
         writeln!(
             f,
-            "fof(phi,conjecture,(![X{}]: ({})))",
+            "fof(phi,conjecture,(![X{}]: ({}))).",
             cell.get(),
             ST(self.formula, &cell, cell.get())
         )
@@ -79,7 +118,6 @@ impl fmt::Display for ST<'_> {
                 }
                 let i = self.1.get();
                 let k = i + (*c as usize);
-                print!("{i} {k} {c}");
                 self.1.set(k);
                 write!(f, "?[X{}", i + 1)?;
                 for j in i + 2..=k {
@@ -153,7 +191,7 @@ impl fmt::Display for ST<'_> {
 
 mod test {
     use super::*;
-    use crate::{formula::full_parser, frame::FrameCondition, token::tokenize};
+    use crate::frame::FrameCondition;
     use std::{fmt::Write, path::Path};
 
     fn assert_str_eq_file(actual: &str, path: impl AsRef<Path>) {
@@ -164,24 +202,11 @@ mod test {
 
     fn template_test_st(formula: &str, path: impl AsRef<Path>, frames: FrameCondition) {
         let mut tptp = String::new();
-        let tokens = match tokenize(formula) {
-            Ok(tokens) => tokens,
-            Err((i, c)) => panic!("Tokenization failed at {i}: {c}"),
+        let totptp = ToTPTP {
+            formula: Cow::Borrowed(formula),
+            frames,
         };
-        let formula = match full_parser(tokens.into_iter().enumerate()) {
-            Ok(formula) => formula,
-            Err(None) => panic!("Parsing not terminated"),
-            Err(Some((i, t))) => panic!("Parsing failed at {i}: {t:?}"),
-        };
-        write!(
-            &mut tptp,
-            "{}",
-            STFrames {
-                formula: &formula,
-                frames
-            }
-        )
-        .expect("TPTP write should not fail");
+        write!(&mut tptp, "{totptp}").expect("Parsing failed");
         assert_str_eq_file(&tptp, path);
     }
 

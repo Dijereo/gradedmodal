@@ -1,0 +1,1500 @@
+{
+  "tests": [
+    {
+      "formula": "[](p->q)->[]p->[]q",
+      "frames": "K",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.016 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[](p->q)->[]p->[]q",
+      "frames": "D",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[](p->q)->[]p->[]q",
+      "frames": "T",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[](p->q)->[]p->[]q",
+      "frames": "K5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[](p->q)->[]p->[]q",
+      "frames": "D5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[](p->q)->[]p->[]q",
+      "frames": "K45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[](p->q)->[]p->[]q",
+      "frames": "D45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[](p->q)->[]p->[]q",
+      "frames": "KB5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[](p->q)->[]p->[]q",
+      "frames": "S5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([](p->q)->[]p->[]q)",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([](p->q)->[]p->[]q)",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([](p->q)->[]p->[]q)",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([](p->q)->[]p->[]q)",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([](p->q)->[]p->[]q)",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([](p->q)->[]p->[]q)",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([](p->q)->[]p->[]q)",
+      "frames": "S5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p1-><>p1",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p1-><>p1",
+      "frames": "D",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p1-><>p1",
+      "frames": "T",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p1-><>p1",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p1-><>p1",
+      "frames": "D5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p1-><>p1",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p1-><>p1",
+      "frames": "D45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p1-><>p1",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p1-><>p1",
+      "frames": "S5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p1-><>p1)",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p1-><>p1)",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p1-><>p1)",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p1-><>p1)",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p1-><>p1)",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.499 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p1-><>p1)",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p1-><>p1)",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p1-><>p1)",
+      "frames": "S5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p2->p2",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p2->p2",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p2->p2",
+      "frames": "T",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p2->p2",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p2->p2",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p2->p2",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p2->p2",
+      "frames": "S5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p2->p2)",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p2->p2)",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p2->p2)",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p2->p2)",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p2->p2)",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.305 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p2->p2)",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p2->p2)",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p2->p2)",
+      "frames": "S5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p3->[]<>p3",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p3->[]<>p3",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p3->[]<>p3",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p3->[]<>p3",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p3->[]<>p3",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p3->[]<>p3",
+      "frames": "KB5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p3->[]<>p3",
+      "frames": "S5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(p3->[]<>p3)",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(p3->[]<>p3)",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(p3->[]<>p3)",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(p3->[]<>p3)",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(p3->[]<>p3)",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.3 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(p3->[]<>p3)",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(p3->[]<>p3)",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(p3->[]<>p3)",
+      "frames": "S5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p4->[][]p4",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p4->[][]p4",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p4->[][]p4",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p4->[][]p4",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p4->[][]p4",
+      "frames": "K45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p4->[][]p4",
+      "frames": "D45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p4->[][]p4",
+      "frames": "KB5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "[]p4->[][]p4",
+      "frames": "S5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p4->[][]p4)",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p4->[][]p4)",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p4->[][]p4)",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p4->[][]p4)",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p4->[][]p4)",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.6 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p4->[][]p4)",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p4->[][]p4)",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([]p4->[][]p4)",
+      "frames": "S5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>p5->[]<>p5",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>p5->[]<>p5",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>p5->[]<>p5",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>p5->[]<>p5",
+      "frames": "K5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>p5->[]<>p5",
+      "frames": "D5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>p5->[]<>p5",
+      "frames": "K45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>p5->[]<>p5",
+      "frames": "D45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>p5->[]<>p5",
+      "frames": "KB5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>p5->[]<>p5",
+      "frames": "S5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(<>p5->[]<>p5)",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(<>p5->[]<>p5)",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(<>p5->[]<>p5)",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(<>p5->[]<>p5)",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(<>p5->[]<>p5)",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.5 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(<>p5->[]<>p5)",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(<>p5->[]<>p5)",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~(<>p5->[]<>p5)",
+      "frames": "S5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=1([]p6 & []~p6)",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=1([]p6 & []~p6)",
+      "frames": "D",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=1([]p6 & []~p6)",
+      "frames": "T",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=1([]p6 & []~p6)",
+      "frames": "K5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=1([]p6 & []~p6)",
+      "frames": "D5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=1([]p6 & []~p6)",
+      "frames": "K45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=1([]p6 & []~p6)",
+      "frames": "D45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=1([]p6 & []~p6)",
+      "frames": "KB5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=1([]p6 & []~p6)",
+      "frames": "S5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=2([]p6 & []~p6)",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=2([]p6 & []~p6)",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.004 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=2([]p6 & []~p6)",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.005 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=2([]p6 & []~p6)",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.013 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=2([]p6 & []~p6)",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.032 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=2([]p6 & []~p6)",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.01 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=2([]p6 & []~p6)",
+      "frames": "D45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.031 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=2([]p6 & []~p6)",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.014 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=2([]p6 & []~p6)",
+      "frames": "S5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.013 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p7 | q7 | <><=2 (p7&q7) | <>>=3 p7",
+      "frames": "K",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p7 | q7 | <><=2 (p7&q7) | <>>=3 p7",
+      "frames": "D",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p7 | q7 | <><=2 (p7&q7) | <>>=3 p7",
+      "frames": "T",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p7 | q7 | <><=2 (p7&q7) | <>>=3 p7",
+      "frames": "K5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p7 | q7 | <><=2 (p7&q7) | <>>=3 p7",
+      "frames": "D5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p7 | q7 | <><=2 (p7&q7) | <>>=3 p7",
+      "frames": "K45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p7 | q7 | <><=2 (p7&q7) | <>>=3 p7",
+      "frames": "D45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p7 | q7 | <><=2 (p7&q7) | <>>=3 p7",
+      "frames": "KB5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p7 | q7 | <><=2 (p7&q7) | <>>=3 p7",
+      "frames": "S5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p7 & ~q7 & <>>=3 (p7&q7) & <><=2 p7",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p7 & ~q7 & <>>=3 (p7&q7) & <><=2 p7",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p7 & ~q7 & <>>=3 (p7&q7) & <><=2 p7",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p7 & ~q7 & <>>=3 (p7&q7) & <><=2 p7",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.001 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p7 & ~q7 & <>>=3 (p7&q7) & <><=2 p7",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.199 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p7 & ~q7 & <>>=3 (p7&q7) & <><=2 p7",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p7 & ~q7 & <>>=3 (p7&q7) & <><=2 p7",
+      "frames": "D45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.225 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p7 & ~q7 & <>>=3 (p7&q7) & <><=2 p7",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.004 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p7 & ~q7 & <>>=3 (p7&q7) & <><=2 p7",
+      "frames": "S5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.004 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p9 | q9 | []<><=3 (p9&q9) | <><>>=4 p9",
+      "frames": "K",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p9 | q9 | []<><=3 (p9&q9) | <><>>=4 p9",
+      "frames": "D",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.005 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p9 | q9 | []<><=3 (p9&q9) | <><>>=4 p9",
+      "frames": "T",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.005 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p9 | q9 | []<><=3 (p9&q9) | <><>>=4 p9",
+      "frames": "K5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.006 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p9 | q9 | []<><=3 (p9&q9) | <><>>=4 p9",
+      "frames": "D5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p9 | q9 | []<><=3 (p9&q9) | <><>>=4 p9",
+      "frames": "K45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.005 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p9 | q9 | []<><=3 (p9&q9) | <><>>=4 p9",
+      "frames": "D45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.005 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p9 | q9 | []<><=3 (p9&q9) | <><>>=4 p9",
+      "frames": "KB5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.006 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p9 | q9 | []<><=3 (p9&q9) | <><>>=4 p9",
+      "frames": "S5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.005 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p9 & ~q9 & <><>>=4 (p9&q9) & []<><=3 p9",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p9 & ~q9 & <><>>=4 (p9&q9) & []<><=3 p9",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p9 & ~q9 & <><>>=4 (p9&q9) & []<><=3 p9",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p9 & ~q9 & <><>>=4 (p9&q9) & []<><=3 p9",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.004 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p9 & ~q9 & <><>>=4 (p9&q9) & []<><=3 p9",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.202 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p9 & ~q9 & <><>>=4 (p9&q9) & []<><=3 p9",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p9 & ~q9 & <><>>=4 (p9&q9) & []<><=3 p9",
+      "frames": "D45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.202 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p9 & ~q9 & <><>>=4 (p9&q9) & []<><=3 p9",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p9 & ~q9 & <><>>=4 (p9&q9) & []<><=3 p9",
+      "frames": "S5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p8 | <><=1 (~p8 & q8 & <>>=3 (~p8 & ~q8)) | <>>=5 ~p8",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.005 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p8 | <><=1 (~p8 & q8 & <>>=3 (~p8 & ~q8)) | <>>=5 ~p8",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.007 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p8 | <><=1 (~p8 & q8 & <>>=3 (~p8 & ~q8)) | <>>=5 ~p8",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.004 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p8 | <><=1 (~p8 & q8 & <>>=3 (~p8 & ~q8)) | <>>=5 ~p8",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.043 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p8 | <><=1 (~p8 & q8 & <>>=3 (~p8 & ~q8)) | <>>=5 ~p8",
+      "frames": "K45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.009 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p8 | <><=1 (~p8 & q8 & <>>=3 (~p8 & ~q8)) | <>>=5 ~p8",
+      "frames": "D45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.011 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p8 | <><=1 (~p8 & q8 & <>>=3 (~p8 & ~q8)) | <>>=5 ~p8",
+      "frames": "KB5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.026 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p8 | <><=1 (~p8 & q8 & <>>=3 (~p8 & ~q8)) | <>>=5 ~p8",
+      "frames": "S5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.032 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p8 & <>>=2 (~p8 & q8 & <>>=3 (~p8 & ~q8)) & <><=4 ~p8",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p8 & <>>=2 (~p8 & q8 & <>>=3 (~p8 & ~q8)) & <><=4 ~p8",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p8 & <>>=2 (~p8 & q8 & <>>=3 (~p8 & ~q8)) & <><=4 ~p8",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p8 & <>>=2 (~p8 & q8 & <>>=3 (~p8 & ~q8)) & <><=4 ~p8",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.002 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p8 & <>>=2 (~p8 & q8 & <>>=3 (~p8 & ~q8)) & <><=4 ~p8",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.003 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p8 & <>>=2 (~p8 & q8 & <>>=3 (~p8 & ~q8)) & <><=4 ~p8",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.006 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p8 & <>>=2 (~p8 & q8 & <>>=3 (~p8 & ~q8)) & <><=4 ~p8",
+      "frames": "D45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.601 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p8 & <>>=2 (~p8 & q8 & <>>=3 (~p8 & ~q8)) & <><=4 ~p8",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.006 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "p8 & <>>=2 (~p8 & q8 & <>>=3 (~p8 & ~q8)) & <><=4 ~p8",
+      "frames": "S5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.005 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=5 p0 | []<>>=6 p0",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.006 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=5 p0 | []<>>=6 p0",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.005 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=5 p0 | []<>>=6 p0",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.004 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=5 p0 | []<>>=6 p0",
+      "frames": "K5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.011 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=5 p0 | []<>>=6 p0",
+      "frames": "D5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.011 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=5 p0 | []<>>=6 p0",
+      "frames": "K45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.013 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=5 p0 | []<>>=6 p0",
+      "frames": "D45",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.023 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=5 p0 | []<>>=6 p0",
+      "frames": "KB5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.029 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<><=5 p0 | []<>>=6 p0",
+      "frames": "S5",
+      "vampireoutput": "Theorem",
+      "vampiretime": "0.029 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=6 p0 & <><><=5 p0",
+      "frames": "K",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.007 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=6 p0 & <><><=5 p0",
+      "frames": "D",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.009 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=6 p0 & <><><=5 p0",
+      "frames": "T",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.007 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=6 p0 & <><><=5 p0",
+      "frames": "K5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.202 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=6 p0 & <><><=5 p0",
+      "frames": "K45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.2 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=6 p0 & <><><=5 p0",
+      "frames": "KB5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.16 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=6 p0 & <><><=5 p0",
+      "frames": "S5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "0.202 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~([](p->q)->[]p->[]q)",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "1.116 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "~p8 | <><=1 (~p8 & q8 & <>>=3 (~p8 & ~q8)) | <>>=5 ~p8",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "1.713 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=6 p0 & <><><=5 p0",
+      "frames": "D5",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "1.327 s",
+      "proveroutput": null,
+      "provertime": null
+    },
+    {
+      "formula": "<>>=6 p0 & <><><=5 p0",
+      "frames": "D45",
+      "vampireoutput": "CounterSatisfiable",
+      "vampiretime": "1.541 s",
+      "proveroutput": null,
+      "provertime": null
+    }
+  ]
+}

@@ -1,11 +1,13 @@
 use std::{fmt::Write, rc::Rc, str::FromStr, time::Instant};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     api::ServerResponse, b5::TransitB5, formula::Formula, k5::Transit5, k45::TransitKOr45,
     rules3::Calculus, tableau2::DisplayTableau, tb::TransitTB, tt::TransitT,
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub(crate) enum FrameCondition {
     K,
     D,
@@ -107,6 +109,27 @@ impl FrameCondition {
         ))
     }
 
+    pub(crate) fn iter() -> impl Iterator<Item = Self> {
+        [
+            FrameCondition::K,
+            FrameCondition::D,
+            FrameCondition::T,
+            // FrameCondition::KB,
+            // FrameCondition::DB,
+            // FrameCondition::TB,
+            // FrameCondition::K4,
+            // FrameCondition::D4,
+            // FrameCondition::S4,
+            FrameCondition::K5,
+            FrameCondition::D5,
+            FrameCondition::K45,
+            FrameCondition::D45,
+            FrameCondition::KB5,
+            FrameCondition::S5,
+        ]
+        .into_iter()
+    }
+
     pub(crate) const fn ray(&self) -> bool {
         match self {
             FrameCondition::K
@@ -119,11 +142,11 @@ impl FrameCondition {
             | FrameCondition::K45
             | FrameCondition::KB5 => false,
             FrameCondition::D
+            | FrameCondition::DB
             | FrameCondition::D4
             | FrameCondition::D5
             | FrameCondition::D45
             | FrameCondition::S5 => true,
-            FrameCondition::DB => todo!(),
         }
     }
 

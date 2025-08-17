@@ -3,15 +3,13 @@ use axum::{
     http::{Method, header},
     routing::post,
 };
-use std::io::{self, Write};
 use tower_http::cors::{self, CorsLayer};
-
-use crate::{formula::full_parser, frame::FrameCondition, token::tokenize};
 
 mod api;
 mod b5;
 mod cli;
 mod dnf;
+mod eval;
 mod flatformula;
 mod formula;
 mod frame;
@@ -29,8 +27,8 @@ mod tableau;
 mod tableau2;
 mod tb;
 mod token;
-mod translate;
 mod transit;
+mod translate;
 mod tt;
 mod util;
 

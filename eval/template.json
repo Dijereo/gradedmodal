@@ -1,9 +1,0 @@
-{
-    "tests": [
-        {
-            "frames": "K",
-            "formula": "p->p",
-            "validate": true
-        }
-    ]
-}
