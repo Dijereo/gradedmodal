@@ -109,3 +109,13 @@ p&~p
 
 ?[X]: (![Y]: rel(X, Y) -> (p(Y) -> q(Y))) -> ((![Y]: rel(X, Y) -> p(Y)) -> (![Y]: rel(X, Y) -> q(Y)))
 ![X]: ((![Y]: rel(x, Y) => (p(Y) => q(Y))) => ((![Y]: rel(x, Y) => p(Y)) => (![Y]: rel(x, Y) => q(Y))))
+
+number of distinct prop letters
+number of atoms per conjunction
+number of conjunctions per disjunction
+probability of nested modal vs modal atom vs prop atom
+maximum nesting
+probability of negating prop letter
+probability of modal op type
+distribution of graded count
+

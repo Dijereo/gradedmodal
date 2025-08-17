@@ -20,6 +20,7 @@ mod k5;
 mod kb;
 mod model;
 mod parser;
+mod randgen;
 mod rules;
 mod rules3;
 mod signed;

@@ -40,7 +40,7 @@ struct EvalFormula {
 #[derive(Serialize)]
 struct EvalOutput {
     frames: FrameCondition,
-    vampireoutput: Cow<'static, str>,
+    vampireoutput: Option<Cow<'static, str>>,
     vampiretime: Option<Cow<'static, str>>,
     proveroutput: Option<String>,
     provertime: Option<String>,
@@ -59,7 +59,7 @@ pub(crate) fn eval_vampire(
                 queue.push((results.len(), tests.len()));
                 tests.push(EvalOutput {
                     frames,
-                    vampireoutput: Cow::Borrowed("Pending"),
+                    vampireoutput: None,
                     vampiretime: None,
                     proveroutput: None,
                     provertime: None,
@@ -110,14 +110,14 @@ pub(crate) fn eval_vampire(
             };
             {
                 let mut guard = results.write().unwrap();
-                guard[i].tests[j].vampireoutput = Cow::Owned(vampireoutput);
+                guard[i].tests[j].vampireoutput = Some(Cow::Owned(vampireoutput));
                 guard[i].tests[j].vampiretime = vampiretime.map(Cow::Owned);
             }
         }
     }
     for (i, j) in mem::take(&mut queue) {
         let mut guard = results.write().unwrap();
-        guard[i].tests[j].vampireoutput = Cow::Borrowed("Timedout");
+        guard[i].tests[j].vampireoutput = Some(Cow::Borrowed("Timedout"));
         guard[i].tests[j].vampiretime = Some(Cow::Borrowed(MAX_TIMES[MAX_TIMES.len() - 1]));
     }
     finished.store(true, atomic::Ordering::Relaxed);
