@@ -7,7 +7,7 @@ use crate::{
     rules3::Calculus, tableau2::DisplayTableau, tb::TransitTB, tt::TransitT,
 };
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub(crate) enum FrameCondition {
     K,
     D,

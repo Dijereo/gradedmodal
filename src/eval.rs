@@ -1,8 +1,11 @@
 use std::{
+    array,
     borrow::Cow,
+    collections::HashSet,
     ffi::OsStr,
     fmt,
     fs::File,
+    hash::Hash,
     io::{self, BufRead, BufReader, Write},
     mem,
     path::Path,
@@ -17,9 +20,9 @@ use std::{
 };
 
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-use crate::{frame::FrameCondition, translate::ToTPTP};
+use crate::{frame::FrameCondition, translate::ToTPTP, vecfor};
 
 #[derive(Debug)]
 pub(crate) enum EvalError {
@@ -31,47 +34,30 @@ pub(crate) enum EvalError {
     Json(serde_json::Error),
 }
 
-#[derive(Serialize)]
-struct EvalFormula {
-    formula: Arc<str>,
-    tests: Vec<EvalOutput>,
+#[derive(Serialize, Deserialize)]
+struct EvalFormula<'a, 'b, S> {
+    formula: S,
+    tests: Vec<EvalOutput<'a, 'b>>,
 }
 
-#[derive(Serialize)]
-struct EvalOutput {
+#[derive(Clone, Serialize, Deserialize)]
+struct EvalOutput<'a, 'b> {
     frames: FrameCondition,
-    vampireoutput: Option<Cow<'static, str>>,
-    vampiretime: Option<Cow<'static, str>>,
+    vampireoutput: Option<Cow<'a, str>>,
+    vampiretime: Option<Cow<'b, str>>,
     proveroutput: Option<String>,
     provertime: Option<String>,
 }
 
-pub(crate) fn eval_vampire(
+pub(crate) fn eval_vampire<S>(
     formulae_file: impl AsRef<Path>,
-    output_json: impl AsRef<Path> + Clone + Send + 'static,
+    output_json: impl AsRef<Path> + Send + 'static,
 ) -> Result<(), EvalError> {
-    let (results, mut queue) = {
-        let mut results = vec![];
-        let mut queue = vec![];
-        for line in BufReader::new(File::open(formulae_file)?).lines() {
-            let mut tests = vec![];
-            for frames in FrameCondition::iter() {
-                queue.push((results.len(), tests.len()));
-                tests.push(EvalOutput {
-                    frames,
-                    vampireoutput: None,
-                    vampiretime: None,
-                    proveroutput: None,
-                    provertime: None,
-                });
-            }
-            results.push(EvalFormula {
-                formula: Arc::from(line?),
-                tests,
-            });
-        }
-        (Arc::new(RwLock::new(results)), queue)
-    };
+    let results = Arc::new(RwLock::new(EvalFormula::<Arc<str>>::load_results(
+        &output_json,
+    )?));
+    let mut formulae: Vec<_> = vec![];
+    EvalFormula::<Arc<str>>::load_formulae(formulae_file, &mut formulae)?;
     let finished = Arc::new(AtomicBool::new(false));
     let handle = {
         let results = results.clone();
@@ -82,7 +68,7 @@ pub(crate) fn eval_vampire(
                 thread::sleep(Duration::from_secs(5));
                 shutdown |= finished.load(atomic::Ordering::Relaxed);
                 if let Err(e) =
-                    EvalFormula::save_to_json(&results.read().unwrap(), output_json.clone())
+                    EvalFormula::save_results(&results.read().unwrap(), &output_json)
                 {
                     eprintln!("{e}");
                 }
@@ -90,56 +76,118 @@ pub(crate) fn eval_vampire(
         })
     };
     let filename = "eval/tmp.p";
-    const MAX_TIMES: [&'static str; 2] = ["1", "10"];
-    for maxtime in MAX_TIMES {
-        for (i, j) in mem::take(&mut queue) {
-            let tptp = {
-                let guard = results.read().unwrap();
-                ToTPTP {
-                    formula: guard[i].formula.clone(),
-                    frames: guard[i].tests[j].frames,
-                }
-            };
-            let (vampireoutput, vampiretime) = match vampire(&tptp, filename, maxtime) {
-                Ok((status, time)) => (status, Some(time)),
-                Err(EvalError::Timeout) => {
-                    queue.push((i, j));
-                    continue;
-                }
-                Err(e) => (e.to_string(), None),
-            };
-            {
-                let mut guard = results.write().unwrap();
-                guard[i].tests[j].vampireoutput = Some(Cow::Owned(vampireoutput));
-                guard[i].tests[j].vampiretime = vampiretime.map(Cow::Owned);
-            }
-        }
+    for maxtime in ["1", "10"] {
+        EvalFormula::run_vampire(&results, filename, maxtime);
     }
-    for (i, j) in mem::take(&mut queue) {
-        let mut guard = results.write().unwrap();
-        guard[i].tests[j].vampireoutput = Some(Cow::Borrowed("Timedout"));
-        guard[i].tests[j].vampiretime = Some(Cow::Borrowed(MAX_TIMES[MAX_TIMES.len() - 1]));
-    }
-    finished.store(true, atomic::Ordering::Relaxed);
     handle.join().unwrap();
     Ok(())
 }
 
-impl EvalFormula {
-    fn save_to_json(this: &[Self], path: impl AsRef<Path>) -> std::io::Result<()> {
+impl<'a, 'b, S: AsRef<str>> EvalFormula<'a, 'b, S> {
+    fn load_formulae(path: impl AsRef<Path>, formulae: &mut Vec<S>) -> io::Result<()>
+    where
+        S: From<String>,
+    {
+        for line in BufReader::new(File::open(path)?).lines() {
+            formulae.push(S::from(line?));
+        }
+        Ok(())
+    }
+
+    fn load_results(path: impl AsRef<Path>) -> Result<Vec<Self>, EvalError>
+    where
+        S: for<'c> serde::Deserialize<'c>,
+    {
+        Ok(serde_json::from_reader(BufReader::new(File::open(path)?))?)
+    }
+
+    fn add_formulae(this: &mut Vec<Self>, formulae: impl Iterator<Item = S>)
+    where
+        S: Eq + Hash,
+    {
+        let mut set: HashSet<&str> = HashSet::with_capacity(this.len());
+        for formula in this.iter() {
+            set.insert(formula.formula.as_ref());
+        }
+        let tests = vecfor!(f in FrameCondition::iter() => {EvalOutput {
+            frames: f,
+            vampireoutput: None,
+            vampiretime: None,
+            proveroutput: None,
+            provertime: None,
+        }});
+        let new = vecfor!(
+            f in formulae,
+            if {!set.contains(f.as_ref())}
+            => Self { formula: f, tests: tests.clone() });
+        this.extend(new);
+    }
+
+    fn save_results(this: &[Self], path: impl AsRef<Path>) -> io::Result<()>
+    where
+        S: Serialize,
+    {
         let mut outfile = File::create(path)?;
         serde_json::to_writer_pretty(&mut outfile, this)?;
         outfile.write_all(b"\n")
+    }
+
+    fn run_vampire<P>(this: &Arc<RwLock<Vec<Self>>>, path: P, maxtime: &'b str) -> io::Result<()>
+    where
+        P: AsRef<OsStr> + AsRef<Path>,
+        S: Clone,
+    {
+        let mut queue =vec![];
+        {
+            let guard = this.read().unwrap();
+            for (i, formula) in guard.iter().enumerate() {
+                for (j, test) in formula.tests.iter().enumerate() {
+                    if test.vampireoutput.is_none() {
+                        queue.push((
+                            i,
+                            j,
+                            ToTPTP {
+                                formula: formula.formula.clone(),
+                                frames: test.frames,
+                            },
+                        ));
+                    }
+                }
+            }
+        };
+        for (i, j, tptp) in mem::take(&mut queue) {
+            let (out, time) = match vampire(&tptp, &path, maxtime) {
+                Ok((status, time)) => (Some(Cow::Owned(status)), Some(Cow::Owned(time))),
+                Err(EvalError::Timeout) => (
+                    Some(Cow::Borrowed("Timedout")),
+                    Some(Cow::Borrowed(maxtime)),
+                ),
+                Err(e) => (Some(Cow::Owned(e.to_string())), None),
+            };
+            {
+                let mut guard = this.write().unwrap();
+                if let Some(formula) = guard.get_mut(i) {
+                    if let Some(test) = formula.tests.get_mut(j)
+                        && formula.formula.as_ref() == tptp.formula.as_ref()
+                        && test.frames == tptp.frames
+                    {
+                        test.vampireoutput = out;
+                        test.vampiretime = time;
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }
 
 fn vampire<S: AsRef<str>>(
     tptp: &ToTPTP<S>,
-    filename: impl AsRef<OsStr> + AsRef<Path> + Clone,
+    path: impl AsRef<OsStr> + AsRef<Path>,
     maxtime: &str,
 ) -> Result<(String, String), EvalError> {
     {
-        let mut file = File::create(filename.clone())?;
+        let mut file = File::create(&path)?;
         write!(file, "{tptp}")?;
     }
     let output = Command::new("./eval/vampire")
@@ -149,7 +197,7 @@ fn vampire<S: AsRef<str>>(
         .arg(maxtime)
         .arg("--cores")
         .arg("12")
-        .arg(filename)
+        .arg(path)
         .output()?;
     let stdout = String::from_utf8(output.stdout)?;
 
@@ -191,7 +239,7 @@ impl fmt::Display for EvalError {
             EvalError::Io(e) => write!(f, "{e}"),
             EvalError::Utf8(e) => write!(f, "{e}"),
             EvalError::Re(e) => write!(f, "{e}"),
-            EvalError::NoMatch => write!(f, "Vampire output error"),
+            EvalError::NoMatch => write!(f, "Vampire unexpected output"),
             EvalError::Timeout => write!(f, "Vampire timeout"),
             EvalError::Json(e) => write!(f, "{e}"),
         }

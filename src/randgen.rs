@@ -49,8 +49,7 @@ struct Settings {
     depth: RangeInclusive<usize>,
     p_neg: f64,
     p_modal: [f64; 3],
-    min_grade: u32,
-    max_grade: u32,
+    grade: RangeInclusive<u32>,
 }
 
 fn rand_gen_n(n: usize, out: &mut impl fmt::Write) {

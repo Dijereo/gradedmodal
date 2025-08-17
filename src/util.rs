@@ -50,3 +50,62 @@ impl<O, I, T, U> Iterator for EnqueueProdIter<O, I, T, U> {
         todo!()
     }
 }
+
+#[macro_export]
+macro_rules! vecfor {
+    [
+        $var:ident in $iter:expr
+        $(, cap=$cap:expr)?
+        , flat
+        $(, into $store:expr)?
+        $(, if $pred:expr)?
+        $(=> $body:expr)?
+    ] => {{
+        vecfor!(@inner; $var in $iter $(, cap=$cap)?, flat=true $(, into $store)? $(, if $pred)? $(=> $body)? )
+    }};
+    [
+        $var:ident in $iter:expr
+        $(, cap=$cap:expr)?
+        $(, into $store:expr)?
+        $(, if $pred:expr)?
+        $(=> $body:expr)?
+    ] => {{
+        vecfor!(@inner; $var in $iter $(, cap=$cap)? $(, into $store)? $(, if $pred)? $(=> $body)? )
+    }};
+    [
+        @inner;
+        $var:ident in $iter:expr
+        $(, cap=$cap:expr)?
+        $(, flat=$flat:literal)?
+        $(, into $store:expr)?
+        $(, if $pred:expr)?
+        $(=> $body:expr)?
+    ] => {{
+        let mut v = Vec::new();
+        let p = &mut v;
+        $(
+            let p = $store;
+            let v = ();
+        )?
+        $(
+            p.reserve($cap);
+        )?
+        for $var in $iter {
+            $(
+                if !$pred {
+                    continue;
+                }
+            )?
+            $(
+                let $var = $body;
+            )?
+            let iter = [$var].into_iter();
+            $(
+                $flat;
+                let iter = iter.flatten();
+            )?
+            p.extend(iter);
+        }
+        v
+    }};
+}
