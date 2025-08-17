@@ -18,3 +18,35 @@ pub(crate) fn write_subscript(f: &mut fmt::Formatter, mut n: u8) -> fmt::Result 
         }
     }
 }
+
+pub(crate) struct EnqueueProdIter<O, I, T, U> {
+    outer: O,
+    inner: I,
+    queue: Vec<(T, U)>,
+}
+
+impl<O, I, T, U> EnqueueProdIter<O, I, T, U>
+where
+    O: Iterator<Item = T>,
+    I: Iterator<Item = U>,
+{
+    fn new(outer: O, inner: I) -> Self {
+        Self {
+            outer,
+            inner,
+            queue: vec![],
+        }
+    }
+
+    pub(crate) fn enqueue(&mut self, outeritem: T, inneritem: U) {
+        self.queue.push((outeritem, inneritem));
+    }
+}
+
+impl<O, I, T, U> Iterator for EnqueueProdIter<O, I, T, U> {
+    type Item = (T, U);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}

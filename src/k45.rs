@@ -8,9 +8,12 @@ use std::{
 use good_lp::{Expression, ProblemVariables, Solution, SolverModel, solvers, variable};
 
 use crate::{
-    model::{Edge, IntoModelGraph, Node}, rules3::{Calculus, Feasibility}, tableau2::TableauNode2, transit::{
+    model::{Edge, IntoModelGraph, Node},
+    rules3::{Calculus, Feasibility},
+    tableau2::TableauNode2,
+    transit::{
         self, BaseTransit, Constraints, DisplayTransit, Modals, ParallelWorlds, SolveTransit,
-    }
+    },
 };
 
 pub(crate) struct TransitKOr45 {

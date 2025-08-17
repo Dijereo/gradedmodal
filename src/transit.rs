@@ -312,7 +312,10 @@ impl Modals {
         for (value, sense, formula) in formulae {
             let mut fork = None;
             for i in 0..src_gradings.len() {
-                if formula.formula.directly_equivalent(&src_gradings[i].formula) {
+                if formula
+                    .formula
+                    .directly_equivalent(&src_gradings[i].formula)
+                {
                     fork = Some(&forkstore.forks[src_gradings[i].forkid]);
                     break;
                 }

@@ -114,12 +114,12 @@ impl FrameCondition {
             FrameCondition::K,
             FrameCondition::D,
             FrameCondition::T,
-            // FrameCondition::KB,
-            // FrameCondition::DB,
-            // FrameCondition::TB,
-            // FrameCondition::K4,
-            // FrameCondition::D4,
-            // FrameCondition::S4,
+            FrameCondition::KB,
+            FrameCondition::DB,
+            FrameCondition::TB,
+            FrameCondition::K4,
+            FrameCondition::D4,
+            FrameCondition::S4,
             FrameCondition::K5,
             FrameCondition::D5,
             FrameCondition::K45,
@@ -128,6 +128,26 @@ impl FrameCondition {
             FrameCondition::S5,
         ]
         .into_iter()
+    }
+
+    pub(crate) const fn ord_key(&self) -> u8 {
+        match self {
+            FrameCondition::K => 0,
+            FrameCondition::D => 1,
+            FrameCondition::T => 2,
+            FrameCondition::KB => 3,
+            FrameCondition::DB => 4,
+            FrameCondition::TB => 5,
+            FrameCondition::K4 => 6,
+            FrameCondition::D4 => 7,
+            FrameCondition::S4 => 8,
+            FrameCondition::K5 => 9,
+            FrameCondition::D5 => 10,
+            FrameCondition::K45 => 11,
+            FrameCondition::D45 => 12,
+            FrameCondition::KB5 => 13,
+            FrameCondition::S5 => 14,
+        }
     }
 
     pub(crate) const fn ray(&self) -> bool {

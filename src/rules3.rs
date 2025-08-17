@@ -114,7 +114,12 @@ impl Calculus {
         self.apply_forks(tab, forks, isroot);
     }
 
-    fn expand_linear<T: BaseTransit>(&self, tab: &mut TableauNode2<T>, reflexive: bool, symmetric: bool) {
+    fn expand_linear<T: BaseTransit>(
+        &self,
+        tab: &mut TableauNode2<T>,
+        reflexive: bool,
+        symmetric: bool,
+    ) {
         let mut i = 0;
         while let Some(label) = tab.formulae.get(i).cloned() {
             let mut new_formulae = PropLinear.expand(&label.formula);

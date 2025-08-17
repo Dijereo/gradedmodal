@@ -1,5 +1,6 @@
-use serde::Serialize;
 use std::{fmt::Write, time::Instant};
+
+use serde::Serialize;
 
 use crate::{
     api::{ServerOutput, ServerResponse, ServerTimes},

@@ -1,8 +1,9 @@
-use std::io::{self, Write};
+use std::{
+    env,
+    io::{self, Write},
+};
 
 use crate::{eval::eval_vampire, formula::full_parser, frame::FrameCondition, token::tokenize};
-
-use std::env;
 
 pub fn run() {
     let args: Vec<String> = env::args().collect();

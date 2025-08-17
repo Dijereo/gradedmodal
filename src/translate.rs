@@ -1,13 +1,14 @@
+use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
+
 use crate::{
     formula::{Formula, full_parser},
     frame::FrameCondition,
     token::tokenize,
 };
-use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 #[derive(Debug)]
-pub(crate) struct ToTPTP<'a> {
-    pub(crate) formula: Cow<'a, str>,
+pub(crate) struct ToTPTP<S: AsRef<str>> {
+    pub(crate) formula: S,
     pub(crate) frames: FrameCondition,
 }
 
@@ -18,7 +19,7 @@ struct STFrames<'a> {
 
 struct ST<'a>(&'a Rc<Formula>, &'a Cell<usize>, usize);
 
-impl fmt::Display for ToTPTP<'_> {
+impl<S: AsRef<str>> fmt::Display for ToTPTP<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let tokens = match tokenize(&self.formula.as_ref()) {
             Ok(tokens) => tokens,
@@ -36,15 +37,6 @@ impl fmt::Display for ToTPTP<'_> {
                 frames: self.frames,
             }
         )
-    }
-}
-
-impl ToTPTP<'_> {
-    pub(crate) fn unbind_lifetime<'b>(self) -> ToTPTP<'b> {
-        ToTPTP {
-            formula: Cow::Owned(self.formula.into_owned()),
-            ..self
-        }
     }
 }
 
