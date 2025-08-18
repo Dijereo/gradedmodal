@@ -1,4 +1,9 @@
-use std::{fmt::Write, rc::Rc, str::FromStr, time::Instant};
+use std::{
+    fmt::{self, Write},
+    rc::Rc,
+    str::FromStr,
+    time::Instant,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -52,6 +57,12 @@ impl FromStr for FrameCondition {
     }
 }
 
+impl fmt::Display for FrameCondition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 macro_rules! time_sat {
     ($clsr:expr, $satter:expr, $frame:expr, $formula:expr) => {{
         let start = Instant::now();
@@ -62,16 +73,16 @@ macro_rules! time_sat {
 }
 
 macro_rules! sat_and {
-    ($frame:expr, $formula:expr, $clsr:expr) => {{
+    ($frame:expr, $formula:expr, $clsr:expr, $default:expr) => {{
         match $frame {
             FrameCondition::K | FrameCondition::D | FrameCondition::K45 | FrameCondition::D45 => {
                 time_sat!($clsr, Calculus::sat::<TransitKOr45>, $frame, $formula)
             }
             FrameCondition::T => time_sat!($clsr, Calculus::sat::<TransitT>, $frame, $formula),
-            FrameCondition::KB | FrameCondition::DB => todo!("B"), //$clsr($f::<Transit>($frame, $formula)),
-            FrameCondition::TB => time_sat!($clsr, Calculus::sat::<TransitTB>, $frame, $formula),
-            FrameCondition::K4 | FrameCondition::D4 => todo!("4"), //$clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
-            FrameCondition::S4 => todo!("S4"), // $clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
+            FrameCondition::KB | FrameCondition::DB => $default("[KD]B"), //$clsr($f::<Transit>($frame, $formula)),
+            FrameCondition::TB => $default("TB"), //time_sat!($clsr, Calculus::sat::<TransitTB>, $frame, $formula),
+            FrameCondition::K4 | FrameCondition::D4 => $default("[KD]4"), //$clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
+            FrameCondition::S4 => $default("S4"), // $clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
             FrameCondition::K5 | FrameCondition::D5 => time_sat!($clsr, Calculus::sat::<Transit5>, $frame, $formula),
             FrameCondition::KB5 | FrameCondition::S5 => time_sat!($clsr, Calculus::sat::<TransitB5>, $frame, $formula),
         }
@@ -80,10 +91,15 @@ macro_rules! sat_and {
 
 impl FrameCondition {
     pub(crate) fn print_sat(&self, formula: Rc<Formula>) {
-        sat_and!(*self, formula, |tab, time| {
-            println!("Solve Time: {time}");
-            println!("{}", DisplayTableau(tab))
-        });
+        sat_and!(
+            *self,
+            formula,
+            |tab, time| {
+                println!("Solve Time: {time}");
+                println!("{}", DisplayTableau(tab))
+            },
+            |frames| eprintln!("Not yet implemented: {frames}")
+        );
     }
 
     pub(crate) fn graph_tab(
@@ -101,12 +117,37 @@ impl FrameCondition {
         if validate {
             formula = formula.not();
         }
-        sat_and!(*self, formula, |tab, solve_time| DisplayTableau(tab).model(
-            formulae_str,
-            solve_time,
-            parse_time,
-            self.symmetric()
-        ))
+        sat_and!(
+            *self,
+            formula,
+            |tab, solve_time| DisplayTableau(tab).model(
+                formulae_str,
+                solve_time,
+                parse_time,
+                self.symmetric()
+            ),
+            |frames| { ServerResponse::NotImplemented(frames) }
+        )
+    }
+
+    pub(crate) const fn as_str(&self) -> &'static str {
+        match self {
+            FrameCondition::K => "K",
+            FrameCondition::D => "D",
+            FrameCondition::T => "T",
+            FrameCondition::KB => "KB",
+            FrameCondition::DB => "DB",
+            FrameCondition::TB => "TB",
+            FrameCondition::K4 => "K4",
+            FrameCondition::D4 => "D4",
+            FrameCondition::S4 => "S4",
+            FrameCondition::K5 => "K5",
+            FrameCondition::D5 => "D5",
+            FrameCondition::K45 => "K45",
+            FrameCondition::D45 => "D45",
+            FrameCondition::KB5 => "KB5",
+            FrameCondition::S5 => "S5",
+        }
     }
 
     pub(crate) fn iter() -> impl Iterator<Item = Self> {

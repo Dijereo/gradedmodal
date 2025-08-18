@@ -31,6 +31,7 @@ pub(crate) enum ServerResponse {
     FrameErr(String),
     ParseErr(String),
     ServerErr,
+    NotImplemented(&'static str),
 }
 
 #[derive(Serialize)]
@@ -40,7 +41,7 @@ pub(crate) struct ServerOutput {
     pub(crate) graph: Graph,
     pub(crate) tableau: String,
     pub(crate) symmetric: bool,
-    pub(crate) success: bool,
+    pub(crate) satisfiable: bool,
 }
 
 impl IntoResponse for ServerResponse {
@@ -51,27 +52,25 @@ impl IntoResponse for ServerResponse {
             ServerResponse::ParseErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
             ServerResponse::ActionErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
             ServerResponse::ServerErr => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            ServerResponse::NotImplemented(err) => {
+                (StatusCode::NOT_IMPLEMENTED, err).into_response()
+            }
         }
     }
 }
 
 pub(crate) async fn solve_endpt(Json(json): Json<UserSubmission>) -> ServerResponse {
-    let start = Instant::now();
     println!("{} {}", json.formula, json.frames);
     let validate = match json.action.to_lowercase().as_str() {
         "sat" => false,
         "val" => true,
         _ => return ServerResponse::ActionErr(json.action),
     };
-    let mut response = solve(&json.formula, &json.frames, validate);
-    if let ServerResponse::Ok(output) = &mut response {
-        output.times.server_time = format!("{:.3?}", start.elapsed());
-    }
-    response
+    solve(&json.formula, &json.frames, validate)
 }
 
-fn solve(formula: &str, frames: &str, validate: bool) -> ServerResponse {
-    let parse_start = Instant::now();
+pub(crate) fn solve(formula: &str, frames: &str, validate: bool) -> ServerResponse {
+    let start = Instant::now();
     let framecond: FrameCondition = {
         match frames.parse() {
             Ok(framecond) => framecond,
@@ -104,7 +103,10 @@ fn solve(formula: &str, frames: &str, validate: bool) -> ServerResponse {
             return ServerResponse::ParseErr(format!("Error: unterminated token sequence."));
         }
     };
-    let parse_time = format!("{:.3?}", parse_start.elapsed());
-    let resp = framecond.graph_tab(formula, validate, parse_time);
+    let parse_time = format!("{:.3?}", start.elapsed());
+    let mut resp = framecond.graph_tab(formula, validate, parse_time);
+    if let ServerResponse::Ok(output) = &mut resp {
+        output.times.server_time = format!("{:.3?}", start.elapsed());
+    }
     resp
 }

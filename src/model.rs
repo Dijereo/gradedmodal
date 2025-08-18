@@ -101,7 +101,7 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
             graph,
             tableau,
             symmetric,
-            success: !self.0.borrow().is_closed(),
+            satisfiable: !self.0.borrow().is_closed(),
         })
     }
 }

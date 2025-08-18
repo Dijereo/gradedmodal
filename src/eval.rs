@@ -7,6 +7,7 @@ use std::{
     hash::Hash,
     io::{self, BufRead, BufReader, Write},
     mem,
+    num::{self},
     path::Path,
     process::Command,
     string,
@@ -21,13 +22,20 @@ use std::{
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::{frame::FrameCondition, translate::ToTPTP, vecfor};
+use crate::{
+    api::{self, ServerResponse},
+    frame::FrameCondition,
+    translate::ToTPTP,
+    vecfor,
+};
 
 #[derive(Debug)]
 pub(crate) enum EvalError {
     Io(io::Error),
     Utf8(string::FromUtf8Error),
     Re(regex::Error),
+    FormatError,
+    ParseErr(num::ParseFloatError),
     NoMatch,
     Timeout,
     Json(serde_json::Error),
@@ -39,7 +47,7 @@ struct EvalFormula<S> {
     tests: Vec<EvalOutput>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 enum EvalStatus {
     Pending,
     Failed,
@@ -52,12 +60,12 @@ enum EvalStatus {
 struct EvalOutput {
     frames: FrameCondition,
     vampirestatus: EvalStatus,
-    vampiretime: Option<Cow<'static, str>>,
+    vampiretime: Option<String>,
     proverstatus: EvalStatus,
     provertime: Option<String>,
 }
 
-pub(crate) fn eval_vampire(
+pub(crate) fn eval_provers(
     formulae_file: impl AsRef<Path>,
     output_json: impl AsRef<Path> + Send + 'static,
     maxtime: &'static str,
@@ -67,6 +75,7 @@ pub(crate) fn eval_vampire(
     )?));
     let mut formulae: Vec<_> = vec![];
     load_formulae::<Arc<str>>(formulae_file, &mut formulae)?;
+    EvalFormula::add_formulae(&mut results.write().unwrap(), formulae.into_iter());
     let finished = Arc::new(AtomicBool::new(false));
     let handle = {
         let results = results.clone();
@@ -83,6 +92,8 @@ pub(crate) fn eval_vampire(
         })
     };
     EvalFormula::run_vampire(&results, "eval/tmp.p", maxtime)?;
+    EvalFormula::run_prover(&results, maxtime)?;
+    finished.store(true, atomic::Ordering::Relaxed);
     handle.join().unwrap();
     Ok(())
 }
@@ -142,11 +153,80 @@ where
         outfile.write_all(b"\n")
     }
 
+    fn run_prover(this: &Arc<RwLock<Vec<Self>>>, maxtime: &'static str) -> Result<(), EvalError>
+    where
+        S: Clone,
+    {
+        let mut queue = vec![];
+        {
+            let guard = this.read().unwrap();
+            for (i, formula) in guard.iter().enumerate() {
+                for (j, test) in formula.tests.iter().enumerate() {
+                    match (test.proverstatus, &test.provertime) {
+                        (EvalStatus::Pending | EvalStatus::Failed | EvalStatus::Timedout, None) => {
+                            queue.push((i, j, formula.formula.clone(), test.frames))
+                        }
+                        (EvalStatus::Timedout, Some(time)) => {
+                            let time: f64 = time
+                                .trim()
+                                .strip_suffix('s')
+                                .ok_or(EvalError::FormatError)?
+                                .trim()
+                                .parse()?;
+                            let maxtime = maxtime.parse()?;
+                            if time < maxtime {
+                                queue.push((i, j, formula.formula.clone(), test.frames))
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        };
+        println!("Len: {}", queue.len());
+        for (i, j, formula, frames) in mem::take(&mut queue) {
+            let (out, time) = match api::solve(formula.as_ref(), frames.as_str(), true) {
+                ServerResponse::Ok(output) => (
+                    if output.satisfiable {
+                        EvalStatus::CounterSatisfiable
+                    } else {
+                        EvalStatus::Theorem
+                    },
+                    Some(output.times.server_time),
+                ),
+                ServerResponse::ActionErr(e)
+                | ServerResponse::FrameErr(e)
+                | ServerResponse::ParseErr(e) => {
+                    eprintln!("{e}");
+                    (EvalStatus::Failed, None)
+                }
+                ServerResponse::ServerErr => (EvalStatus::Failed, None),
+                ServerResponse::NotImplemented(e) => {
+                    eprintln!("{e}");
+                    (EvalStatus::Pending, None)
+                }
+            };
+            {
+                let mut guard = this.write().unwrap();
+                if let Some(evalformula) = guard.get_mut(i) {
+                    if let Some(test) = evalformula.tests.get_mut(j)
+                        && evalformula.formula.as_ref() == formula.as_ref()
+                        && test.frames == frames
+                    {
+                        test.proverstatus = out;
+                        test.provertime = time;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn run_vampire<P>(
         this: &Arc<RwLock<Vec<Self>>>,
         path: P,
         maxtime: &'static str,
-    ) -> io::Result<()>
+    ) -> Result<(), EvalError>
     where
         P: AsRef<OsStr> + AsRef<Path>,
         S: Clone,
@@ -156,23 +236,45 @@ where
             let guard = this.read().unwrap();
             for (i, formula) in guard.iter().enumerate() {
                 for (j, test) in formula.tests.iter().enumerate() {
-                    if test.vampirestatus == EvalStatus::Pending {
-                        queue.push((
-                            i,
-                            j,
-                            ToTPTP {
-                                formula: formula.formula.clone(),
-                                frames: test.frames,
-                            },
-                        ));
+                    match (test.vampirestatus, &test.vampiretime) {
+                        (EvalStatus::Pending | EvalStatus::Failed | EvalStatus::Timedout, None) => {
+                            queue.push((
+                                i,
+                                j,
+                                ToTPTP {
+                                    formula: formula.formula.clone(),
+                                    frames: test.frames,
+                                },
+                            ))
+                        }
+                        (EvalStatus::Timedout, Some(time)) => {
+                            let time: f64 = time
+                                .trim()
+                                .strip_suffix('s')
+                                .ok_or(EvalError::FormatError)?
+                                .trim()
+                                .parse()?;
+                            let maxtime = maxtime.parse()?;
+                            if time < maxtime {
+                                queue.push((
+                                    i,
+                                    j,
+                                    ToTPTP {
+                                        formula: formula.formula.clone(),
+                                        frames: test.frames,
+                                    },
+                                ))
+                            }
+                        }
+                        _ => {}
                     }
                 }
             }
         };
         for (i, j, tptp) in mem::take(&mut queue) {
             let (out, time) = match vampire(&tptp, &path, &maxtime) {
-                Ok((status, time)) => (status, Some(Cow::Owned(time))),
-                Err(EvalError::Timeout) => (EvalStatus::Timedout, Some(Cow::Borrowed(maxtime))),
+                Ok((status, time)) => (status, Some(time)),
+                Err(EvalError::Timeout) => (EvalStatus::Timedout, Some(format!("{maxtime} s"))),
                 Err(e) => {
                     eprintln!("{e}");
                     (EvalStatus::Failed, None)
@@ -253,6 +355,8 @@ impl fmt::Display for EvalError {
             EvalError::NoMatch => write!(f, "Vampire unexpected output"),
             EvalError::Timeout => write!(f, "Vampire timeout"),
             EvalError::Json(e) => write!(f, "{e}"),
+            EvalError::FormatError => write!(f, "Time Format Error"),
+            EvalError::ParseErr(e) => write!(f, "{e}"),
         }
     }
 }
@@ -278,5 +382,38 @@ impl From<regex::Error> for EvalError {
 impl From<serde_json::Error> for EvalError {
     fn from(value: serde_json::Error) -> Self {
         Self::Json(value)
+    }
+}
+
+impl From<num::ParseFloatError> for EvalError {
+    fn from(value: num::ParseFloatError) -> Self {
+        EvalError::ParseErr(value)
+    }
+}
+
+mod test {
+    use super::*;
+    use std::rc::Rc;
+
+    #[test]
+    fn test_output() {
+        let results = EvalFormula::<Rc<str>>::load_results("eval/output.json").unwrap();
+        for formula in results {
+            for test in formula.tests {
+                match (test.proverstatus, test.vampirestatus) {
+                    (EvalStatus::Theorem, EvalStatus::Theorem)
+                    | (EvalStatus::Theorem, EvalStatus::CounterSatisfiable)
+                    | (EvalStatus::CounterSatisfiable, EvalStatus::Theorem)
+                    | (EvalStatus::CounterSatisfiable, EvalStatus::CounterSatisfiable) => {
+                        assert_eq!(
+                            test.proverstatus, test.vampirestatus,
+                            "Formula: {}; Frames: {}",
+                            formula.formula, test.frames
+                        )
+                    }
+                    _ => {}
+                }
+            }
+        }
     }
 }

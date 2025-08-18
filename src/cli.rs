@@ -4,7 +4,7 @@ use std::{
     mem,
 };
 
-use crate::{eval::eval_vampire, formula::full_parser, frame::FrameCondition, token::tokenize};
+use crate::{eval::eval_provers, formula::full_parser, frame::FrameCondition, token::tokenize};
 
 pub fn run() {
     let mut args: Vec<String> = env::args().collect();
@@ -26,7 +26,7 @@ pub fn run() {
                 eprintln!("Usage: {} -e <time_in_seconds>", args[0]);
                 std::process::exit(1);
             }
-            if let Err(e) = eval_vampire(
+            if let Err(e) = eval_provers(
                 "eval/crafted.txt",
                 "eval/output.json",
                 mem::take(&mut args[2]).leak(),

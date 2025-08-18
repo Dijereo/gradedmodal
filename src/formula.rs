@@ -244,8 +244,7 @@ impl Formula {
     pub(crate) fn directly_equivalent(self: &Rc<Self>, other: &Rc<Self>) -> bool {
         Rc::as_ptr(self) == Rc::as_ptr(other)
             || match (self.as_ref(), other.as_ref()) {
-                (Formula::Not(phi1), _) => phi1.directly_contradicts(other),
-                (_, Formula::Not(phi2)) => self.directly_contradicts(phi2),
+                (Formula::Not(phi1), Formula::Not(phi2)) => phi1.directly_equivalent(phi2),
                 (Formula::Bottom, Formula::Bottom) => true,
                 (Formula::Top, Formula::Top) => true,
                 (Formula::Top, Formula::DiamondGe(0, _)) => true,
@@ -287,6 +286,7 @@ impl Formula {
     pub(crate) fn directly_contradicts(self: &Rc<Formula>, other: &Rc<Formula>) -> bool {
         Rc::as_ptr(self) != Rc::as_ptr(other)
             && match (self.as_ref(), other.as_ref()) {
+                (Formula::Not(phi1), Formula::Not(phi2)) => phi1.directly_contradicts(phi2),
                 (Formula::Not(phi1), _) => phi1.directly_equivalent(other),
                 (_, Formula::Not(phi2)) => self.directly_equivalent(phi2),
                 (Formula::DiamondGe(c1, phi1), Formula::DiamondLe(c2, phi2)) => {
