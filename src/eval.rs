@@ -1,5 +1,4 @@
 use std::{
-    array,
     borrow::Cow,
     collections::HashSet,
     ffi::OsStr,
@@ -35,29 +34,39 @@ pub(crate) enum EvalError {
 }
 
 #[derive(Serialize, Deserialize)]
-struct EvalFormula<'a, 'b, S> {
+struct EvalFormula<S> {
     formula: S,
-    tests: Vec<EvalOutput<'a, 'b>>,
+    tests: Vec<EvalOutput>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+enum EvalStatus {
+    Pending,
+    Failed,
+    Timedout,
+    Theorem,
+    CounterSatisfiable,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-struct EvalOutput<'a, 'b> {
+struct EvalOutput {
     frames: FrameCondition,
-    vampireoutput: Option<Cow<'a, str>>,
-    vampiretime: Option<Cow<'b, str>>,
-    proveroutput: Option<String>,
+    vampirestatus: EvalStatus,
+    vampiretime: Option<Cow<'static, str>>,
+    proverstatus: EvalStatus,
     provertime: Option<String>,
 }
 
-pub(crate) fn eval_vampire<S>(
+pub(crate) fn eval_vampire(
     formulae_file: impl AsRef<Path>,
     output_json: impl AsRef<Path> + Send + 'static,
+    maxtime: &'static str,
 ) -> Result<(), EvalError> {
     let results = Arc::new(RwLock::new(EvalFormula::<Arc<str>>::load_results(
         &output_json,
     )?));
     let mut formulae: Vec<_> = vec![];
-    EvalFormula::<Arc<str>>::load_formulae(formulae_file, &mut formulae)?;
+    load_formulae::<Arc<str>>(formulae_file, &mut formulae)?;
     let finished = Arc::new(AtomicBool::new(false));
     let handle = {
         let results = results.clone();
@@ -67,36 +76,34 @@ pub(crate) fn eval_vampire<S>(
             while !shutdown {
                 thread::sleep(Duration::from_secs(5));
                 shutdown |= finished.load(atomic::Ordering::Relaxed);
-                if let Err(e) =
-                    EvalFormula::save_results(&results.read().unwrap(), &output_json)
-                {
+                if let Err(e) = EvalFormula::save_results(&results.read().unwrap(), &output_json) {
                     eprintln!("{e}");
                 }
             }
         })
     };
-    let filename = "eval/tmp.p";
-    for maxtime in ["1", "10"] {
-        EvalFormula::run_vampire(&results, filename, maxtime);
-    }
+    EvalFormula::run_vampire(&results, "eval/tmp.p", maxtime)?;
     handle.join().unwrap();
     Ok(())
 }
 
-impl<'a, 'b, S: AsRef<str>> EvalFormula<'a, 'b, S> {
-    fn load_formulae(path: impl AsRef<Path>, formulae: &mut Vec<S>) -> io::Result<()>
-    where
-        S: From<String>,
-    {
-        for line in BufReader::new(File::open(path)?).lines() {
-            formulae.push(S::from(line?));
-        }
-        Ok(())
+fn load_formulae<S>(path: impl AsRef<Path>, formulae: &mut Vec<S>) -> io::Result<()>
+where
+    S: AsRef<str> + From<String>,
+{
+    for line in BufReader::new(File::open(path)?).lines() {
+        formulae.push(S::from(line?));
     }
+    Ok(())
+}
 
+impl<S> EvalFormula<S>
+where
+    S: AsRef<str>,
+{
     fn load_results(path: impl AsRef<Path>) -> Result<Vec<Self>, EvalError>
     where
-        S: for<'c> serde::Deserialize<'c>,
+        S: for<'d> serde::Deserialize<'d>,
     {
         Ok(serde_json::from_reader(BufReader::new(File::open(path)?))?)
     }
@@ -109,16 +116,19 @@ impl<'a, 'b, S: AsRef<str>> EvalFormula<'a, 'b, S> {
         for formula in this.iter() {
             set.insert(formula.formula.as_ref());
         }
-        let tests = vecfor!(f in FrameCondition::iter() => {EvalOutput {
-            frames: f,
-            vampireoutput: None,
-            vampiretime: None,
-            proveroutput: None,
-            provertime: None,
-        }});
+        let tests = vecfor!(
+            f in FrameCondition::iter()
+            => EvalOutput {
+                frames: f,
+                vampiretime: None,
+                provertime: None,
+                vampirestatus: EvalStatus::Pending,
+                proverstatus: EvalStatus::Pending
+            }
+        );
         let new = vecfor!(
             f in formulae,
-            if {!set.contains(f.as_ref())}
+            if !set.contains(f.as_ref())
             => Self { formula: f, tests: tests.clone() });
         this.extend(new);
     }
@@ -132,17 +142,21 @@ impl<'a, 'b, S: AsRef<str>> EvalFormula<'a, 'b, S> {
         outfile.write_all(b"\n")
     }
 
-    fn run_vampire<P>(this: &Arc<RwLock<Vec<Self>>>, path: P, maxtime: &'b str) -> io::Result<()>
+    fn run_vampire<P>(
+        this: &Arc<RwLock<Vec<Self>>>,
+        path: P,
+        maxtime: &'static str,
+    ) -> io::Result<()>
     where
         P: AsRef<OsStr> + AsRef<Path>,
         S: Clone,
     {
-        let mut queue =vec![];
+        let mut queue = vec![];
         {
             let guard = this.read().unwrap();
             for (i, formula) in guard.iter().enumerate() {
                 for (j, test) in formula.tests.iter().enumerate() {
-                    if test.vampireoutput.is_none() {
+                    if test.vampirestatus == EvalStatus::Pending {
                         queue.push((
                             i,
                             j,
@@ -156,13 +170,13 @@ impl<'a, 'b, S: AsRef<str>> EvalFormula<'a, 'b, S> {
             }
         };
         for (i, j, tptp) in mem::take(&mut queue) {
-            let (out, time) = match vampire(&tptp, &path, maxtime) {
-                Ok((status, time)) => (Some(Cow::Owned(status)), Some(Cow::Owned(time))),
-                Err(EvalError::Timeout) => (
-                    Some(Cow::Borrowed("Timedout")),
-                    Some(Cow::Borrowed(maxtime)),
-                ),
-                Err(e) => (Some(Cow::Owned(e.to_string())), None),
+            let (out, time) = match vampire(&tptp, &path, &maxtime) {
+                Ok((status, time)) => (status, Some(Cow::Owned(time))),
+                Err(EvalError::Timeout) => (EvalStatus::Timedout, Some(Cow::Borrowed(maxtime))),
+                Err(e) => {
+                    eprintln!("{e}");
+                    (EvalStatus::Failed, None)
+                }
             };
             {
                 let mut guard = this.write().unwrap();
@@ -171,7 +185,7 @@ impl<'a, 'b, S: AsRef<str>> EvalFormula<'a, 'b, S> {
                         && formula.formula.as_ref() == tptp.formula.as_ref()
                         && test.frames == tptp.frames
                     {
-                        test.vampireoutput = out;
+                        test.vampirestatus = out;
                         test.vampiretime = time;
                     }
                 }
@@ -184,8 +198,8 @@ impl<'a, 'b, S: AsRef<str>> EvalFormula<'a, 'b, S> {
 fn vampire<S: AsRef<str>>(
     tptp: &ToTPTP<S>,
     path: impl AsRef<OsStr> + AsRef<Path>,
-    maxtime: &str,
-) -> Result<(String, String), EvalError> {
+    maxtime: impl AsRef<OsStr>,
+) -> Result<(EvalStatus, String), EvalError> {
     {
         let mut file = File::create(&path)?;
         write!(file, "{tptp}")?;
@@ -200,21 +214,22 @@ fn vampire<S: AsRef<str>>(
         .arg(path)
         .output()?;
     let stdout = String::from_utf8(output.stdout)?;
-
     let re0 = Regex::new(r"SZS status (Timeout)")?;
     let re1 = Regex::new(r"SZS status (Theorem|CounterSatisfiable)")?;
     let re2 = Regex::new(r"Success in time (.*)$")?;
     let mut first_match = None;
     let mut second_match = None;
-    let mut timeout = false;
     for line in stdout.lines() {
         if let Some(_) = re0.captures(line) {
-            timeout = true;
-            break;
+            return Err(EvalError::Timeout);
         }
         if first_match.is_none() {
             if let Some(caps) = re1.captures(line) {
-                first_match = Some(caps[1].to_string());
+                first_match = Some(match &caps[1] {
+                    "Theorem" => EvalStatus::Theorem,
+                    "CounterSatisfiable" => EvalStatus::CounterSatisfiable,
+                    _ => unreachable!("Only `Theorem` or `CounterSatisfiable` should match."),
+                })
             }
         }
         if second_match.is_none() {
@@ -226,11 +241,7 @@ fn vampire<S: AsRef<str>>(
             break;
         }
     }
-    if timeout {
-        Err(EvalError::Timeout)
-    } else {
-        first_match.zip(second_match).ok_or(EvalError::NoMatch)
-    }
+    first_match.zip(second_match).ok_or(EvalError::NoMatch)
 }
 
 impl fmt::Display for EvalError {

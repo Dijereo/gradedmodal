@@ -85,6 +85,7 @@ macro_rules! vecfor {
         let p = &mut v;
         $(
             let p = $store;
+            v.push(());
             let v = ();
         )?
         $(

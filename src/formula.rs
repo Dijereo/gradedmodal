@@ -173,7 +173,7 @@ impl fmt::Display for Formula {
 }
 
 impl Formula {
-    pub(crate) fn is_bottom(&self) -> bool {
+    pub(crate) const fn is_bottom(&self) -> bool {
         if let Formula::Bottom = self {
             true
         } else {

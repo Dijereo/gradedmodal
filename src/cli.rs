@@ -1,12 +1,13 @@
 use std::{
     env,
     io::{self, Write},
+    mem,
 };
 
 use crate::{eval::eval_vampire, formula::full_parser, frame::FrameCondition, token::tokenize};
 
 pub fn run() {
-    let args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
         return interactive_mode();
@@ -15,13 +16,21 @@ pub fn run() {
     match args[1].as_str() {
         "-f" => {
             if args.len() != 4 {
-                eprintln!("Usage: {} -f <input.json> <output.json>", args[0]);
+                eprintln!("Usage: {} -f <input.txt> <output.json>", args[0]);
                 std::process::exit(1);
             }
             file_mode(&args[2], &args[3]);
         }
         "-e" => {
-            if let Err(e) = eval_vampire("eval/problems.txt", "eval/output.json") {
+            if args.len() != 3 {
+                eprintln!("Usage: {} -e <time_in_seconds>", args[0]);
+                std::process::exit(1);
+            }
+            if let Err(e) = eval_vampire(
+                "eval/crafted.txt",
+                "eval/output.json",
+                mem::take(&mut args[2]).leak(),
+            ) {
                 eprintln!("{e}");
             }
         }
