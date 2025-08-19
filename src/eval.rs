@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     api::{self, ServerResponse},
     frame::FrameCondition,
+    randgen::Setting,
     translate::ToTPTP,
     vecfor,
 };
@@ -42,9 +43,10 @@ pub(crate) enum EvalError {
 }
 
 #[derive(Serialize, Deserialize)]
-struct EvalFormula<S> {
-    formula: S,
-    tests: Vec<EvalOutput>,
+pub(crate) struct EvalFormula<S> {
+    pub(crate) formula: S,
+    pub(crate) setting: Option<Setting>,
+    pub(crate) tests: Vec<EvalOutput>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -57,7 +59,7 @@ enum EvalStatus {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-struct EvalOutput {
+pub(crate) struct EvalOutput {
     frames: FrameCondition,
     vampirestatus: EvalStatus,
     vampiretime: Option<String>,
@@ -66,16 +68,12 @@ struct EvalOutput {
 }
 
 pub(crate) fn eval_provers(
-    formulae_file: impl AsRef<Path>,
-    output_json: impl AsRef<Path> + Send + 'static,
+    datajson: impl AsRef<Path> + Send + 'static,
     maxtime: &'static str,
 ) -> Result<(), EvalError> {
     let results = Arc::new(RwLock::new(EvalFormula::<Arc<str>>::load_results(
-        &output_json,
+        &datajson,
     )?));
-    let mut formulae: Vec<_> = vec![];
-    load_formulae::<Arc<str>>(formulae_file, &mut formulae)?;
-    EvalFormula::add_formulae(&mut results.write().unwrap(), formulae.into_iter());
     let finished = Arc::new(AtomicBool::new(false));
     let handle = {
         let results = results.clone();
@@ -85,7 +83,7 @@ pub(crate) fn eval_provers(
             while !shutdown {
                 thread::sleep(Duration::from_secs(5));
                 shutdown |= finished.load(atomic::Ordering::Relaxed);
-                if let Err(e) = EvalFormula::save_results(&results.read().unwrap(), &output_json) {
+                if let Err(e) = EvalFormula::save_results(&results.read().unwrap(), &datajson) {
                     eprintln!("{e}");
                 }
             }
@@ -98,7 +96,7 @@ pub(crate) fn eval_provers(
     Ok(())
 }
 
-fn load_formulae<S>(path: impl AsRef<Path>, formulae: &mut Vec<S>) -> io::Result<()>
+pub(crate) fn load_formulae<S>(path: impl AsRef<Path>, formulae: &mut Vec<S>) -> io::Result<()>
 where
     S: AsRef<str> + From<String>,
 {
@@ -112,21 +110,7 @@ impl<S> EvalFormula<S>
 where
     S: AsRef<str>,
 {
-    fn load_results(path: impl AsRef<Path>) -> Result<Vec<Self>, EvalError>
-    where
-        S: for<'d> serde::Deserialize<'d>,
-    {
-        Ok(serde_json::from_reader(BufReader::new(File::open(path)?))?)
-    }
-
-    fn add_formulae(this: &mut Vec<Self>, formulae: impl Iterator<Item = S>)
-    where
-        S: Eq + Hash,
-    {
-        let mut set: HashSet<&str> = HashSet::with_capacity(this.len());
-        for formula in this.iter() {
-            set.insert(formula.formula.as_ref());
-        }
+    pub(crate) fn new(formula: S, setting: Option<Setting>) -> Self {
         let tests = vecfor!(
             f in FrameCondition::iter()
             => EvalOutput {
@@ -137,14 +121,33 @@ where
                 proverstatus: EvalStatus::Pending
             }
         );
-        let new = vecfor!(
-            f in formulae,
-            if !set.contains(f.as_ref())
-            => Self { formula: f, tests: tests.clone() });
+        Self {
+            formula,
+            setting,
+            tests,
+        }
+    }
+
+    fn load_results(path: impl AsRef<Path>) -> Result<Vec<Self>, EvalError>
+    where
+        S: for<'d> serde::Deserialize<'d>,
+    {
+        Ok(serde_json::from_reader(BufReader::new(File::open(path)?))?)
+    }
+
+    pub(crate) fn add_formulae(this: &mut Vec<Self>, formulae: impl Iterator<Item = S>)
+    where
+        S: Eq + Hash,
+    {
+        let mut set: HashSet<&str> = HashSet::with_capacity(this.len());
+        for formula in this.iter() {
+            set.insert(formula.formula.as_ref());
+        }
+        let new = vecfor!(f in formulae, if !set.contains(f.as_ref()) => Self::new(f, None));
         this.extend(new);
     }
 
-    fn save_results(this: &[Self], path: impl AsRef<Path>) -> io::Result<()>
+    pub(crate) fn save_results(this: &[Self], path: impl AsRef<Path>) -> io::Result<()>
     where
         S: Serialize,
     {

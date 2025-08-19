@@ -1,9 +1,5 @@
 use std::{
-    cmp, fmt,
-    fs::File,
-    io::Write,
-    ops::{Index, RangeInclusive},
-    path::Path,
+    borrow::Cow, cmp, fmt::{self, Write as _}, fs::File, io::Write, ops::{Index, RangeInclusive}, path::Path
 };
 
 use rand::{
@@ -14,13 +10,16 @@ use rand::{
     prelude::*,
     rngs::StdRng,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-use crate::{eval::EvalError, vecfor};
+use crate::{
+    eval::{load_formulae, EvalError, EvalFormula},
+    vecfor,
+};
 
 const NUM_PROPS: [u8; 5] = [2, 3, 4, 5, 10];
-const CONJ_SIZE: [RangeInclusive<u8>; 4] = [1..=3, 2..=2, 2..=3, 1..=5];
-const DISJ_SIZE: [RangeInclusive<u8>; 4] = [1..=3, 2..=2, 2..=3, 1..=5];
+const CONJ_SIZE: [u8; 3] = [2, 3, 5];
+const DISJ_SIZE: [u8; 3] = [2, 3, 5];
 const W_NEST: [[u8; 3]; 4] = [[6, 1, 2], [6, 2, 1], [2, 1, 1], [1, 1, 1]];
 const W_BOOL: [u8; 3] = [1, 1, 198];
 const DEPTH: [u8; 4] = [0, 1, 2, 3];
@@ -36,31 +35,35 @@ const W_MODAL: [[u8; 4]; 5] = [
 const GRADE: RangeInclusive<u8> = 2..=5;
 const IMPLY: [u8; 3] = [8, 1, 1];
 
-#[derive(Serialize)]
-struct Setting {
+#[derive(Clone, Serialize, Deserialize)]
+pub(crate) struct Setting {
     num_props: u8,
-    conj_size: RangeInclusive<u8>,
-    disj_size: RangeInclusive<u8>,
+    conj_size: u8,
+    disj_size: u8,
     w_nest: [u8; 3],
     depth: u8,
     numer_neg: u8,
     w_modal: [u8; 4],
 }
 
-pub(crate) fn rand_formulae(n: usize, seed: u64, path: impl AsRef<Path>) -> Result<(), EvalError> {
+pub(crate) fn gen_formulae(n: usize, seed: u64, craftedtxt: impl AsRef<Path>, datajson: impl AsRef<Path>) -> Result<(), EvalError> {
     let mut rng = StdRng::seed_from_u64(seed);
-    let mut temp = String::new();
-    let mut file = File::create(&path)?;
-    for _ in 0..n {
+    let mut buffers = vec!["¬(".to_string(); n];
+    let mut formulae = Vec::with_capacity(2 * n);
+    for buffer in &mut buffers {
         let setting = Setting::rand(&mut rng);
-        serde_json::to_writer_pretty(&mut file, &setting)?;
-        file.write_all(b"\n")?;
-        setting.formula(&mut rng, &mut temp)?;
-        writeln!(file, "{}", temp)?;
-        writeln!(file, "¬({})", temp)?;
-        writeln!(file, "")?;
-        temp.clear();
+        setting.formula(&mut rng, buffer)?;
+        write!(buffer, ")")?;
+        let mut subbuffer = buffer.chars();
+        subbuffer.nth(1);
+        subbuffer.next_back();
+        formulae.push(EvalFormula::new(Cow::Borrowed(subbuffer.as_str()), Some(setting.clone())));
+        formulae.push(EvalFormula::new(Cow::Borrowed(buffer.as_str()), Some(setting.clone())));
     }
+    let mut craftedformulae = vec![];
+    load_formulae(craftedtxt, &mut craftedformulae)?;
+    EvalFormula::add_formulae(&mut formulae, craftedformulae.into_iter());
+    EvalFormula::save_results(&formulae, datajson)?;
     Ok(())
 }
 
@@ -77,7 +80,7 @@ impl Setting {
         }
     }
 
-    fn formula(self, rng: &mut impl Rng, out: &mut impl fmt::Write) -> fmt::Result {
+    fn formula(&self, rng: &mut impl Rng, out: &mut impl fmt::Write) -> fmt::Result {
         write!(out, "{}", Phi::new(&self, rng))
     }
 }
@@ -139,7 +142,7 @@ enum Atom {
 
 impl Phi {
     fn new(setting: &Setting, rng: &mut impl Rng) -> Self {
-        let mut this = Self(Disj::new(*setting.disj_size.end(), 0, true, setting, rng));
+        let mut this = Self(Disj::new(setting.disj_size, 0, true, true, setting, rng));
         let numatoms = this.0.count_atoms();
         let mut atoms = vecfor!(
             _i in setting.num_props as usize..numatoms,
@@ -158,17 +161,22 @@ impl Phi {
 }
 
 impl Disj {
-    fn new(len: u8, depth: u8, deep: bool, setting: &Setting, rng: &mut impl Rng) -> Self {
-        let mut sublens = Vec::with_capacity(len as usize);
-        if len <= 1 {
-            sublens.push(*setting.conj_size.start());
+    fn new(
+        len: u8,
+        depth: u8,
+        deep: bool,
+        wide: bool,
+        setting: &Setting,
+        rng: &mut impl Rng,
+    ) -> Self {
+        let mut sublens =
+            vecfor!(_i in 1..len, cap=len as usize => rng.random_range(1..=setting.conj_size));
+        if wide {
+            sublens.push(setting.conj_size);
+            sublens.partial_shuffle(rng, 1);
         } else {
-            for _ in 2..len {
-                sublens.push(rng.random_range(setting.conj_size.clone()));
-            }
-            sublens.extend([setting.conj_size.start(), setting.conj_size.end()]);
-            sublens.partial_shuffle(rng, 2);
-        }
+            sublens.push(rng.random_range(1..=setting.conj_size));
+        };
         Self {
             conjs: vecfor!(
                 sublen in sublens,
@@ -201,9 +209,10 @@ impl Conj {
             let deepunit = Unit::Nest(
                 Modal::new(setting, rng),
                 Disj::new(
-                    rng.random_range(setting.disj_size.clone()),
+                    rng.random_range(1..=setting.disj_size),
                     currdepth + 1,
                     true,
+                    false,
                     setting,
                     rng,
                 ),
@@ -244,8 +253,9 @@ impl Unit {
             2 => Unit::Nest(
                 Modal::new(setting, rng),
                 Disj::new(
-                    rng.random_range(setting.disj_size.clone()),
+                    rng.random_range(1..=setting.disj_size),
                     currdepth + 1,
+                    false,
                     false,
                     setting,
                     rng,

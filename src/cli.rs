@@ -4,7 +4,10 @@ use std::{
     mem,
 };
 
-use crate::{eval::eval_provers, formula::full_parser, frame::FrameCondition, randgen::rand_formulae, token::tokenize};
+use crate::{
+    eval::eval_provers, formula::full_parser, frame::FrameCondition, randgen::gen_formulae,
+    token::tokenize,
+};
 
 pub fn run() {
     let mut args: Vec<String> = env::args().collect();
@@ -26,20 +29,33 @@ pub fn run() {
                 eprintln!("Usage: {} -e <time_in_seconds>", args[0]);
                 std::process::exit(1);
             }
-            if let Err(e) = eval_provers(
-                "eval/crafted.txt",
-                "eval/output.json",
-                mem::take(&mut args[2]).leak(),
-            ) {
+            if let Err(e) = eval_provers("eval/output.json", mem::take(&mut args[2]).leak()) {
                 eprintln!("{e}");
             }
         }
         "-d" => {
-            if args.len() != 3 {
-                eprintln!("Usage: {} -d <output_file>", args[0]);
+            if args.len() != 6 {
+                eprintln!(
+                    "Usage: {} -d <num_rand_formulae> <seed_int> <crafted_formulae_txt_file> <output_json_file>",
+                    args[0]
+                );
                 std::process::exit(1);
             }
-            if let Err(e) = rand_formulae(10, 42, &args[2]) {
+            let n: usize = match args[2].parse() {
+                Ok(n) => n,
+                Err(e) => {
+                    eprintln!("Invalid num: {e}");
+                    std::process::exit(1);
+                }
+            };
+            let seed: u64 = match args[3].parse() {
+                Ok(n) => n,
+                Err(e) => {
+                    eprintln!("Invalid num: {e}");
+                    std::process::exit(1);
+                }
+            };
+            if let Err(e) = gen_formulae(n, seed, &args[4], &args[5]) {
                 eprintln!("{e}");
             }
         }
