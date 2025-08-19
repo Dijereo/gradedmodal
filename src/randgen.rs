@@ -19,14 +19,14 @@ use serde::Serialize;
 use crate::{eval::EvalError, vecfor};
 
 const NUM_PROPS: [u8; 5] = [2, 3, 4, 5, 10];
-const CONJ_SIZE: [RangeInclusive<u8>; 3] = [1..=3, 2..=4, 3..=5];
-const DISJ_SIZE: [RangeInclusive<u8>; 3] = [1..=3, 2..=4, 3..=5];
-const W_NEST: [[u8; 3]; 5] = [[6, 1, 2], [6, 2, 1], [2, 1, 1], [1, 1, 1], [1, 2, 2]];
+const CONJ_SIZE: [RangeInclusive<u8>; 4] = [1..=3, 2..=2, 2..=3, 1..=5];
+const DISJ_SIZE: [RangeInclusive<u8>; 4] = [1..=3, 2..=2, 2..=3, 1..=5];
+const W_NEST: [[u8; 3]; 4] = [[6, 1, 2], [6, 2, 1], [2, 1, 1], [1, 1, 1]];
 const W_BOOL: [u8; 3] = [1, 1, 198];
 const DEPTH: [u8; 4] = [0, 1, 2, 3];
 const NUMER_NEG: [u8; 4] = [0, 2, 5, 10];
 const DENOM_NEG: u8 = 20;
-const P_MODAL: [[u8; 4]; 5] = [
+const W_MODAL: [[u8; 4]; 5] = [
     [1, 1, 4, 4],
     [4, 4, 1, 1],
     [1, 4, 4, 1],
@@ -41,10 +41,10 @@ struct Setting {
     num_props: u8,
     conj_size: RangeInclusive<u8>,
     disj_size: RangeInclusive<u8>,
-    p_nest: [u8; 3],
+    w_nest: [u8; 3],
     depth: u8,
     numer_neg: u8,
-    p_modal: [u8; 4],
+    w_modal: [u8; 4],
 }
 
 pub(crate) fn rand_formulae(n: usize, seed: u64, path: impl AsRef<Path>) -> Result<(), EvalError> {
@@ -52,9 +52,13 @@ pub(crate) fn rand_formulae(n: usize, seed: u64, path: impl AsRef<Path>) -> Resu
     let mut temp = String::new();
     let mut file = File::create(&path)?;
     for _ in 0..n {
-        Setting::rand(&mut rng).formula(&mut rng, &mut temp)?;
+        let setting = Setting::rand(&mut rng);
+        serde_json::to_writer_pretty(&mut file, &setting)?;
+        file.write_all(b"\n")?;
+        setting.formula(&mut rng, &mut temp)?;
         writeln!(file, "{}", temp)?;
         writeln!(file, "¬({})", temp)?;
+        writeln!(file, "")?;
         temp.clear();
     }
     Ok(())
@@ -66,10 +70,10 @@ impl Setting {
             num_props: *rand_choice(&NUM_PROPS, rng),
             conj_size: rand_choice(&CONJ_SIZE, rng).clone(),
             disj_size: rand_choice(&DISJ_SIZE, rng).clone(),
-            p_nest: *rand_choice(&W_NEST, rng),
+            w_nest: *rand_choice(&W_NEST, rng),
             depth: *rand_choice(&DEPTH, rng),
             numer_neg: *rand_choice(&NUMER_NEG, rng),
-            p_modal: *rand_choice(&P_MODAL, rng),
+            w_modal: *rand_choice(&W_MODAL, rng),
         }
     }
 
@@ -138,14 +142,14 @@ impl Phi {
         let mut this = Self(Disj::new(*setting.disj_size.end(), 0, true, setting, rng));
         let numatoms = this.0.count_atoms();
         let mut atoms = vecfor!(
-            i in 0..cmp::min(numatoms, setting.num_props as usize) as u8,
+            _i in setting.num_props as usize..numatoms,
             cap=numatoms
-            => Atom::P(rng.random_ratio(setting.numer_neg as u32, DENOM_NEG as u32), i)
+            => Atom::new(setting, rng)
         );
         vecfor!(
-            _i in setting.num_props as usize..numatoms,
+            i in 0..cmp::min(numatoms, setting.num_props as usize) as u8,
             into atoms
-            => Atom::new(setting, rng)
+            => Atom::P(Atom::rand_sign(setting, rng), i)
         );
         atoms.partial_shuffle(rng, cmp::min(numatoms, setting.num_props as usize));
         this.0.set_atoms(&mut atoms.into_iter());
@@ -159,10 +163,10 @@ impl Disj {
         if len <= 1 {
             sublens.push(*setting.conj_size.start());
         } else {
-            sublens.extend([setting.conj_size.start(), setting.conj_size.end()]);
             for _ in 2..len {
                 sublens.push(rng.random_range(setting.conj_size.clone()));
             }
+            sublens.extend([setting.conj_size.start(), setting.conj_size.end()]);
             sublens.partial_shuffle(rng, 2);
         }
         Self {
@@ -204,8 +208,9 @@ impl Conj {
                     rng,
                 ),
             );
-            let mut units = vecfor!(i in [deepunit], cap=len as usize);
-            vecfor!(_i in 1..len, into units => Unit::new(currdepth, setting, rng));
+            let mut units =
+                vecfor!(_i in 1..len, cap=len as usize => Unit::new(currdepth, setting, rng));
+            vecfor!(i in [deepunit], into units);
             units.partial_shuffle(rng, 1);
             units
         } else {
@@ -233,7 +238,7 @@ impl DisjConn {
 
 impl Unit {
     fn new(currdepth: u8, setting: &Setting, rng: &mut impl Rng) -> Self {
-        match rand_choice_weighted(&[0u8, 1, 2], &setting.p_nest, rng) {
+        match rand_choice_weighted(&[0u8, 1, 2], &setting.w_nest, rng) {
             0 => Unit::A(Atom::B(false)),
             1 => Unit::M(Modal::new(setting, rng), Atom::B(false)),
             2 => Unit::Nest(
@@ -269,7 +274,7 @@ impl Unit {
 
 impl Modal {
     fn new(setting: &Setting, rng: &mut impl Rng) -> Self {
-        match rand_choice_weighted(&[0u8, 1, 2, 3], &setting.p_modal, rng) {
+        match rand_choice_weighted(&[0u8, 1, 2, 3], &setting.w_modal, rng) {
             0 => Self::Bx,
             1 => Self::Dm,
             2 => Self::Ge(rng.random_range(GRADE)),
@@ -286,11 +291,15 @@ impl Atom {
             0 => Atom::B(false),
             1 => Atom::B(true),
             2 => Atom::P(
-                rng.random_ratio(setting.numer_neg as u32, DENOM_NEG as u32),
+                Self::rand_sign(setting, rng),
                 rng.random_range(0..setting.num_props),
             ),
             _ => unreachable!("Only values in 0..=2 should occur."),
         }
+    }
+
+    fn rand_sign(setting: &Setting, rng: &mut impl Rng) -> bool {
+        !rng.random_ratio(setting.numer_neg as u32, DENOM_NEG as u32)
     }
 
     fn set_atom(&mut self, atoms: &mut impl Iterator<Item = Atom>) {
