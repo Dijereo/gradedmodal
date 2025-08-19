@@ -1,65 +1,373 @@
-use std::{fmt, ops::RangeInclusive};
+use std::{
+    cmp, fmt,
+    fs::File,
+    io::Write,
+    ops::{Index, RangeInclusive},
+    path::Path,
+};
 
-use crate::formula::Formula;
+use rand::{
+    distr::{
+        uniform::SampleUniform,
+        weighted::{Weight, WeightedIndex},
+    },
+    prelude::*,
+    rngs::StdRng,
+};
+use serde::Serialize;
 
-const NUM_PROPS: [usize; 8] = [2, 3, 4, 5, 6, 7, 8, 9];
-const CONJ_SIZE: [RangeInclusive<usize>; 6] = [2..=3, 2..=5, 2..=8, 3..=5, 3..=8, 5..=8];
-const DISJ_SIZE: [RangeInclusive<usize>; 6] = [2..=3, 2..=5, 2..=8, 3..=5, 3..=8, 5..=8];
-const P_NEST: [[f64; 2]; 8] = [
-    [0.10, 0.20],
-    [0.11, 0.33],
-    [0.10, 0.50],
-    [0.22, 0.33],
-    [0.25, 0.50],
-    [0.33, 0.67],
-    [0.40, 0.50],
-    [0.40, 0.80],
-];
-const DEPTH: [RangeInclusive<usize>; 10] = [
-    0..=0,
-    0..=1,
-    0..=2,
-    0..=3,
-    1..=1,
-    1..=2,
-    1..=3,
-    2..=2,
-    2..=3,
-    3..=3,
-];
-const P_NEG: [f64; 4] = [0.0, 0.1, 0.25, 0.5];
-const P_MODAL: [[f64; 3]; 9] = [
-    [0.1, 0.2, 0.3],
-    [0.1, 0.2, 0.9],
-    [0.1, 0.8, 0.9],
-    [0.7, 0.8, 0.9],
-    [0.1, 0.2, 0.6],
-    [0.4, 0.8, 0.9],
-    [0.1, 0.5, 0.9],
-    [0.4, 0.5, 0.6],
-    [0.25, 0.5, 0.75],
-];
-const GRADE: [RangeInclusive<u32>; 1] = [2..=5];
+use crate::{eval::EvalError, vecfor};
 
-struct Settings {
-    num_props: usize,
-    conj_size: RangeInclusive<usize>,
-    disj_size: RangeInclusive<usize>,
-    p_nest: [f64; 2],
-    depth: RangeInclusive<usize>,
-    p_neg: f64,
-    p_modal: [f64; 3],
-    grade: RangeInclusive<u32>,
+const NUM_PROPS: [u8; 5] = [2, 3, 4, 5, 10];
+const CONJ_SIZE: [RangeInclusive<u8>; 3] = [1..=3, 2..=4, 3..=5];
+const DISJ_SIZE: [RangeInclusive<u8>; 3] = [1..=3, 2..=4, 3..=5];
+const W_NEST: [[u8; 3]; 5] = [[6, 1, 2], [6, 2, 1], [2, 1, 1], [1, 1, 1], [1, 2, 2]];
+const W_BOOL: [u8; 3] = [1, 1, 198];
+const DEPTH: [u8; 4] = [0, 1, 2, 3];
+const NUMER_NEG: [u8; 4] = [0, 2, 5, 10];
+const DENOM_NEG: u8 = 20;
+const P_MODAL: [[u8; 4]; 5] = [
+    [1, 1, 4, 4],
+    [4, 4, 1, 1],
+    [1, 4, 4, 1],
+    [4, 1, 1, 4],
+    [1, 1, 1, 1],
+];
+const GRADE: RangeInclusive<u8> = 2..=5;
+const IMPLY: [u8; 3] = [8, 1, 1];
+
+#[derive(Serialize)]
+struct Setting {
+    num_props: u8,
+    conj_size: RangeInclusive<u8>,
+    disj_size: RangeInclusive<u8>,
+    p_nest: [u8; 3],
+    depth: u8,
+    numer_neg: u8,
+    p_modal: [u8; 4],
 }
 
-fn rand_gen_n(n: usize, out: &mut impl fmt::Write) {
-    todo!()
+pub(crate) fn rand_formulae(n: usize, seed: u64, path: impl AsRef<Path>) -> Result<(), EvalError> {
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut temp = String::new();
+    let mut file = File::create(&path)?;
+    for _ in 0..n {
+        Setting::rand(&mut rng).formula(&mut rng, &mut temp)?;
+        writeln!(file, "{}", temp)?;
+        writeln!(file, "¬({})", temp)?;
+        temp.clear();
+    }
+    Ok(())
 }
 
-fn rand_gen_one(setting: Settings) -> Formula {
-    todo!()
+impl Setting {
+    fn rand(rng: &mut impl Rng) -> Self {
+        Self {
+            num_props: *rand_choice(&NUM_PROPS, rng),
+            conj_size: rand_choice(&CONJ_SIZE, rng).clone(),
+            disj_size: rand_choice(&DISJ_SIZE, rng).clone(),
+            p_nest: *rand_choice(&W_NEST, rng),
+            depth: *rand_choice(&DEPTH, rng),
+            numer_neg: *rand_choice(&NUMER_NEG, rng),
+            p_modal: *rand_choice(&P_MODAL, rng),
+        }
+    }
+
+    fn formula(self, rng: &mut impl Rng, out: &mut impl fmt::Write) -> fmt::Result {
+        write!(out, "{}", Phi::new(&self, rng))
+    }
 }
 
-fn rand_setting() -> Settings {
-    todo!()
+fn rand_choice_weighted<'a, C, W>(
+    choices: &'a C,
+    weights: &[W],
+    rng: &mut impl Rng,
+) -> &'a C::Output
+where
+    C: Index<usize>,
+    C::Output: Sized,
+    W: SampleUniform + PartialOrd + Weight + fmt::Debug,
+{
+    &choices[WeightedIndex::new(weights)
+        .expect(&format!("Invalid weights: {:?}", weights))
+        .sample(rng)]
+}
+
+fn rand_choice<'a, T>(choices: &'a [T], rng: &mut impl Rng) -> &'a T {
+    &choices[rng.random_range(0..choices.len())]
+}
+
+struct Phi(Disj);
+
+struct Disj {
+    conjs: Vec<Conj>,
+    conn: DisjConn,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum DisjConn {
+    Or,
+    Imply,
+    Iff,
+}
+
+struct Conj {
+    units: Vec<Unit>,
+}
+
+enum Unit {
+    A(Atom),
+    M(Modal, Atom),
+    Nest(Modal, Disj),
+}
+
+enum Modal {
+    Bx,
+    Dm,
+    Ge(u8),
+    Le(u8),
+}
+
+enum Atom {
+    P(bool, u8),
+    B(bool),
+}
+
+impl Phi {
+    fn new(setting: &Setting, rng: &mut impl Rng) -> Self {
+        let mut this = Self(Disj::new(*setting.disj_size.end(), 0, true, setting, rng));
+        let numatoms = this.0.count_atoms();
+        let mut atoms = vecfor!(
+            i in 0..cmp::min(numatoms, setting.num_props as usize) as u8,
+            cap=numatoms
+            => Atom::P(rng.random_ratio(setting.numer_neg as u32, DENOM_NEG as u32), i)
+        );
+        vecfor!(
+            _i in setting.num_props as usize..numatoms,
+            into atoms
+            => Atom::new(setting, rng)
+        );
+        atoms.partial_shuffle(rng, cmp::min(numatoms, setting.num_props as usize));
+        this.0.set_atoms(&mut atoms.into_iter());
+        this
+    }
+}
+
+impl Disj {
+    fn new(len: u8, depth: u8, deep: bool, setting: &Setting, rng: &mut impl Rng) -> Self {
+        let mut sublens = Vec::with_capacity(len as usize);
+        if len <= 1 {
+            sublens.push(*setting.conj_size.start());
+        } else {
+            sublens.extend([setting.conj_size.start(), setting.conj_size.end()]);
+            for _ in 2..len {
+                sublens.push(rng.random_range(setting.conj_size.clone()));
+            }
+            sublens.partial_shuffle(rng, 2);
+        }
+        Self {
+            conjs: vecfor!(
+                sublen in sublens,
+                cap=len as usize
+                => Conj::new(sublen, depth, deep, setting, rng)
+            ),
+            conn: DisjConn::new(rng),
+        }
+    }
+
+    fn count_atoms(&self) -> usize {
+        self.conjs.iter().map(|c| c.count_atoms()).sum()
+    }
+
+    fn set_atoms(&mut self, atoms: &mut impl Iterator<Item = Atom>) {
+        for conj in &mut self.conjs {
+            conj.set_atoms(atoms);
+        }
+    }
+}
+
+impl Conj {
+    fn new(len: u8, currdepth: u8, deep: bool, setting: &Setting, rng: &mut impl Rng) -> Self {
+        if currdepth >= setting.depth {
+            return Self {
+                units: vecfor!(_i in 0..len => Unit::A(Atom::B(false))),
+            };
+        }
+        let units = if deep {
+            let deepunit = Unit::Nest(
+                Modal::new(setting, rng),
+                Disj::new(
+                    rng.random_range(setting.disj_size.clone()),
+                    currdepth + 1,
+                    true,
+                    setting,
+                    rng,
+                ),
+            );
+            let mut units = vecfor!(i in [deepunit], cap=len as usize);
+            vecfor!(_i in 1..len, into units => Unit::new(currdepth, setting, rng));
+            units.partial_shuffle(rng, 1);
+            units
+        } else {
+            vecfor!(_i in 0..len => Unit::new(currdepth, setting, rng))
+        };
+        Self { units }
+    }
+
+    fn count_atoms(&self) -> usize {
+        self.units.iter().map(|u| u.count_atoms()).sum()
+    }
+
+    fn set_atoms(&mut self, atoms: &mut impl Iterator<Item = Atom>) {
+        for unit in &mut self.units {
+            unit.set_atoms(atoms);
+        }
+    }
+}
+
+impl DisjConn {
+    fn new(rng: &mut impl Rng) -> Self {
+        *rand_choice_weighted(&[DisjConn::Or, DisjConn::Imply, DisjConn::Iff], &IMPLY, rng)
+    }
+}
+
+impl Unit {
+    fn new(currdepth: u8, setting: &Setting, rng: &mut impl Rng) -> Self {
+        match rand_choice_weighted(&[0u8, 1, 2], &setting.p_nest, rng) {
+            0 => Unit::A(Atom::B(false)),
+            1 => Unit::M(Modal::new(setting, rng), Atom::B(false)),
+            2 => Unit::Nest(
+                Modal::new(setting, rng),
+                Disj::new(
+                    rng.random_range(setting.disj_size.clone()),
+                    currdepth + 1,
+                    false,
+                    setting,
+                    rng,
+                ),
+            ),
+            _ => unreachable!("Only values in 0..=2 should occur."),
+        }
+    }
+
+    fn count_atoms(&self) -> usize {
+        match self {
+            Unit::A(_) => 1,
+            Unit::M(..) => 1,
+            Unit::Nest(_, disj) => disj.count_atoms(),
+        }
+    }
+
+    fn set_atoms(&mut self, atoms: &mut impl Iterator<Item = Atom>) {
+        match self {
+            Unit::A(atom) => atom.set_atom(atoms),
+            Unit::M(_, atom) => atom.set_atom(atoms),
+            Unit::Nest(_, disj) => disj.set_atoms(atoms),
+        }
+    }
+}
+
+impl Modal {
+    fn new(setting: &Setting, rng: &mut impl Rng) -> Self {
+        match rand_choice_weighted(&[0u8, 1, 2, 3], &setting.p_modal, rng) {
+            0 => Self::Bx,
+            1 => Self::Dm,
+            2 => Self::Ge(rng.random_range(GRADE)),
+            3 => Self::Le(rng.random_range(GRADE)),
+            _ => unreachable!("Only values in 0..=3 should occur."),
+        }
+    }
+}
+
+impl Atom {
+    fn new(setting: &Setting, rng: &mut impl Rng) -> Self {
+        let i = rand_choice_weighted(&[0, 1, 2], &W_BOOL, rng);
+        match i {
+            0 => Atom::B(false),
+            1 => Atom::B(true),
+            2 => Atom::P(
+                rng.random_ratio(setting.numer_neg as u32, DENOM_NEG as u32),
+                rng.random_range(0..setting.num_props),
+            ),
+            _ => unreachable!("Only values in 0..=2 should occur."),
+        }
+    }
+
+    fn set_atom(&mut self, atoms: &mut impl Iterator<Item = Atom>) {
+        if let Some(atom) = atoms.next() {
+            *self = atom;
+        }
+    }
+}
+
+impl fmt::Display for Phi {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl fmt::Display for Disj {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut conjs = self.conjs.iter();
+        write!(f, "{}", conjs.next().expect("Disj's conjs cannot be empty"))?;
+        for conj in conjs {
+            write!(f, " {} {}", self.conn, conj)?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for DisjConn {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DisjConn::Or => write!(f, "∨"),
+            DisjConn::Imply => write!(f, "→"),
+            DisjConn::Iff => write!(f, "↔"),
+        }
+    }
+}
+impl fmt::Display for Conj {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut units = self.units.iter();
+        write!(f, "{}", units.next().expect("Conj's units cannot be empty"))?;
+        for unit in units {
+            write!(f, " ∧ {}", unit)?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for Unit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Unit::A(atom) => write!(f, "{atom}"),
+            Unit::M(modal, atom) => match modal {
+                Modal::Bx | Modal::Dm => write!(f, "{modal}{atom}"),
+                Modal::Ge(_) | Modal::Le(_) => write!(f, "{modal} {atom}"),
+            },
+            Unit::Nest(modal, disj) => write!(f, "{modal}({disj})"),
+        }
+    }
+}
+
+impl fmt::Display for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Atom::P(true, i) => write!(f, "p{i}"),
+            Atom::P(false, i) => write!(f, "¬p{i}"),
+            Atom::B(true) => write!(f, "⊤"),
+            Atom::B(false) => write!(f, "⊥"),
+        }
+    }
+}
+
+impl fmt::Display for Modal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Modal::Bx => write!(f, "□"),
+            Modal::Dm => write!(f, "◇"),
+            Modal::Ge(n) => write!(f, "◇≥{n}"),
+            Modal::Le(n) => write!(f, "◇≤{n}"),
+        }
+    }
 }

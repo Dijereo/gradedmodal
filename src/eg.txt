@@ -72,7 +72,7 @@ if ~tab closes, stmt is not sat
 if ~tab opens, stmt is sat
 
 
-
+¬□⊥⊤◇≥≤∧∨→↔
 ∻⋚±
 ∅ ⨉ ✓
 φ ⮩ 🡪 ↳ ⤷ ⥁ ⭯ ➤ ➔ ┃ ┗━➤➔ ┣━➤ • ◦ ✱ ● ○ ☉ ◎ ⊛ ◉ ⦿ ✲ ⊛ ◌ ✤

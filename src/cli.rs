@@ -4,7 +4,7 @@ use std::{
     mem,
 };
 
-use crate::{eval::eval_provers, formula::full_parser, frame::FrameCondition, token::tokenize};
+use crate::{eval::eval_provers, formula::full_parser, frame::FrameCondition, randgen::rand_formulae, token::tokenize};
 
 pub fn run() {
     let mut args: Vec<String> = env::args().collect();
@@ -31,6 +31,15 @@ pub fn run() {
                 "eval/output.json",
                 mem::take(&mut args[2]).leak(),
             ) {
+                eprintln!("{e}");
+            }
+        }
+        "-d" => {
+            if args.len() != 3 {
+                eprintln!("Usage: {} -d <output_file>", args[0]);
+                std::process::exit(1);
+            }
+            if let Err(e) = rand_formulae(10, 42, &args[2]) {
                 eprintln!("{e}");
             }
         }

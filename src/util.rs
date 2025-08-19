@@ -82,14 +82,14 @@ macro_rules! vecfor {
         $(=> $body:expr)?
     ] => {{
         let mut v = Vec::new();
-        let p = &mut v;
+        let _p = &mut v;
         $(
-            let p = $store;
+            let _p = &mut $store;
             v.push(());
             let v = ();
         )?
         $(
-            p.reserve($cap);
+            _p.reserve($cap);
         )?
         for $var in $iter {
             $(
@@ -105,7 +105,7 @@ macro_rules! vecfor {
                 $flat;
                 let iter = iter.flatten();
             )?
-            p.extend(iter);
+            _p.extend(iter);
         }
         v
     }};

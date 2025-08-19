@@ -332,7 +332,7 @@ impl<T> TableauNode2<T> {
                 }
                 write!(f, "┗━")?;
             }
-            writeln!(f, "✱ {}", label.formula)?;
+            writeln!(f, "• {}", label.formula)?;
         }
         for label in &thisref.formulae[1..] {
             let mut js = next_depths.iter().cloned();
@@ -349,7 +349,7 @@ impl<T> TableauNode2<T> {
                 write!(f, "  ")?;
                 i += 1;
             }
-            writeln!(f, "✱ {}", label.formula)?;
+            writeln!(f, "• {}", label.formula)?;
         }
         match &thisref.children {
             TabChildren::Leaf => {}

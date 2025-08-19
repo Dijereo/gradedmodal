@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     collections::HashSet,
     ffi::OsStr,
     fmt,
@@ -35,6 +34,7 @@ pub(crate) enum EvalError {
     Utf8(string::FromUtf8Error),
     Re(regex::Error),
     FormatError,
+    FmtWriteError(fmt::Error),
     ParseErr(num::ParseFloatError),
     NoMatch,
     Timeout,
@@ -357,6 +357,7 @@ impl fmt::Display for EvalError {
             EvalError::Json(e) => write!(f, "{e}"),
             EvalError::FormatError => write!(f, "Time Format Error"),
             EvalError::ParseErr(e) => write!(f, "{e}"),
+            EvalError::FmtWriteError(e) => write!(f, "{e}"),
         }
     }
 }
@@ -388,6 +389,12 @@ impl From<serde_json::Error> for EvalError {
 impl From<num::ParseFloatError> for EvalError {
     fn from(value: num::ParseFloatError) -> Self {
         EvalError::ParseErr(value)
+    }
+}
+
+impl From<fmt::Error> for EvalError {
+    fn from(value: fmt::Error) -> Self {
+        Self::FmtWriteError(value)
     }
 }
 
