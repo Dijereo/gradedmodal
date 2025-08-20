@@ -20,20 +20,20 @@ pub fn run() {
         "-i" => interactive_mode(),
         "-h" => help_mode(&args[0]),
         "-v" => {
-            if args.len() != 3 {
-                eprintln!("Usage: {} -e <time_in_seconds>", args[0]);
+            if args.len() != 4 {
+                eprintln!("Usage: {} -v <data_file.json> <time_in_seconds>", args[0]);
                 std::process::exit(1);
             }
-            if let Err(e) = eval_provers("eval/output.json", mem::take(&mut args[2]).leak(), true, false) {
+            if let Err(e) = eval_provers(mem::take(&mut args[2]).leak(), mem::take(&mut args[3]).leak(), true, false) {
                 eprintln!("{e}");
             }
         }
         "-p" => {
-            if args.len() != 3 {
-                eprintln!("Usage: {} -p <time_in_seconds>", args[0]);
+            if args.len() != 4 {
+                eprintln!("Usage: {} -p <data_file.json> <time_in_seconds>", args[0]);
                 std::process::exit(1);
             }
-            if let Err(e) = eval_provers("eval/output.json", mem::take(&mut args[2]).leak(), false, true) {
+            if let Err(e) = eval_provers(mem::take(&mut args[2]).leak(), mem::take(&mut args[3]).leak(), false, true) {
                 eprintln!("{e}");
             }
         }

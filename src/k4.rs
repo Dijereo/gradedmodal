@@ -82,7 +82,7 @@ impl Transit4 {
             true
         });
         labels.extend(self.constraints.boxsubforms.iter().cloned());
-        let modals = Modals::new(labels.iter(), calc.framecond.ray(), false);
+        let modals = Modals::new(labels.iter(), calc.framecond.ray(), false, toh)?;
         // sleep(Duration::from_secs(3));
         if modals.ge.is_empty() {
             return Ok(None);

@@ -40,7 +40,7 @@ impl BaseTransit for TransitKOr45 {
 
 impl SolveTransit for TransitKOr45 {
     fn recurse(&mut self, calc: &mut Calculus, toh: &impl TimeoutHandler) -> MayTimeout<()> {
-        calc.transition(&self.paraws.tab, toh)
+        calc.transition(&self.paraws.tab, false, toh)
     }
 
     fn from_modals(

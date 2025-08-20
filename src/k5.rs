@@ -72,7 +72,7 @@ impl<T: BaseTransit> ParaClique<T> {
                 lemma: false,
             })
             .collect();
-        let cliquemodals = Modals::new(settings.iter(), false, false);
+        let cliquemodals = Modals::new(settings.iter(), false, false, toh)?;
         let mut spotformulae = settings;
         spotformulae.extend(cliquemodals.bx.iter().cloned());
         spotformulae.extend(modalboxes);

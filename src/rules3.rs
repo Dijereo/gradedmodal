@@ -9,7 +9,7 @@ use crate::{
     transit::BaseTransit,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub(crate) enum Feasibility {
     Feasible,
     NoSolution,
@@ -56,7 +56,7 @@ impl Calculus {
         toh: &impl TimeoutHandler,
     ) -> MayTimeout<Rc<RefCell<TableauNode2<T>>>> {
         if framecond.luminal() {
-            formula = FlatFormula::from(formula.clone()).into();
+            formula = FlatFormula::from_rcf(formula.clone(), toh)?.into();
         }
         let formula = LabeledFormula {
             formula,
@@ -78,13 +78,14 @@ impl Calculus {
         if tab.borrow().is_closed() {
             return Ok(tab);
         }
-        calc.transition(&tab, toh)?;
+        calc.transition(&tab, true, toh)?;
         Ok(tab)
     }
 
     pub(crate) fn transition<T: BaseTransit>(
         &mut self,
         tab: &Rc<RefCell<TableauNode2<T>>>,
+        early_break: bool,
         toh: &impl TimeoutHandler,
     ) -> MayTimeout<()> {
         if tab.borrow().is_closed() {
@@ -96,6 +97,9 @@ impl Calculus {
             if let Some(transit) = T::transit(&flower, self, toh)? {
                 flower.borrow_mut().feasibility = transit.feasibility();
                 flower.borrow_mut().children = TabChildren::Transition(transit);
+            }
+            if early_break && flower.borrow_mut().feasibility == Feasibility::Feasible {
+                break;
             }
         }
         TableauNode2::set_feasibility_rec(tab);
@@ -258,6 +262,7 @@ impl Calculus {
         isroot: bool,
         toh: &impl TimeoutHandler,
     ) -> MayTimeout<()> {
+        toh.timedout()?;
         loop {
             match &tab.borrow().children {
                 TabChildren::Leaf => {}

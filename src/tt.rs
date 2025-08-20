@@ -115,7 +115,7 @@ impl TransitT {
             labels.push(label.clone());
             true
         });
-        let modals = Modals::new(labels.iter().filter(|lab| !lab.lemma), false, false);
+        let modals = Modals::new(labels.iter().filter(|lab| !lab.lemma), false, false, toh)?;
         if modals.ge.is_empty() && modals.le.is_empty() {
             if let Some(mut transit) = Self::transition(
                 fruit,
@@ -220,38 +220,6 @@ impl TransitT {
                 .iter()
                 .filter(|(forkid, _)| forkids.iter().any(|r| r.contains(forkid))),
         )
-    }
-
-    pub(crate) fn set_choices(&mut self, forkids: &Vec<RangeInclusive<usize>>) {
-        // let mut choices = vec![];
-        // self.
-        // .tab
-        // .borrow()
-        // .choices
-        // .iter()
-        // .filter(|(forkid, _)| forkids.iter().any(|r| r.contains(forkid)));
-        todo!();
-    }
-
-    fn set_choices_rec(
-        tab: &Rc<RefCell<TableauNode2<TransitT>>>,
-        mut src_choices: Vec<(usize, usize)>,
-        out_choices: &mut Vec<Vec<(usize, usize)>>,
-        ranges: &Vec<RangeInclusive<usize>>,
-    ) {
-        // src_choices.extend(tab.borrow().choices.iter());
-        // match &tab.borrow().children {
-        //     TabChildren::Leaf => todo!(),
-        //     TabChildren::Fork { branches, .. } => {
-        //         for branch in branches {
-        //             Self::set_choices_rec(&branch.node, src_choices.clone(), out_choices, ranges);
-        //         }
-        //     },
-        //     TabChildren::Transition(transit) if transit.reflexion => {
-
-        //     },
-        // }
-        // todo!();
     }
 
     pub(crate) fn full_solve(

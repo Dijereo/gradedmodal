@@ -50,7 +50,7 @@ impl SolveTransit for TransitTB {
         calc: &mut Calculus,
         toh: &impl TimeoutHandler,
     ) -> MayTimeout<Self> {
-        let (forks, constraints) = modals.to_deep_forks_constraints(&mut calc.forks);
+        let (forks, constraints) = modals.to_deep_forks_constraints(&mut calc.forks, toh)?;
         let mut formulae = vec![];
         leaf.borrow().traverse_anc_formulae(&mut |formula| {
             formulae.push(formula.clone());
@@ -98,7 +98,7 @@ impl TransitTB {
             formulae.push(formula.clone());
             true
         });
-        let modals = Modals::new(formulae.iter(), false, false);
+        let modals = Modals::new(formulae.iter(), false, false, toh)?;
         // TODO: check boxes valid
         if modals.ge.is_empty() {
             // TODO: check all le <=2 or valid

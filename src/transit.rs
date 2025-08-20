@@ -86,7 +86,8 @@ pub(crate) fn general_transit<T: BaseTransit + SolveTransit>(
         labels.iter(),
         calc.framecond.ray(),
         calc.framecond.spotlit(),
-    );
+        toh
+    )?;
     if modals.ge.is_empty() {
         return Ok(None);
     }
@@ -107,7 +108,8 @@ impl Modals {
         labels: impl Iterator<Item = &'a LabeledFormula>,
         serial: bool,
         spotlit: bool,
-    ) -> Modals {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Modals> {
         let mut this = Modals {
             bx: vec![],
             ge: vec![],
@@ -125,7 +127,7 @@ impl Modals {
                 .map(|(_, l)| l)
                 .chain(this.bx.iter_mut())
             {
-                f.formula = FlatFormula::from(mem::replace(&mut f.formula, dummy.clone())).into();
+                f.formula = FlatFormula::from_rcf(mem::replace(&mut f.formula, dummy.clone()), toh)?.into();
             }
         }
         if serial && this.ge.is_empty() && (!this.le.is_empty() || !this.bx.is_empty()) {
@@ -138,7 +140,7 @@ impl Modals {
                 },
             ));
         }
-        this
+        Ok(this)
     }
 
     pub(crate) fn iter_all<'a>(&'a self) -> impl Iterator<Item = &'a LabeledFormula> {
@@ -278,10 +280,11 @@ impl Modals {
     pub(crate) fn to_deep_forks_constraints(
         self,
         forkstore: &mut ForkStore,
-    ) -> (Vec<RangeInclusive<usize>>, Constraints) {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<(Vec<RangeInclusive<usize>>, Constraints)> {
         if self.ge.is_empty() && self.le.is_empty() {
             let (forks, constraints) = self.to_forks_constraints(forkstore);
-            return (forks.into_iter().collect(), constraints);
+            return Ok((forks.into_iter().collect(), constraints));
         }
         let mut newformulae = vec![];
         for formula in self.iter_all() {
@@ -289,7 +292,7 @@ impl Modals {
         }
         let (forks, mut constraints) = self.to_forks_constraints(forkstore);
         let mut forks: Vec<_> = forks.into_iter().collect();
-        let mut modals = Modals::new(newformulae.iter(), false, false);
+        let mut modals = Modals::new(newformulae.iter(), false, false, toh)?;
         while !modals.ge.is_empty() || !modals.le.is_empty() {
             newformulae.clear();
             for formula in modals.iter_all() {
@@ -299,9 +302,9 @@ impl Modals {
             forks.extend(fks);
             constraints.gradings.extend(cns.gradings);
             constraints.boxsubforms.extend(cns.boxsubforms);
-            modals = Modals::new(newformulae.iter(), false, false);
+            modals = Modals::new(newformulae.iter(), false, false, toh)?;
         }
-        (forks, constraints)
+        Ok((forks, constraints))
     }
 
     pub(crate) fn to_existing_forks(
