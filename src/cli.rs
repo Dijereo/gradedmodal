@@ -19,12 +19,21 @@ pub fn run() {
     match args[1].as_str() {
         "-i" => interactive_mode(),
         "-h" => help_mode(&args[0]),
-        "-e" => {
+        "-v" => {
             if args.len() != 3 {
                 eprintln!("Usage: {} -e <time_in_seconds>", args[0]);
                 std::process::exit(1);
             }
-            if let Err(e) = eval_provers("eval/output.json", mem::take(&mut args[2]).leak()) {
+            if let Err(e) = eval_provers("eval/output.json", mem::take(&mut args[2]).leak(), true, false) {
+                eprintln!("{e}");
+            }
+        }
+        "-p" => {
+            if args.len() != 3 {
+                eprintln!("Usage: {} -p <time_in_seconds>", args[0]);
+                std::process::exit(1);
+            }
+            if let Err(e) = eval_provers("eval/output.json", mem::take(&mut args[2]).leak(), false, true) {
                 eprintln!("{e}");
             }
         }
@@ -63,9 +72,12 @@ pub fn run() {
 }
 
 fn help_mode(args0: &str) {
-    eprintln!(
-        "Usage: {args0} -d <num_rand_formulae> <seed_int> <crafted_formulae_txt_file> <output_json_file>",
+    println!(
+        "Usage: {args0} -d <num_rand_formulae> <seed_int> <crafted_formulae_txt_file> <output_json_file> # Generate dataset",
     );
+    println!("Usage: {args0} -v <time_in_seconds> # Evaluate vampire on dataset");
+    println!("Usage: {args0} -p <time_in_seconds> # Evaluate prover on dataset");
+    eprintln!("Usage: {args0} -i # Interactive Mode");
 }
 
 fn interactive_mode() {

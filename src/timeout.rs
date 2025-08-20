@@ -32,7 +32,7 @@ impl StopHandler {
         let stop = Arc::new(AtomicBool::new(false));
         let stopclone = stop.clone();
         let thread = thread::spawn(move || {
-            cancellable_sleep(dur, stopclone);
+            cancellable_sleep(dur, 10, stopclone);
         });
         (StopHandler { stop }, thread)
     }
@@ -54,15 +54,15 @@ impl TimeoutHandler for StopHandler {
     }
 }
 
-fn cancellable_sleep(dur: Duration, stop: Arc<AtomicBool>) {
+fn cancellable_sleep(dur: Duration, freq: u64, stop: Arc<AtomicBool>) {
     let total_ms = dur.as_millis() as u64 + 1;
-    for _ in 0..total_ms / 100 {
-        thread::sleep(Duration::from_millis(100));
+    for _ in 0..total_ms / freq {
+        thread::sleep(Duration::from_millis(freq));
         if stop.load(Ordering::Relaxed) {
             return;
         }
     }
-    thread::sleep(Duration::from_millis(total_ms % 100));
+    thread::sleep(Duration::from_millis(total_ms % freq));
     stop.store(true, Ordering::Relaxed);
 }
 

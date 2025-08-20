@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) struct ToTPTP<S: AsRef<str>> {
+pub(crate) struct ToTPTP<S> {
     pub(crate) formula: S,
     pub(crate) frames: FrameCondition,
 }

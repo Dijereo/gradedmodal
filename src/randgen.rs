@@ -1,5 +1,9 @@
 use std::{
-    borrow::Cow, cmp, fmt::{self, Write as _}, fs::File, io::Write, ops::{Index, RangeInclusive}, path::Path
+    borrow::Cow,
+    cmp,
+    fmt::{self, Write},
+    ops::{Index, RangeInclusive},
+    path::Path,
 };
 
 use rand::{
@@ -13,7 +17,7 @@ use rand::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    eval::{load_formulae, EvalError, EvalFormula},
+    eval::{DataPoint, EvalError, add_formulae, load_formulae, save_results},
     vecfor,
 };
 
@@ -46,10 +50,18 @@ pub(crate) struct Setting {
     w_modal: [u8; 4],
 }
 
-pub(crate) fn gen_formulae(n: usize, seed: u64, craftedtxt: impl AsRef<Path>, datajson: impl AsRef<Path>) -> Result<(), EvalError> {
+pub(crate) fn gen_formulae(
+    n: usize,
+    seed: u64,
+    craftedtxt: impl AsRef<Path>,
+    datajson: impl AsRef<Path>,
+) -> Result<(), EvalError> {
+    let mut craftedformulae = vec![];
+    load_formulae(craftedtxt, &mut craftedformulae)?;
+    let mut formulae = Vec::with_capacity(2 * n + craftedformulae.len());
+    add_formulae(&mut formulae, craftedformulae.into_iter());
     let mut rng = StdRng::seed_from_u64(seed);
     let mut buffers = vec!["¬(".to_string(); n];
-    let mut formulae = Vec::with_capacity(2 * n);
     for buffer in &mut buffers {
         let setting = Setting::rand(&mut rng);
         setting.formula(&mut rng, buffer)?;
@@ -57,13 +69,16 @@ pub(crate) fn gen_formulae(n: usize, seed: u64, craftedtxt: impl AsRef<Path>, da
         let mut subbuffer = buffer.chars();
         subbuffer.nth(1);
         subbuffer.next_back();
-        formulae.push(EvalFormula::new(Cow::Borrowed(subbuffer.as_str()), Some(setting.clone())));
-        formulae.push(EvalFormula::new(Cow::Borrowed(buffer.as_str()), Some(setting.clone())));
+        formulae.push(DataPoint::new(
+            Cow::Borrowed(subbuffer.as_str()),
+            Some(setting.clone()),
+        ));
+        formulae.push(DataPoint::new(
+            Cow::Borrowed(buffer.as_str()),
+            Some(setting.clone()),
+        ));
     }
-    let mut craftedformulae = vec![];
-    load_formulae(craftedtxt, &mut craftedformulae)?;
-    EvalFormula::add_formulae(&mut formulae, craftedformulae.into_iter());
-    EvalFormula::save_results(&formulae, datajson)?;
+    save_results(&formulae, datajson)?;
     Ok(())
 }
 
