@@ -365,7 +365,8 @@ where
             Box::new(dmne_parser),
             Box::new(var_parser),
             Box::new(bottom_parser),
-        ] as [Box<DynParser<'a, Token, Rc<Formula>, S>>; 12])
+            Box::new(top_parser),
+        ] as [Box<DynParser<'a, Token, Rc<Formula>, S>>; 13])
             .into_iter(),
     )
 }
@@ -597,6 +598,13 @@ where
     S: Iterator<Item = (usize, Token)>,
 {
     parse_eq(stream, &Token::BOTTOM, Formula::bottom())
+}
+
+fn top_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)>,
+{
+    parse_eq(stream, &Token::TOP, Formula::top())
 }
 
 fn imply_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>

@@ -13,6 +13,7 @@ use crate::{
     model::{Edge, IntoModelGraph, Node},
     rules3::{Calculus, Feasibility},
     tableau2::{LabeledFormula, TabChildren, TableauNode2},
+    timeout::{MayTimeout, TimeoutHandler},
     transit::{BaseTransit, Constraints, DisplayTransit, Grading, Modals, ParallelWorlds},
 };
 
@@ -31,8 +32,12 @@ impl BaseTransit for TransitT {
         self.feasibility
     }
 
-    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        Self::reflect(fruit, vec![], None.into_iter(), calc)
+    fn transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Option<Self>> {
+        Self::reflect(fruit, vec![], None.into_iter(), calc, toh)
     }
 }
 
@@ -44,7 +49,8 @@ impl TransitT {
         mut ranges: Vec<RangeInclusive<usize>>,
         src_constraints: impl Iterator<Item = Grading>,
         calc: &mut Calculus,
-    ) -> Self {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Self> {
         let (forkids, mut constraints) = modals.to_forks_constraints(&mut calc.forks);
         for lab in labels.iter_mut() {
             lab.lemma = true;
@@ -54,11 +60,12 @@ impl TransitT {
             forkids.clone().map_or(vec![], |f| vec![f]),
             Some(fruit),
             calc,
-        );
+            toh,
+        )?;
         ranges.extend(forkids.into_iter());
         constraints.gradings.extend(src_constraints);
         let feasibility = paraws.tab.borrow().feasibility;
-        Self {
+        Ok(Self {
             reflexion: true,
             feasibility,
             paraws,
@@ -66,12 +73,12 @@ impl TransitT {
             vars: vec![],
             solution: vec![],
             ranges,
-        }
+        })
     }
 
-    fn recurse(&mut self, calc: &mut Calculus) {
+    fn recurse(&mut self, calc: &mut Calculus, toh: &impl TimeoutHandler) -> MayTimeout<()> {
         if self.is_closed() {
-            return;
+            return Ok(());
         }
         let mut flowers = Vec::new();
         TableauNode2::get_flowers(&self.paraws.tab, &mut flowers);
@@ -82,9 +89,10 @@ impl TransitT {
                     self.ranges.clone(),
                     self.constraints.gradings.iter().cloned(),
                     calc,
-                )
+                    toh,
+                )?
             } else {
-                Self::reflect(&flower, self.ranges.clone(), None.into_iter(), calc)
+                Self::reflect(&flower, self.ranges.clone(), None.into_iter(), calc, toh)?
             };
             if let Some(subtransit) = subtransit {
                 flower.borrow_mut().feasibility = subtransit.feasibility;
@@ -92,6 +100,7 @@ impl TransitT {
             }
         }
         self.feasibility = TableauNode2::set_feasibility_rec(&self.paraws.tab);
+        Ok(())
     }
 
     pub(crate) fn reflect(
@@ -99,7 +108,8 @@ impl TransitT {
         ranges: Vec<RangeInclusive<usize>>,
         constraints: impl Iterator<Item = Grading>,
         calc: &mut Calculus,
-    ) -> Option<Self> {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Option<Self>> {
         let mut labels = vec![];
         fruit.borrow().traverse_anc_formulae(&mut |label| {
             labels.push(label.clone());
@@ -113,25 +123,27 @@ impl TransitT {
                 ranges.clone(),
                 constraints.collect(),
                 calc,
-            ) {
+                toh,
+            )? {
                 let mut choices = Vec::new();
                 Self::get_choices(fruit, &mut choices, &ranges);
                 // transit.set_choices();
-                transit.full_solve(&choices);
-                return Some(transit);
+                transit.full_solve(&choices, toh)?;
+                return Ok(Some(transit));
             } else {
-                return None;
+                return Ok(None);
             }
         }
-        let mut transit = Self::from_reflection(modals, fruit, labels, ranges, constraints, calc);
+        let mut transit =
+            Self::from_reflection(modals, fruit, labels, ranges, constraints, calc, toh)?;
         if transit.is_closed() {
-            return Some(transit);
+            return Ok(Some(transit));
         }
-        transit.recurse(calc);
+        transit.recurse(calc, toh)?;
         if transit.is_closed() {
-            return Some(transit);
+            return Ok(Some(transit));
         }
-        Some(transit)
+        Ok(Some(transit))
     }
 
     fn transition<'a>(
@@ -140,9 +152,10 @@ impl TransitT {
         ranges: Vec<RangeInclusive<usize>>,
         constraints: Vec<Grading>,
         calc: &mut Calculus,
-    ) -> Option<Self> {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Option<Self>> {
         if ranges.is_empty() {
-            return None;
+            return Ok(None);
         }
         let boxsubforms: Vec<_> = labels
             .filter_map(|lab| {
@@ -157,8 +170,13 @@ impl TransitT {
                 }
             })
             .collect();
-        let paraws =
-            ParallelWorlds::<Self>::from_forks(boxsubforms.clone(), ranges, Some(fruit), calc);
+        let paraws = ParallelWorlds::<Self>::from_forks(
+            boxsubforms.clone(),
+            ranges,
+            Some(fruit),
+            calc,
+            toh,
+        )?;
         let feasibility = paraws.tab.borrow().feasibility;
         let mut subtransit = Self {
             reflexion: false,
@@ -173,13 +191,13 @@ impl TransitT {
             ranges: vec![],
         };
         if subtransit.is_closed() {
-            return Some(subtransit);
+            return Ok(Some(subtransit));
         }
-        subtransit.recurse(calc);
+        subtransit.recurse(calc, toh)?;
         if subtransit.is_closed() {
-            return Some(subtransit);
+            return Ok(Some(subtransit));
         }
-        Some(subtransit)
+        Ok(Some(subtransit))
     }
 }
 
@@ -240,7 +258,8 @@ impl TransitT {
         &mut self,
         src_choices: &Vec<(usize, usize)>,
         // ranges: &Vec<RangeInclusive<usize>>,
-    ) {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<()> {
         self.paraws.set_choices(true);
         let mut problem = ProblemVariables::new();
         let mut exprs = HashMap::with_capacity(self.constraints.gradings.len());
@@ -279,6 +298,7 @@ impl TransitT {
             };
             model.add_constraint(constr);
         }
+        toh.timedout()?;
         match model.solve() {
             Ok(solution) => {
                 self.solution = vars.into_iter().map(|v| solution.value(v) as u32).collect();
@@ -286,6 +306,7 @@ impl TransitT {
             }
             Err(_) => self.feasibility = Feasibility::NoSolution,
         }
+        Ok(())
     }
 }
 

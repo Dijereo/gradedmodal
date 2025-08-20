@@ -5,6 +5,7 @@ use crate::{
     formula::Formula,
     frame::FrameCondition,
     tableau2::{Conflict, DupContra, LabeledFormula, TabBranch, TabChildren, TableauNode2},
+    timeout::{MayTimeout, TimeoutHandler},
     transit::BaseTransit,
 };
 
@@ -52,7 +53,8 @@ impl Calculus {
     pub(crate) fn sat<T: BaseTransit>(
         framecond: FrameCondition,
         mut formula: Rc<Formula>,
-    ) -> Rc<RefCell<TableauNode2<T>>> {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Rc<RefCell<TableauNode2<T>>>> {
         if framecond.luminal() {
             formula = FlatFormula::from(formula.clone()).into();
         }
@@ -70,29 +72,34 @@ impl Calculus {
             forks: ForkStore { forks: vec![] },
         };
         if tab.borrow().is_closed() {
-            return tab;
+            return Ok(tab);
         }
-        calc.expand_static(&tab, VecDeque::new(), true);
+        calc.expand_static(&tab, VecDeque::new(), true, toh)?;
         if tab.borrow().is_closed() {
-            return tab;
+            return Ok(tab);
         }
-        calc.transition(&tab);
-        tab
+        calc.transition(&tab, toh)?;
+        Ok(tab)
     }
 
-    pub(crate) fn transition<T: BaseTransit>(&mut self, tab: &Rc<RefCell<TableauNode2<T>>>) {
+    pub(crate) fn transition<T: BaseTransit>(
+        &mut self,
+        tab: &Rc<RefCell<TableauNode2<T>>>,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<()> {
         if tab.borrow().is_closed() {
-            return;
+            return Ok(());
         }
         let mut flowers = Vec::new();
         TableauNode2::get_flowers(tab, &mut flowers);
         for flower in flowers {
-            if let Some(transit) = T::transit(&flower, self) {
+            if let Some(transit) = T::transit(&flower, self, toh)? {
                 flower.borrow_mut().feasibility = transit.feasibility();
                 flower.borrow_mut().children = TabChildren::Transition(transit);
             }
         }
         TableauNode2::set_feasibility_rec(tab);
+        Ok(())
     }
 
     pub(crate) fn expand_static<T: BaseTransit>(
@@ -100,18 +107,21 @@ impl Calculus {
         tab: &Rc<RefCell<TableauNode2<T>>>,
         mut forks: VecDeque<Fork>,
         isroot: bool,
-    ) {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<()> {
+        toh.timedout()?;
         let reflexive = self.framecond.reflexive() || !isroot && self.framecond.euclidean();
         self.expand_linear(&mut tab.borrow_mut(), reflexive, self.framecond.symmetric());
         if tab.borrow().is_closed() {
-            return;
+            return Ok(());
         }
         self.store_disjs(&tab.borrow(), &mut forks);
         self.resolve_forks(&tab, &mut forks);
         if tab.borrow().is_closed() {
-            return;
+            return Ok(());
         }
-        self.apply_forks(tab, forks, isroot);
+        self.apply_forks(tab, forks, isroot, toh)?;
+        Ok(())
     }
 
     fn expand_linear<T: BaseTransit>(
@@ -246,11 +256,12 @@ impl Calculus {
         tab: &Rc<RefCell<TableauNode2<T>>>,
         mut forks: VecDeque<Fork>,
         isroot: bool,
-    ) {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<()> {
         loop {
             match &tab.borrow().children {
                 TabChildren::Leaf => {}
-                TabChildren::Transition(..) => return,
+                TabChildren::Transition(..) => return Ok(()),
                 TabChildren::Fork { .. } => break,
             };
             if let Some(fork) = forks.pop_front() {
@@ -271,7 +282,7 @@ impl Calculus {
                     branches,
                 };
             } else {
-                return;
+                return Ok(());
             }
         }
         let mut feasibility = Feasibility::Contradiction;
@@ -280,11 +291,12 @@ impl Calculus {
                 if branch.node.borrow().is_closed() {
                     continue;
                 }
-                self.expand_static(&branch.node, forks.clone(), isroot);
+                self.expand_static(&branch.node, forks.clone(), isroot, toh)?;
                 feasibility = feasibility.better(&branch.node.borrow().feasibility);
             }
         }
         tab.borrow_mut().feasibility = feasibility;
+        Ok(())
     }
 }
 

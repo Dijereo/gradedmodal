@@ -11,6 +11,7 @@ use crate::{
     model::{Edge, IntoModelGraph, Node},
     rules3::{Calculus, Feasibility},
     tableau2::TableauNode2,
+    timeout::{MayTimeout, TimeoutHandler},
     transit::{
         self, BaseTransit, Constraints, DisplayTransit, Modals, ParallelWorlds, SolveTransit,
     },
@@ -28,32 +29,37 @@ impl BaseTransit for TransitKOr45 {
         self.feasibility
     }
 
-    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        transit::general_transit(calc, fruit)
+    fn transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Option<Self>> {
+        transit::general_transit(calc, fruit, toh)
     }
 }
 
 impl SolveTransit for TransitKOr45 {
-    fn recurse(&mut self, calc: &mut Calculus) {
-        calc.transition(&self.paraws.tab)
+    fn recurse(&mut self, calc: &mut Calculus, toh: &impl TimeoutHandler) -> MayTimeout<()> {
+        calc.transition(&self.paraws.tab, toh)
     }
 
     fn from_modals(
         modals: Modals,
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut Calculus,
-    ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(modals, Some(leaf), calc);
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Self> {
+        let (paraws, constraints) = ParallelWorlds::from_modals(modals, Some(leaf), calc, toh)?;
         let feasibility = paraws.tab.borrow().feasibility;
-        Self {
+        Ok(Self {
             feasibility,
             paraws,
             constraints,
             solution: vec![],
-        }
+        })
     }
 
-    fn solve(&mut self) {
+    fn solve(&mut self, toh: &impl TimeoutHandler) -> MayTimeout<()> {
         self.paraws.set_choices(true);
         let mut problem = ProblemVariables::new();
         let mut exprs = HashMap::with_capacity(self.constraints.gradings.len());
@@ -82,6 +88,7 @@ impl SolveTransit for TransitKOr45 {
             };
             model.add_constraint(constr);
         }
+        toh.timedout()?;
         match model.solve() {
             Ok(solution) => {
                 self.solution = vars.into_iter().map(|v| solution.value(v) as u32).collect();
@@ -89,6 +96,7 @@ impl SolveTransit for TransitKOr45 {
             }
             Err(_) => self.feasibility = Feasibility::NoSolution,
         }
+        Ok(())
     }
 }
 

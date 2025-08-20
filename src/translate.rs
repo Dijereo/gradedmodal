@@ -1,6 +1,7 @@
 use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 use crate::{
+    eval::EvalError,
     formula::{Formula, full_parser},
     frame::FrameCondition,
     token::tokenize,
@@ -12,35 +13,47 @@ pub(crate) struct ToTPTP<S: AsRef<str>> {
     pub(crate) frames: FrameCondition,
 }
 
-struct STFrames<'a> {
-    formula: &'a Rc<Formula>,
+pub(crate) struct STFrames {
+    formula: Rc<Formula>,
     frames: FrameCondition,
 }
 
 struct ST<'a>(&'a Rc<Formula>, &'a Cell<usize>, usize);
 
-impl<S: AsRef<str>> fmt::Display for ToTPTP<S> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<S: AsRef<str>> ToTPTP<S> {
+    pub(crate) fn to_st_frames(&self) -> Result<STFrames, EvalError> {
         let tokens = match tokenize(&self.formula.as_ref()) {
             Ok(tokens) => tokens,
-            Err(_) => return Err(fmt::Error),
+            Err(e) => {
+                return Err(EvalError::FormulaParseErr(format!(
+                    "Tokenization Failed at {e:?} in {}",
+                    self.formula.as_ref()
+                )));
+            }
         };
         let formula = match full_parser(tokens.into_iter().enumerate()) {
             Ok(formula) => formula,
-            Err(_) => return Err(fmt::Error),
-        };
-        write!(
-            f,
-            "{}",
-            STFrames {
-                formula: &formula,
-                frames: self.frames,
+            Err(None) => {
+                return Err(EvalError::FormulaParseErr(format!(
+                    "Parsing Failed at EOI in {}",
+                    self.formula.as_ref()
+                )));
             }
-        )
+            Err(Some(e)) => {
+                return Err(EvalError::FormulaParseErr(format!(
+                    "Parsing Failed at {e:?} in {}",
+                    self.formula.as_ref()
+                )));
+            }
+        };
+        Ok(STFrames {
+            formula,
+            frames: self.frames,
+        })
     }
 }
 
-impl fmt::Display for STFrames<'_> {
+impl fmt::Display for STFrames {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.frames.reflexive() {
             writeln!(f, "fof(t,axiom,(![X]: rel(X, X))).")?;
@@ -67,7 +80,7 @@ impl fmt::Display for STFrames<'_> {
             f,
             "fof(phi,conjecture,(![X{}]: ({}))).",
             cell.get(),
-            ST(self.formula, &cell, cell.get())
+            ST(&self.formula, &cell, cell.get())
         )
     }
 }
@@ -198,7 +211,7 @@ mod test {
             formula: Cow::Borrowed(formula),
             frames,
         };
-        write!(&mut tptp, "{totptp}").expect("Parsing failed");
+        write!(&mut tptp, "{}", totptp.to_st_frames().unwrap()).unwrap();
         assert_str_eq_file(&tptp, path);
     }
 

@@ -12,6 +12,7 @@ use crate::{
     model::{Edge, IntoModelGraph, Node},
     rules3::{Calculus, Feasibility},
     tableau2::{TabChildren, TableauNode2},
+    timeout::{MayTimeout, TimeoutHandler},
     transit::{
         BaseTransit, Constraints, DisplayTransit, Modals, ParallelWorlds, SolveTransit,
         general_transit,
@@ -32,8 +33,12 @@ impl BaseTransit for Transit4 {
         self.feasibility
     }
 
-    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        general_transit(calc, fruit)
+    fn transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Option<Transit4>> {
+        general_transit(calc, fruit, toh)
     }
 }
 
@@ -43,7 +48,8 @@ impl Transit4 {
         mut ranges: Vec<RangeInclusive<usize>>,
         fruit: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut Calculus,
-    ) -> Self {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Self> {
         let (forkids, constraints) = modals.to_forks_constraints(&mut calc.forks);
         ranges.extend(forkids.into_iter());
         let paraws = ParallelWorlds::from_forks(
@@ -51,23 +57,25 @@ impl Transit4 {
             ranges.clone(),
             Some(fruit),
             calc,
-        );
+            toh,
+        )?;
         let feasibility = paraws.tab.borrow().feasibility;
-        Self {
+        Ok(Self {
             feasibility,
             paraws,
             constraints,
             vars: vec![],
             solution: vec![],
             ranges,
-        }
+        })
     }
 
     pub(crate) fn diffract(
         &self,
         fruit: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut Calculus,
-    ) -> Option<Transit4> {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Option<Transit4>> {
         let mut labels = vec![];
         fruit.borrow().traverse_anc_formulae(&mut |label| {
             labels.push(label.clone());
@@ -77,23 +85,23 @@ impl Transit4 {
         let modals = Modals::new(labels.iter(), calc.framecond.ray(), false);
         // sleep(Duration::from_secs(3));
         if modals.ge.is_empty() {
-            return None;
+            return Ok(None);
         }
-        let mut subtransit = Self::from_diffraction(modals, self.ranges.clone(), fruit, calc);
+        let mut subtransit = Self::from_diffraction(modals, self.ranges.clone(), fruit, calc, toh)?;
         if subtransit.feasibility.is_bad() {
-            return Some(subtransit);
+            return Ok(Some(subtransit));
         }
-        subtransit.recurse(calc);
+        subtransit.recurse(calc, toh)?;
         if subtransit.feasibility.is_bad() {
-            return Some(subtransit);
+            return Ok(Some(subtransit));
         }
-        subtransit.check();
-        Some(subtransit)
+        subtransit.check(toh)?;
+        Ok(Some(subtransit))
     }
 }
 
 impl SolveTransit for Transit4 {
-    fn solve(&mut self) {
+    fn solve(&mut self, toh: &impl TimeoutHandler) -> MayTimeout<()> {
         let mut problem = ProblemVariables::new();
         let mut exprs = HashMap::new();
         let allvars = self.build_rec(&mut problem, &mut exprs);
@@ -107,6 +115,7 @@ impl SolveTransit for Transit4 {
             };
             model.add_constraint(constr);
         }
+        toh.timedout()?;
         match model.solve() {
             Ok(solution) => {
                 self.solution = self
@@ -118,39 +127,42 @@ impl SolveTransit for Transit4 {
             }
             Err(_) => self.feasibility = Feasibility::NoSolution,
         }
+        Ok(())
     }
 
-    fn recurse(&mut self, calc: &mut Calculus) {
+    fn recurse(&mut self, calc: &mut Calculus, toh: &impl TimeoutHandler) -> MayTimeout<()> {
         if self.feasibility.is_bad() {
-            return;
+            return Ok(());
         }
         let mut flowers = Vec::new();
         TableauNode2::get_flowers(&self.paraws.tab, &mut flowers);
         for flower in flowers {
-            let subtransit = self.diffract(&flower, calc);
+            let subtransit = self.diffract(&flower, calc, toh)?;
             if let Some(subtransit) = subtransit {
                 flower.borrow_mut().feasibility = subtransit.feasibility;
                 flower.borrow_mut().children = TabChildren::Transition(subtransit);
             }
         }
         self.feasibility = TableauNode2::set_feasibility_rec(&self.paraws.tab);
+        Ok(())
     }
 
     fn from_modals(
         modals: Modals,
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut Calculus,
-    ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(modals, Some(leaf), calc);
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Self> {
+        let (paraws, constraints) = ParallelWorlds::from_modals(modals, Some(leaf), calc, toh)?;
         let feasibility = paraws.tab.borrow().feasibility;
-        Self {
+        Ok(Self {
             feasibility,
             ranges: paraws.forkids.clone(),
             paraws,
             constraints,
             vars: vec![],
             solution: vec![],
-        }
+        })
     }
 }
 
@@ -189,7 +201,7 @@ impl Transit4 {
         allvars
     }
 
-    pub(crate) fn check(&mut self) {
+    pub(crate) fn check(&mut self, toh: &impl TimeoutHandler) -> MayTimeout<()> {
         self.paraws.set_choices(false);
         let mut problem = ProblemVariables::new();
         let mut exprs = HashMap::with_capacity(self.constraints.gradings.len());
@@ -218,10 +230,12 @@ impl Transit4 {
             };
             model.add_constraint(constr);
         }
+        toh.timedout()?;
         match model.solve() {
             Ok(_) => self.feasibility = Feasibility::Feasible,
             Err(_) => self.feasibility = Feasibility::NoSolution,
         }
+        Ok(())
     }
 }
 
@@ -274,6 +288,6 @@ impl IntoModelGraph for Transit4 {
             label: String::new(),
             extra: String::new(),
         });
-        self.paraws.tab.borrow().model_graph(selfi, nodes, edges);
+        self.paraws.tab.borrow().model_graph(selfi, nodes, edges)
     }
 }

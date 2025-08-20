@@ -22,9 +22,10 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    api::{self, ServerResponse},
+    api::{self, ServerError},
     frame::FrameCondition,
     randgen::Setting,
+    timeout::{StopHandler, ThreadReaper},
     translate::ToTPTP,
     vecfor,
 };
@@ -36,7 +37,9 @@ pub(crate) enum EvalError {
     Re(regex::Error),
     FormatError,
     FmtWriteError(fmt::Error),
-    ParseErr(num::ParseFloatError),
+    FloatParseErr(num::ParseFloatError),
+    TimeParseErr(num::ParseIntError),
+    FormulaParseErr(String),
     NoMatch,
     Timeout,
     Json(serde_json::Error),
@@ -186,10 +189,14 @@ where
                 }
             }
         };
-        println!("Len: {}", queue.len());
+        // println!("Len: {}", queue.len());
+        let reaper = ThreadReaper::new(Arc::new(AtomicBool::new(false)));
+        let duration = Duration::from_secs(maxtime.parse()?);
         for (i, j, formula, frames) in mem::take(&mut queue) {
-            let (out, time) = match api::solve(formula.as_ref(), frames.as_str(), true) {
-                ServerResponse::Ok(output) => (
+            let (stop, handle) = StopHandler::new(duration);
+            reaper.add_thread(handle);
+            let (out, time) = match api::solve(formula.as_ref(), frames.as_str(), true, stop) {
+                Ok(output) => (
                     if output.satisfiable {
                         EvalStatus::CounterSatisfiable
                     } else {
@@ -197,17 +204,18 @@ where
                     },
                     Some(output.times.server_time),
                 ),
-                ServerResponse::ActionErr(e)
-                | ServerResponse::FrameErr(e)
-                | ServerResponse::ParseErr(e) => {
+                Err(
+                    ServerError::ActionErr(e) | ServerError::FrameErr(e) | ServerError::ParseErr(e),
+                ) => {
                     eprintln!("{e}");
                     (EvalStatus::Failed, None)
                 }
-                ServerResponse::ServerErr => (EvalStatus::Failed, None),
-                ServerResponse::NotImplemented(e) => {
+                Err(ServerError::ServerErr) => (EvalStatus::Failed, None),
+                Err(ServerError::NotImplemented(e)) => {
                     eprintln!("{e}");
                     (EvalStatus::Pending, None)
                 }
+                Err(ServerError::Timedout) => (EvalStatus::Timedout, Some(format!("{maxtime} s"))),
             };
             {
                 let mut guard = this.write().unwrap();
@@ -307,7 +315,7 @@ fn vampire<S: AsRef<str>>(
 ) -> Result<(EvalStatus, String), EvalError> {
     {
         let mut file = File::create(&path)?;
-        write!(file, "{tptp}")?;
+        write!(&mut file, "{}", tptp.to_st_frames()?)?;
     }
     let output = Command::new("./eval/vampire")
         .arg("--mode")
@@ -359,8 +367,10 @@ impl fmt::Display for EvalError {
             EvalError::Timeout => write!(f, "Vampire timeout"),
             EvalError::Json(e) => write!(f, "{e}"),
             EvalError::FormatError => write!(f, "Time Format Error"),
-            EvalError::ParseErr(e) => write!(f, "{e}"),
+            EvalError::FloatParseErr(e) => write!(f, "{e}"),
             EvalError::FmtWriteError(e) => write!(f, "{e}"),
+            EvalError::TimeParseErr(e) => write!(f, "Input Time Format Error: {e}"),
+            EvalError::FormulaParseErr(e) => write!(f, "{e}"),
         }
     }
 }
@@ -391,7 +401,13 @@ impl From<serde_json::Error> for EvalError {
 
 impl From<num::ParseFloatError> for EvalError {
     fn from(value: num::ParseFloatError) -> Self {
-        EvalError::ParseErr(value)
+        EvalError::FloatParseErr(value)
+    }
+}
+
+impl From<num::ParseIntError> for EvalError {
+    fn from(value: num::ParseIntError) -> Self {
+        Self::TimeParseErr(value)
     }
 }
 

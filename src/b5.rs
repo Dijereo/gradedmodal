@@ -11,6 +11,7 @@ use crate::{
     model::{Edge, IntoModelGraph, Node},
     rules3::{Calculus, Feasibility},
     tableau2::{LabeledFormula, TableauNode2},
+    timeout::{MayTimeout, TimeoutHandler},
     transit::{
         BaseTransit, Constraints, DisplayTransit, Modals, ParallelWorlds, SolveTransit,
         general_transit,
@@ -31,37 +32,44 @@ impl BaseTransit for TransitB5 {
         self.feasibility
     }
 
-    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        general_transit(calc, fruit)
+    fn transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Option<TransitB5>> {
+        general_transit(calc, fruit, toh)
     }
 }
 
 impl SolveTransit for TransitB5 {
-    fn recurse(&mut self, _calc: &mut Calculus) {}
+    fn recurse(&mut self, _calc: &mut Calculus, _toh: &impl TimeoutHandler) -> MayTimeout<()> {
+        Ok(())
+    }
 
     fn from_modals(
         modals: Modals,
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut Calculus,
-    ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(modals, Some(leaf), calc);
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<TransitB5> {
+        let (paraws, constraints) = ParallelWorlds::from_modals(modals, Some(leaf), calc, toh)?;
         let feasibility = paraws.tab.borrow().feasibility;
         let reflexion = if paraws.tab.borrow().is_closed() {
-            ParallelWorlds::from_forks(vec![], vec![], Some(leaf), calc)
+            ParallelWorlds::from_forks(vec![], vec![], Some(leaf), calc, toh)?
         } else {
-            Self::get_reflexion(constraints.boxsubforms.clone(), &paraws, leaf, calc)
+            Self::get_reflexion(constraints.boxsubforms.clone(), &paraws, leaf, calc, toh)?
         };
-        Self {
+        Ok(Self {
             feasibility,
             paraws,
             constraints,
             solution: vec![],
             rfxsolution: 0,
             reflexion,
-        }
+        })
     }
 
-    fn solve(&mut self) {
+    fn solve(&mut self, toh: &impl TimeoutHandler) -> MayTimeout<()> {
         let mut problem = ProblemVariables::new();
         self.paraws.set_choices(true);
         let vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
@@ -99,6 +107,7 @@ impl SolveTransit for TransitB5 {
             model.add_constraint(constr);
         }
         model.add_constraint(rvars.iter().sum::<Expression>().eq(1));
+        toh.timedout()?;
         match model.solve() {
             Ok(solution) => {
                 self.solution = vars.into_iter().map(|v| solution.value(v) as u32).collect();
@@ -118,6 +127,7 @@ impl SolveTransit for TransitB5 {
             }
             Err(_) => self.feasibility = Feasibility::NoSolution,
         }
+        Ok(())
     }
 }
 
@@ -127,12 +137,13 @@ impl TransitB5 {
         paraws: &ParallelWorlds<Self>,
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut Calculus,
-    ) -> ParallelWorlds<Self> {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<ParallelWorlds<Self>> {
         leaf.borrow().traverse_anc_formulae(&mut |l| {
             boxsubforms.push(l.clone());
             true
         });
-        ParallelWorlds::from_forks(boxsubforms, paraws.forkids.clone(), Some(leaf), calc)
+        ParallelWorlds::from_forks(boxsubforms, paraws.forkids.clone(), Some(leaf), calc, toh)
     }
 }
 

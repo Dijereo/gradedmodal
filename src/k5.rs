@@ -12,6 +12,7 @@ use crate::{
     model::{Edge, IntoModelGraph, Node},
     rules3::{Calculus, Feasibility},
     tableau2::{LabeledFormula, TableauNode2},
+    timeout::{MayTimeout, TimeoutHandler},
     transit::{
         BaseTransit, Constraints, DisplayTransit, Grading, Modals, ParallelWorlds, SolveTransit,
         general_transit,
@@ -40,8 +41,12 @@ impl BaseTransit for Transit5 {
         self.feasibility
     }
 
-    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self> {
-        general_transit(calc, fruit)
+    fn transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Option<Self>> {
+        general_transit(calc, fruit, toh)
     }
 }
 
@@ -53,7 +58,8 @@ impl<T: BaseTransit> ParaClique<T> {
         mut spotranges: Vec<RangeInclusive<usize>>,
         leaf: &Rc<RefCell<TableauNode2<T>>>,
         calc: &mut Calculus,
-    ) -> Self {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Self> {
         let settings: Vec<_> = submodals
             .zip(signs.iter())
             .map(|(label, sign)| LabeledFormula {
@@ -71,11 +77,11 @@ impl<T: BaseTransit> ParaClique<T> {
         spotformulae.extend(cliquemodals.bx.iter().cloned());
         spotformulae.extend(modalboxes);
         let (cliquews, cliqueconstraints) =
-            ParallelWorlds::from_modals(cliquemodals, Some(leaf), calc);
+            ParallelWorlds::from_modals(cliquemodals, Some(leaf), calc, toh)?;
         spotranges.extend_from_slice(&cliquews.forkids);
-        let spotws = ParallelWorlds::from_forks(spotformulae, spotranges, Some(leaf), calc);
+        let spotws = ParallelWorlds::from_forks(spotformulae, spotranges, Some(leaf), calc, toh)?;
         let cliquefeas = spotws.tab.borrow().feasibility;
-        ParaClique {
+        Ok(ParaClique {
             settings: signs.clone(),
             feasibility: cliquefeas,
             spotws,
@@ -83,18 +89,21 @@ impl<T: BaseTransit> ParaClique<T> {
             cliqueconstraints,
             spotsolution: vec![],
             cliquesolution: vec![],
-        }
+        })
     }
 }
 
 impl SolveTransit for Transit5 {
-    fn recurse(&mut self, _calc: &mut Calculus) {}
+    fn recurse(&mut self, _calc: &mut Calculus, _toh: &impl TimeoutHandler) -> MayTimeout<()> {
+        Ok(())
+    }
 
     fn from_modals(
         modals: Modals,
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut Calculus,
-    ) -> Self {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Self> {
         let submodals = modals.submodals();
         let mut settings = vec![true; submodals.len()];
         let mut paracliques = vec![];
@@ -109,28 +118,30 @@ impl SolveTransit for Transit5 {
                 Vec::from_iter(spotranges.iter().cloned()),
                 leaf,
                 calc,
-            );
+                toh,
+            )?;
             feasibility = feasibility.better(&paraclique.feasibility);
             paracliques.push(paraclique);
             if !Self::next_setting(&mut settings) {
                 break;
             }
         }
-        Self {
+        Ok(Self {
             submodals,
             spotconstraints,
             paracliques,
             feasibility,
-        }
+        })
     }
 
-    fn solve(&mut self) {
+    fn solve(&mut self, toh: &impl TimeoutHandler) -> MayTimeout<()> {
         let mut feasibility = Feasibility::NoSolution;
         for paraclique in &mut self.paracliques {
-            paraclique.solve(&self.spotconstraints.gradings);
+            paraclique.solve(&self.spotconstraints.gradings, toh)?;
             feasibility = feasibility.better(&paraclique.feasibility);
         }
         self.feasibility = feasibility;
+        Ok(())
     }
 }
 
@@ -147,7 +158,11 @@ impl Transit5 {
 }
 
 impl<T: BaseTransit> ParaClique<T> {
-    fn solve(&mut self, spotconstraints: &Vec<Grading>) {
+    fn solve(
+        &mut self,
+        spotconstraints: &Vec<Grading>,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<()> {
         let mut problem = ProblemVariables::new();
         self.spotws.set_choices(true);
         self.cliquews.set_choices(true);
@@ -191,6 +206,7 @@ impl<T: BaseTransit> ParaClique<T> {
             };
             model.add_constraint(constr);
         }
+        toh.timedout()?;
         match model.solve() {
             Ok(solution) => {
                 self.spotsolution = spotvars
@@ -205,6 +221,7 @@ impl<T: BaseTransit> ParaClique<T> {
             }
             Err(_) => self.feasibility = Feasibility::NoSolution,
         }
+        Ok(())
     }
 }
 

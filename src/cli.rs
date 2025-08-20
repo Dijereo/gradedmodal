@@ -13,17 +13,12 @@ pub fn run() {
     let mut args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        return interactive_mode();
+        return help_mode(&args[0]);
     }
 
     match args[1].as_str() {
-        "-f" => {
-            if args.len() != 4 {
-                eprintln!("Usage: {} -f <input.txt> <output.json>", args[0]);
-                std::process::exit(1);
-            }
-            file_mode(&args[2], &args[3]);
-        }
+        "-i" => interactive_mode(),
+        "-h" => help_mode(&args[0]),
         "-e" => {
             if args.len() != 3 {
                 eprintln!("Usage: {} -e <time_in_seconds>", args[0]);
@@ -61,15 +56,16 @@ pub fn run() {
         }
         _ => {
             eprintln!("Unknown option: {}", args[1]);
-            eprintln!("Usage: {} [-f input.json output.json]", args[0]);
+            help_mode(&args[0]);
             std::process::exit(1);
         }
     }
 }
 
-fn file_mode(input: &str, output: &str) {
-    println!("Processing {} -> {}", input, output);
-    todo!();
+fn help_mode(args0: &str) {
+    eprintln!(
+        "Usage: {args0} -d <num_rand_formulae> <seed_int> <crafted_formulae_txt_file> <output_json_file>",
+    );
 }
 
 fn interactive_mode() {

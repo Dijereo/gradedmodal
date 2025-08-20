@@ -7,7 +7,13 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{formula::full_parser, frame::FrameCondition, model::Graph, token::tokenize};
+use crate::{
+    formula::full_parser,
+    frame::FrameCondition,
+    model::Graph,
+    timeout::{NoopHandler, Timedout, TimeoutHandler},
+    token::tokenize,
+};
 
 #[derive(Deserialize)]
 pub(crate) struct UserSubmission {
@@ -25,13 +31,15 @@ pub(crate) struct ServerTimes {
     pub(crate) graph_time: String,
 }
 
-pub(crate) enum ServerResponse {
-    Ok(ServerOutput),
+pub(crate) type ServerResult = Result<ServerOutput, ServerError>;
+
+pub(crate) enum ServerError {
     ActionErr(String),
     FrameErr(String),
     ParseErr(String),
     ServerErr,
     NotImplemented(&'static str),
+    Timedout,
 }
 
 #[derive(Serialize)]
@@ -44,69 +52,88 @@ pub(crate) struct ServerOutput {
     pub(crate) satisfiable: bool,
 }
 
-impl IntoResponse for ServerResponse {
+impl IntoResponse for ServerOutput {
+    fn into_response(self) -> Response {
+        (StatusCode::OK, Json(self)).into_response()
+    }
+}
+
+impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
         match self {
-            ServerResponse::Ok(output) => (StatusCode::OK, Json(output)).into_response(),
-            ServerResponse::FrameErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
-            ServerResponse::ParseErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
-            ServerResponse::ActionErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
-            ServerResponse::ServerErr => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-            ServerResponse::NotImplemented(err) => {
-                (StatusCode::NOT_IMPLEMENTED, err).into_response()
-            }
+            ServerError::FrameErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
+            ServerError::ParseErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
+            ServerError::ActionErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
+            ServerError::ServerErr => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            ServerError::NotImplemented(err) => (StatusCode::NOT_IMPLEMENTED, err).into_response(),
+            ServerError::Timedout => StatusCode::REQUEST_TIMEOUT.into_response(),
         }
     }
 }
 
-pub(crate) async fn solve_endpt(Json(json): Json<UserSubmission>) -> ServerResponse {
-    println!("{} {}", json.formula, json.frames);
+pub(crate) async fn solve_endpt(Json(json): Json<UserSubmission>) -> ServerResult {
+    // println!("{} {}", json.formula, json.frames);
     let validate = match json.action.to_lowercase().as_str() {
         "sat" => false,
         "val" => true,
-        _ => return ServerResponse::ActionErr(json.action),
+        _ => return Err(ServerError::ActionErr(json.action)),
     };
-    solve(&json.formula, &json.frames, validate)
+    let toh = NoopHandler;
+    solve(&json.formula, &json.frames, validate, toh)
 }
 
-pub(crate) fn solve(formula: &str, frames: &str, validate: bool) -> ServerResponse {
+pub(crate) fn solve(
+    formula: &str,
+    frames: &str,
+    validate: bool,
+    toh: impl TimeoutHandler,
+) -> ServerResult {
     let start = Instant::now();
     let framecond: FrameCondition = {
         match frames.parse() {
             Ok(framecond) => framecond,
             Err(err) => {
-                return ServerResponse::FrameErr(format!(
+                return Err(ServerError::FrameErr(format!(
                     "Error: Bad frame class selection: {err}."
-                ));
+                )));
             }
         }
     };
-    println!("Chosen Frame Class: {:?}", framecond);
+    // println!("Chosen Frame Class: {:?}", framecond);
     let tokens = match tokenize(formula.trim()) {
         Ok(tokens) => tokens,
         Err((i, c)) => {
-            return ServerResponse::ParseErr(format!(
+            return Err(ServerError::ParseErr(format!(
                 "Error: bad character '{c}' at byte index {i}."
-            ));
+            )));
         }
     };
     let stream = tokens.into_iter().enumerate();
     let formula = match full_parser(stream) {
         Ok(f) => f,
         Err(Some((i, tok))) => {
-            return ServerResponse::ParseErr(format!(
+            return Err(ServerError::ParseErr(format!(
                 "Error: bad token sequence '{:#?}' at index {}.",
                 tok, i
-            ));
+            )));
         }
         Err(None) => {
-            return ServerResponse::ParseErr(format!("Error: unterminated token sequence."));
+            return Err(ServerError::ParseErr(format!(
+                "Error: unterminated token sequence."
+            )));
         }
     };
     let parse_time = format!("{:.3?}", start.elapsed());
-    let mut resp = framecond.graph_tab(formula, validate, parse_time);
-    if let ServerResponse::Ok(output) = &mut resp {
+    toh.timedout()?;
+    let mut resp = framecond.graph_tab(formula, validate, parse_time, toh);
+    if let Ok(output) = &mut resp {
         output.times.server_time = format!("{:.3?}", start.elapsed());
     }
     resp
+}
+
+impl From<Timedout> for ServerError {
+    fn from(_value: Timedout) -> Self {
+        Self::Timedout
+    }
 }

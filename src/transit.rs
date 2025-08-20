@@ -5,6 +5,7 @@ use crate::{
     formula::Formula,
     rules3::{Calculus, Feasibility, ForkStore, ForkType},
     tableau2::{LabeledFormula, TableauNode2},
+    timeout::{MayTimeout, TimeoutHandler},
 };
 
 #[derive(Debug)]
@@ -41,19 +42,24 @@ pub(crate) trait BaseTransit: Sized {
         self.feasibility().is_bad()
     }
 
-    fn transit(fruit: &Rc<RefCell<TableauNode2<Self>>>, calc: &mut Calculus) -> Option<Self>;
+    fn transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Option<Self>>;
 }
 
 pub(crate) trait SolveTransit: BaseTransit {
-    fn solve(&mut self);
+    fn solve(&mut self, toh: &impl TimeoutHandler) -> MayTimeout<()>;
 
     fn from_modals(
         modals: Modals,
         leaf: &Rc<RefCell<TableauNode2<Self>>>,
         calc: &mut Calculus,
-    ) -> Self;
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Self>;
 
-    fn recurse(&mut self, calc: &mut Calculus);
+    fn recurse(&mut self, calc: &mut Calculus, toh: &impl TimeoutHandler) -> MayTimeout<()>;
 }
 
 pub(crate) trait DisplayTransit: Sized {
@@ -69,7 +75,8 @@ pub(crate) trait DisplayTransit: Sized {
 pub(crate) fn general_transit<T: BaseTransit + SolveTransit>(
     calc: &mut Calculus,
     fruit: &Rc<RefCell<TableauNode2<T>>>,
-) -> Option<T> {
+    toh: &impl TimeoutHandler,
+) -> MayTimeout<Option<T>> {
     let mut labels = vec![];
     fruit.borrow().traverse_anc_formulae(&mut |label| {
         labels.push(label.clone());
@@ -81,18 +88,18 @@ pub(crate) fn general_transit<T: BaseTransit + SolveTransit>(
         calc.framecond.spotlit(),
     );
     if modals.ge.is_empty() {
-        return None;
+        return Ok(None);
     }
-    let mut transit = T::from_modals(modals, fruit, calc);
+    let mut transit = T::from_modals(modals, fruit, calc, toh)?;
     if transit.is_closed() {
-        return Some(transit);
+        return Ok(Some(transit));
     }
-    transit.recurse(calc);
+    transit.recurse(calc, toh)?;
     if transit.is_closed() {
-        return Some(transit);
+        return Ok(Some(transit));
     }
-    transit.solve();
-    Some(transit)
+    transit.solve(toh)?;
+    Ok(Some(transit))
 }
 
 impl Modals {
@@ -422,15 +429,17 @@ impl<T: BaseTransit> ParallelWorlds<T> {
         modals: Modals,
         parent: Option<&Rc<RefCell<TableauNode2<T>>>>,
         calc: &mut Calculus,
-    ) -> (Self, Constraints) {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<(Self, Constraints)> {
         let (forkranges, constraints) = modals.to_forks_constraints(&mut calc.forks);
         let this = Self::from_forks(
             constraints.boxsubforms.clone(),
             forkranges.into_iter().collect(),
             parent,
             calc,
-        );
-        (this, constraints)
+            toh,
+        )?;
+        Ok((this, constraints))
     }
 
     pub(crate) fn from_forks(
@@ -438,32 +447,35 @@ impl<T: BaseTransit> ParallelWorlds<T> {
         forkids: Vec<RangeInclusive<usize>>,
         parent: Option<&Rc<RefCell<TableauNode2<T>>>>,
         calc: &mut Calculus,
-    ) -> Self {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Self> {
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(formulae, parent)));
         let forks = VecDeque::from_iter(
             forkids
                 .iter()
                 .flat_map(|r| calc.forks.forks[r.clone()].iter().cloned()),
         );
-        calc.expand_static(&tab, forks, false);
-        Self {
+        calc.expand_static(&tab, forks, false, toh)?;
+        Ok(Self {
             tab,
             forkids,
             choices: vec![],
-        }
+        })
     }
 
     fn add_forks(
         &mut self,
         forkids: impl Iterator<Item = RangeInclusive<usize>>,
         calc: &mut Calculus,
-    ) {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<()> {
         let mut forks = VecDeque::new();
         for range in forkids {
             forks.extend(calc.forks.forks[range.clone()].iter().cloned());
             self.forkids.push(range);
         }
-        calc.expand_static(&self.tab, forks, false);
+        calc.expand_static(&self.tab, forks, false, toh)?;
+        Ok(())
     }
 
     pub(crate) fn set_choices(&mut self, dedup: bool) {

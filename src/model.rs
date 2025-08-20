@@ -3,8 +3,9 @@ use std::{fmt::Write, time::Instant};
 use serde::Serialize;
 
 use crate::{
-    api::{ServerOutput, ServerResponse, ServerTimes},
+    api::{ServerError, ServerOutput, ServerResult, ServerTimes},
     tableau2::{DisplayTableau, TabChildren, TableauNode2},
+    timeout::TimeoutHandler,
     transit::{BaseTransit, DisplayTransit},
 };
 
@@ -57,13 +58,13 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
         solve_time: String,
         parse_time: String,
         symmetric: bool,
-    ) -> ServerResponse {
+    ) -> ServerResult {
         let tabw_start = Instant::now();
         let mut tableau = String::new();
         if let Err(e) = write!(&mut tableau, "{}", self) {
             eprintln!("Error writing tableau.");
             eprintln!("{e}");
-            return ServerResponse::ServerErr;
+            return Err(ServerError::ServerErr);
         }
         let tabwrite_time = format!("{:.3?}", tabw_start.elapsed());
         let graph_start = Instant::now();
@@ -89,7 +90,7 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
             edges: edges.into_iter().map(|e| EdgeData { data: e }).collect(),
         };
         let graph_time = format!("{:.3?}", graph_start.elapsed());
-        ServerResponse::Ok(ServerOutput {
+        Ok(ServerOutput {
             formula: formula_str,
             times: ServerTimes {
                 server_time: String::new(),
@@ -115,7 +116,9 @@ impl<T: IntoModelGraph> TableauNode2<T> {
                     Self::model_graph(&branch.node.borrow(), selfi, nodes, edges);
                 }
             }
-            TabChildren::Transition(transit) => transit.model_graph_rec(selfi, nodes, edges),
+            TabChildren::Transition(transit) => {
+                transit.model_graph_rec(selfi, nodes, edges);
+            }
         }
     }
 }

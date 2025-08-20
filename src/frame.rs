@@ -8,8 +8,15 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    api::ServerResponse, b5::TransitB5, formula::Formula, k5::Transit5, k45::TransitKOr45,
-    rules3::Calculus, tableau2::DisplayTableau, tb::TransitTB, tt::TransitT,
+    api::{ServerError, ServerResult},
+    b5::TransitB5,
+    formula::Formula,
+    k5::Transit5,
+    k45::TransitKOr45,
+    rules3::Calculus,
+    tableau2::DisplayTableau,
+    timeout::{MayTimeout, NoopHandler, TimeoutHandler},
+    tt::TransitT,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
@@ -64,42 +71,47 @@ impl fmt::Display for FrameCondition {
 }
 
 macro_rules! time_sat {
-    ($clsr:expr, $satter:expr, $frame:expr, $formula:expr) => {{
+    ($clsr:expr, $satter:expr, $frame:expr, $formula:expr, $toh:expr) => {{
         let start = Instant::now();
-        let tab = $satter($frame, $formula);
+        let tab = $satter($frame, $formula, $toh)?;
         let time = format!("{:.3?}", start.elapsed());
         $clsr(tab, time)
     }};
 }
 
 macro_rules! sat_and {
-    ($frame:expr, $formula:expr, $clsr:expr, $default:expr) => {{
+    ($frame:expr, $formula:expr, $clsr:expr, $default:expr, $toh:expr) => {{
         match $frame {
             FrameCondition::K | FrameCondition::D | FrameCondition::K45 | FrameCondition::D45 => {
-                time_sat!($clsr, Calculus::sat::<TransitKOr45>, $frame, $formula)
+                time_sat!($clsr, Calculus::sat::<TransitKOr45>, $frame, $formula, $toh)
             }
-            FrameCondition::T => time_sat!($clsr, Calculus::sat::<TransitT>, $frame, $formula),
+            FrameCondition::T => time_sat!($clsr, Calculus::sat::<TransitT>, $frame, $formula, $toh),
             FrameCondition::KB | FrameCondition::DB => $default("[KD]B"), //$clsr($f::<Transit>($frame, $formula)),
             FrameCondition::TB => $default("TB"), //time_sat!($clsr, Calculus::sat::<TransitTB>, $frame, $formula),
             FrameCondition::K4 | FrameCondition::D4 => $default("[KD]4"), //$clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
             FrameCondition::S4 => $default("S4"), // $clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
-            FrameCondition::K5 | FrameCondition::D5 => time_sat!($clsr, Calculus::sat::<Transit5>, $frame, $formula),
-            FrameCondition::KB5 | FrameCondition::S5 => time_sat!($clsr, Calculus::sat::<TransitB5>, $frame, $formula),
+            FrameCondition::K5 | FrameCondition::D5 => time_sat!($clsr, Calculus::sat::<Transit5>, $frame, $formula, $toh),
+            FrameCondition::KB5 | FrameCondition::S5 => time_sat!($clsr, Calculus::sat::<TransitB5>, $frame, $formula, $toh),
         }
     }};
 }
 
 impl FrameCondition {
-    pub(crate) fn print_sat(&self, formula: Rc<Formula>) {
+    pub(crate) fn print_sat(&self, formula: Rc<Formula>) -> MayTimeout<()> {
         sat_and!(
             *self,
             formula,
             |tab, time| {
                 println!("Solve Time: {time}");
-                println!("{}", DisplayTableau(tab))
+                println!("{}", DisplayTableau(tab));
+                Ok(())
             },
-            |frames| eprintln!("Not yet implemented: {frames}")
-        );
+            |frames| {
+                eprintln!("Not yet implemented: {frames}");
+                Ok(())
+            },
+            &NoopHandler
+        )
     }
 
     pub(crate) fn graph_tab(
@@ -107,12 +119,13 @@ impl FrameCondition {
         mut formula: Rc<Formula>,
         validate: bool,
         parse_time: String,
-    ) -> ServerResponse {
+        toh: impl TimeoutHandler,
+    ) -> ServerResult {
         let mut formulae_str = String::new();
         if let Err(e) = write!(&mut formulae_str, "{}", formula.as_ref()) {
             eprintln!("Error writing formula.");
             eprintln!("{e}");
-            return ServerResponse::ServerErr;
+            return Err(ServerError::ServerErr);
         }
         if validate {
             formula = formula.not();
@@ -124,9 +137,10 @@ impl FrameCondition {
                 formulae_str,
                 solve_time,
                 parse_time,
-                self.symmetric()
+                self.symmetric(),
             ),
-            |frames| { ServerResponse::NotImplemented(frames) }
+            |frames| { Err(ServerError::NotImplemented(frames)) },
+            &toh
         )
     }
 
