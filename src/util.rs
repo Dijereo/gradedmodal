@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, fs, io, path::Path};
 
 pub(crate) enum Few<T> {
     None,
@@ -50,6 +50,36 @@ impl<O, I, T, U> Iterator for EnqueueProdIter<O, I, T, U> {
         todo!()
     }
 }
+
+pub fn run_on_exts<E, D, F>(
+    exts: &[E],
+    folders: impl IntoIterator<Item = D>,
+    mut f: F,
+) -> io::Result<()>
+where
+    E: AsRef<str>,
+    D: AsRef<Path>,
+    F: FnMut(&Path),
+{
+    for folder in folders {
+        if !folder.as_ref().exists() {
+            continue;
+        }
+        for entry in fs::read_dir(folder)? {
+            let path = entry?.path();
+            if path.is_file() {
+                if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                    if exts.iter().any(|wanted| wanted.as_ref().eq_ignore_ascii_case(ext)) {
+                        println!("{:?}", path);
+                        f(&path);
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 
 #[macro_export]
 macro_rules! vecfor {

@@ -86,7 +86,7 @@ pub(crate) fn general_transit<T: BaseTransit + SolveTransit>(
         labels.iter(),
         calc.framecond.ray(),
         calc.framecond.spotlit(),
-        toh
+        toh,
     )?;
     if modals.ge.is_empty() {
         return Ok(None);
@@ -127,7 +127,8 @@ impl Modals {
                 .map(|(_, l)| l)
                 .chain(this.bx.iter_mut())
             {
-                f.formula = FlatFormula::from_rcf(mem::replace(&mut f.formula, dummy.clone()), toh)?.into();
+                f.formula =
+                    FlatFormula::from_rcf(mem::replace(&mut f.formula, dummy.clone()), toh)?.into();
             }
         }
         if serial && this.ge.is_empty() && (!this.le.is_empty() || !this.bx.is_empty()) {
@@ -137,6 +138,7 @@ impl Modals {
                     formula: Formula::top(),
                     conflictset: vec![],
                     lemma: false,
+                    expanded: false,
                 },
             ));
         }
@@ -202,6 +204,7 @@ impl Modals {
                     formula: phi.clone(),
                     conflictset: formula.conflictset.clone(),
                     lemma: false,
+                    expanded: false,
                 };
                 self.bx.push(subform);
                 self.bx.last()
@@ -211,6 +214,7 @@ impl Modals {
                     formula: phi.clone(),
                     conflictset: formula.conflictset.clone(),
                     lemma: false,
+                    expanded: false,
                 };
                 self.ge.push((1, subform));
                 self.ge.last().map(|(_, f)| f)
@@ -220,6 +224,7 @@ impl Modals {
                     formula: phi.clone(),
                     conflictset: formula.conflictset.clone(),
                     lemma: false,
+                    expanded: false,
                 };
                 self.ge.push((*count, subform));
                 self.ge.last().map(|(_, f)| f)
@@ -229,6 +234,7 @@ impl Modals {
                     formula: phi.clone(),
                     conflictset: formula.conflictset.clone(),
                     lemma: false,
+                    expanded: false,
                 };
                 self.le.push((*count, subform));
                 self.le.last().map(|(_, f)| f)
@@ -386,6 +392,7 @@ impl LabeledFormula {
                 formula: f.clone(),
                 conflictset: self.conflictset.clone(),
                 lemma: false,
+                expanded: false,
             })
         });
     }

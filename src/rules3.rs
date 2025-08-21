@@ -62,6 +62,7 @@ impl Calculus {
             formula,
             conflictset: vec![],
             lemma: false,
+            expanded: false,
         };
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(
             vec![formula],
@@ -98,7 +99,7 @@ impl Calculus {
                 flower.borrow_mut().feasibility = transit.feasibility();
                 flower.borrow_mut().children = TabChildren::Transition(transit);
             }
-            if early_break && flower.borrow_mut().feasibility == Feasibility::Feasible {
+            if early_break && flower.borrow().feasibility == Feasibility::Feasible {
                 break;
             }
         }
@@ -115,15 +116,21 @@ impl Calculus {
     ) -> MayTimeout<()> {
         toh.timedout()?;
         let reflexive = self.framecond.reflexive() || !isroot && self.framecond.euclidean();
-        self.expand_linear(&mut tab.borrow_mut(), reflexive, self.framecond.symmetric());
-        if tab.borrow().is_closed() {
-            return Ok(());
+        let mut resolved = true;
+        while resolved {
+            self.expand_linear(&mut tab.borrow_mut(), reflexive, self.framecond.symmetric());
+            if tab.borrow().is_closed() {
+                return Ok(());
+            }
+            self.store_disjs(&mut tab.borrow_mut(), &mut forks);
+            resolved &= self.resolve_forks(&tab, &mut forks);
+            if tab.borrow().is_closed() {
+                return Ok(());
+            }
+            // println!("{:?}: {} ", tab.as_ptr(), tab.borrow().formulae.len());
+            toh.timedout()?;
         }
-        self.store_disjs(&tab.borrow(), &mut forks);
-        self.resolve_forks(&tab, &mut forks);
-        if tab.borrow().is_closed() {
-            return Ok(());
-        }
+
         self.apply_forks(tab, forks, isroot, toh)?;
         Ok(())
     }
@@ -135,19 +142,25 @@ impl Calculus {
         symmetric: bool,
     ) {
         let mut i = 0;
-        while let Some(label) = tab.formulae.get(i).cloned() {
-            let mut new_formulae = PropLinear.expand(&label.formula);
+        while let Some(formula) = tab.formulae.get_mut(i) {
+            if formula.expanded {
+                i += 1;
+                continue;
+            }
+            let mut new_formulae = PropLinear.expand(&formula.formula);
             if reflexive {
-                new_formulae.extend(TLinear.expand(&label.formula));
+                new_formulae.extend(TLinear.expand(&formula.formula));
             }
             if symmetric {
-                new_formulae.extend(BLinear.expand(&label.formula));
+                new_formulae.extend(BLinear.expand(&formula.formula));
             }
+            let formula = formula.clone();
             for new_formula in new_formulae {
                 tab.add_check_dup_contra(LabeledFormula {
                     formula: new_formula,
-                    conflictset: label.conflictset.clone(),
-                    lemma: label.lemma,
+                    conflictset: formula.conflictset.clone(),
+                    lemma: formula.lemma,
+                    expanded: false,
                 });
                 if tab.is_closed() {
                     return;
@@ -157,12 +170,13 @@ impl Calculus {
         }
     }
 
-    fn store_disjs<T: BaseTransit>(&mut self, tab: &TableauNode2<T>, forks: &mut VecDeque<Fork>) {
-        for label in &tab.formulae {
-            if label.lemma {
+    fn store_disjs<T: BaseTransit>(&mut self, tab: &mut TableauNode2<T>, forks: &mut VecDeque<Fork>) {
+        for label in &mut tab.formulae {
+            if label.lemma || label.expanded {
                 continue;
             }
             let branches = PropFork.expand(&label.formula);
+            label.expanded = true;
             if branches.is_empty() {
                 continue;
             }
@@ -178,8 +192,9 @@ impl Calculus {
         &mut self,
         tab: &Rc<RefCell<TableauNode2<T>>>,
         forks: &mut VecDeque<Fork>,
-    ) {
+    ) -> bool {
         let mut unresolved = VecDeque::new();
+        let mut resolved = false;
         while let Some(mut fork) = forks.pop_front() {
             let mut conflictset = vec![];
             let mut i = 0;
@@ -219,8 +234,10 @@ impl Calculus {
                     formula: Formula::bottom(),
                     conflictset,
                     lemma: false,
+                    expanded: true,
                 });
-                return;
+                resolved = true;
+                return resolved;
             } else if fork.branches.len() == 1 {
                 let branch = fork.branches.pop().expect("Checked in if statement above");
                 tab.borrow_mut().choices.push((fork.id, branch.id));
@@ -229,9 +246,11 @@ impl Calculus {
                         formula: label.formula,
                         conflictset: conflictset.clone(),
                         lemma: label.lemma,
+                        expanded: false,
                     });
+                    resolved = true;
                     if tab.borrow().is_closed() {
-                        return;
+                        return resolved;
                     }
                 }
                 forks.append(&mut unresolved);
@@ -242,9 +261,11 @@ impl Calculus {
                         formula: label.formula.clone(),
                         conflictset: conflictset.clone(),
                         lemma: label.lemma,
+                        expanded: false,
                     });
+                    resolved = true;
                     if tab.borrow().is_closed() {
-                        return;
+                        return resolved;
                     }
                 }
                 forks.append(&mut unresolved);
@@ -253,6 +274,7 @@ impl Calculus {
             }
         }
         forks.append(&mut unresolved);
+        resolved
     }
 
     fn apply_forks<T: BaseTransit>(
@@ -327,6 +349,7 @@ impl ForkStore {
                     formula,
                     conflictset: conflictset.clone(),
                     lemma: false,
+                    expanded: false,
                 };
                 fork_branch.labels.push(label);
             }

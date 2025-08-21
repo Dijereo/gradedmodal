@@ -28,6 +28,15 @@ pub fn run() {
                 eprintln!("{e}");
             }
         }
+        "-u" => {
+            if args.len() != 4 {
+                eprintln!("Usage: {} -p <data_file.json> <time_in_seconds>", args[0]);
+                std::process::exit(1);
+            }
+            if let Err(e) = eval_provers(mem::take(&mut args[2]).leak(), mem::take(&mut args[3]).leak(), false, true) {
+                eprintln!("{e}");
+            }
+        }
         "-p" => {
             if args.len() != 4 {
                 eprintln!("Usage: {} -p <data_file.json> <time_in_seconds>", args[0]);

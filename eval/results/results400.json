@@ -9368,15 +9368,15 @@
         "frames": "K",
         "vampirestatus": "Theorem",
         "vampiretime": "0.011 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "90.738ms"
+        "proverstatus": "Theorem",
+        "provertime": "89.676ms"
       },
       {
         "frames": "D",
         "vampirestatus": "Theorem",
         "vampiretime": "0.01 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "418.053ms"
+        "proverstatus": "Theorem",
+        "provertime": "333.461ms"
       },
       {
         "frames": "T",
@@ -9445,22 +9445,22 @@
         "frames": "K45",
         "vampirestatus": "Theorem",
         "vampiretime": "0.01 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "27.807ms"
+        "proverstatus": "Theorem",
+        "provertime": "261.596ms"
       },
       {
         "frames": "D45",
         "vampirestatus": "Theorem",
         "vampiretime": "0.008 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "25.765ms"
+        "proverstatus": "Theorem",
+        "provertime": "245.780ms"
       },
       {
         "frames": "KB5",
         "vampirestatus": "Theorem",
         "vampiretime": "0.01 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "29.280ms"
+        "proverstatus": "Theorem",
+        "provertime": "279.381ms"
       },
       {
         "frames": "S5",

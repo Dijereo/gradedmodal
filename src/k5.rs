@@ -70,6 +70,7 @@ impl<T: BaseTransit> ParaClique<T> {
                 },
                 conflictset: label.conflictset.clone(),
                 lemma: false,
+                expanded: false,
             })
             .collect();
         let cliquemodals = Modals::new(settings.iter(), false, false, toh)?;

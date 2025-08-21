@@ -278,8 +278,13 @@ pub(crate) fn eval_provers(
         thread::spawn(move || {
             let mut shutdown = false;
             while !shutdown {
-                thread::sleep(Duration::from_secs(REFRESH_RATE));
-                shutdown |= finished.load(atomic::Ordering::Relaxed);
+                for _ in 0..REFRESH_RATE {
+                    thread::sleep(Duration::from_secs(1));
+                    shutdown |= finished.load(atomic::Ordering::Relaxed);
+                    if shutdown {
+                        break;
+                    }
+                }
                 if let Err(e) = save_results(&results.read().unwrap(), &datajson) {
                     eprintln!("{e}");
                 }
@@ -476,12 +481,20 @@ impl From<fmt::Error> for EvalError {
 }
 
 mod test {
+    use crate::util::{self, run_on_exts};
+
     use super::*;
     use std::rc::Rc;
 
     #[test]
     fn test_output() {
-        let results = load_results::<Rc<str>>("eval/output.json").unwrap();
+        let folders = ["eval/results/"];
+        let exts = ["json"];
+        run_on_exts(&exts, folders, template_test_output).unwrap();
+    }
+
+    fn template_test_output(file: &Path) {
+        let results = load_results::<Rc<str>>(file).unwrap();
         for datapoint in results {
             for test in datapoint.tests {
                 match (test.proverstatus, test.vampirestatus) {

@@ -37,6 +37,7 @@ pub(crate) struct LabeledFormula {
     pub(crate) formula: Rc<Formula>,
     pub(crate) conflictset: Vec<Conflict>,
     pub(crate) lemma: bool,
+    pub(crate) expanded: bool,
 }
 
 pub(crate) struct TableauNode2<T> {
@@ -67,6 +68,7 @@ impl<T> TableauNode2<T> {
                 formula: Formula::top(),
                 conflictset: vec![],
                 lemma: false,
+                expanded: true,
             });
         }
         tab
@@ -147,6 +149,7 @@ impl<T> TableauNode2<T> {
                 formula: Formula::bottom(),
                 conflictset: confs2,
                 lemma: false,
+                expanded: true,
             });
             self.feasibility = Feasibility::Contradiction;
             // println!("Contra");

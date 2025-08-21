@@ -4248,22 +4248,22 @@
         "frames": "K",
         "vampirestatus": "Theorem",
         "vampiretime": "0.004 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "1.443ms"
+        "proverstatus": "Theorem",
+        "provertime": "27.796ms"
       },
       {
         "frames": "D",
         "vampirestatus": "Theorem",
         "vampiretime": "0.004 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "1.426ms"
+        "proverstatus": "Theorem",
+        "provertime": "4.295ms"
       },
       {
         "frames": "T",
         "vampirestatus": "Theorem",
         "vampiretime": "0.004 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "5.711ms"
+        "proverstatus": "Theorem",
+        "provertime": "4.097ms"
       },
       {
         "frames": "KB",
@@ -4311,43 +4311,43 @@
         "frames": "K5",
         "vampirestatus": "Theorem",
         "vampiretime": "0.003 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "3.144ms"
+        "proverstatus": "Theorem",
+        "provertime": "2.730ms"
       },
       {
         "frames": "D5",
         "vampirestatus": "Theorem",
         "vampiretime": "0.003 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "1.610ms"
+        "proverstatus": "Theorem",
+        "provertime": "2.716ms"
       },
       {
         "frames": "K45",
         "vampirestatus": "Theorem",
         "vampiretime": "0.003 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "1.330ms"
+        "proverstatus": "Theorem",
+        "provertime": "2.787ms"
       },
       {
         "frames": "D45",
         "vampirestatus": "Theorem",
         "vampiretime": "0.003 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "1.419ms"
+        "proverstatus": "Theorem",
+        "provertime": "2.707ms"
       },
       {
         "frames": "KB5",
         "vampirestatus": "Theorem",
         "vampiretime": "0.003 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "1.383ms"
+        "proverstatus": "Theorem",
+        "provertime": "2.863ms"
       },
       {
         "frames": "S5",
         "vampirestatus": "Theorem",
         "vampiretime": "0.003 s",
-        "proverstatus": "CounterSatisfiable",
-        "provertime": "1.377ms"
+        "proverstatus": "Theorem",
+        "provertime": "2.713ms"
       }
     ]
   },

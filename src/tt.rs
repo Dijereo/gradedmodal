@@ -164,6 +164,7 @@ impl TransitT {
                         formula: phi.clone(),
                         conflictset: lab.conflictset.clone(),
                         lemma: false,
+                        expanded: false,
                     })
                 } else {
                     None

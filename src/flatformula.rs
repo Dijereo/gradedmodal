@@ -157,7 +157,7 @@ impl FlatFormula {
 
     fn flatten_bx(mut self, toh: &impl TimeoutHandler) -> MayTimeout<FlatFormula> {
         match self.flatten_rec(toh)? {
-            CutStatus::Neither => Ok(self),
+            CutStatus::Neither => Ok(self.disj(FlatFormula::Bool(false).bx())),
             CutStatus::Disj(nest) => {
                 let mut phi = self.bx();
                 phi.flatten(toh)?;
@@ -166,7 +166,7 @@ impl FlatFormula {
             CutStatus::Conj(nest) => {
                 let mut phi = self.bx();
                 phi.flatten(toh)?;
-                Ok(nest.conj(phi))
+                Ok(nest.conj(phi).disj(FlatFormula::Bool(false).bx()))
             }
             CutStatus::Both(nest, disj) => {
                 let mut phi0 = self.bx();
