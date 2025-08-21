@@ -58,8 +58,9 @@ pub(crate) fn gen_formulae(
 ) -> Result<(), EvalError> {
     let mut craftedformulae = vec![];
     load_formulae(craftedtxt, &mut craftedformulae)?;
-    let mut formulae = Vec::with_capacity(2 * n + craftedformulae.len());
-    add_formulae(&mut formulae, craftedformulae.into_iter());
+    let mut datapoints: Vec<DataPoint<Cow<'_, str>, &str, &'static str>> = Vec::with_capacity(2 * n + craftedformulae.len());
+    const INIT_KEYS: [&'static str; 2] = ["vampire", "prover"];
+    add_formulae(&mut datapoints, craftedformulae.into_iter(), INIT_KEYS.into_iter());
     let mut rng = StdRng::seed_from_u64(seed);
     let mut buffers = vec!["¬(".to_string(); n];
     for buffer in &mut buffers {
@@ -69,16 +70,18 @@ pub(crate) fn gen_formulae(
         let mut subbuffer = buffer.chars();
         subbuffer.nth(1);
         subbuffer.next_back();
-        formulae.push(DataPoint::new(
+        datapoints.push(DataPoint::new(
             Cow::Borrowed(subbuffer.as_str()),
             Some(setting.clone()),
+            INIT_KEYS.into_iter(),
         ));
-        formulae.push(DataPoint::new(
+        datapoints.push(DataPoint::new(
             Cow::Borrowed(buffer.as_str()),
             Some(setting.clone()),
+            INIT_KEYS.into_iter(),
         ));
     }
-    save_results(&formulae, datajson)?;
+    save_results(&datapoints, datajson)?;
     Ok(())
 }
 

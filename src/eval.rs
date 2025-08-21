@@ -1,11 +1,10 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     ffi::OsStr,
     fmt,
     fs::File,
     hash::Hash,
     io::{self, BufRead, BufReader, Write},
-    mem,
     num::{self},
     path::Path,
     process::Command,
@@ -46,14 +45,14 @@ pub(crate) enum EvalError {
 }
 
 #[derive(Serialize, Deserialize)]
-pub(crate) struct DataPoint<S> {
-    pub(crate) formula: S,
+pub(crate) struct DataPoint<F, T, K: Eq + Hash> {
+    pub(crate) formula: F,
     pub(crate) setting: Option<Setting>,
-    pub(crate) tests: Vec<EvalOutput>,
+    pub(crate) tests: Vec<EvalOutput<T, K>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-enum EvalStatus {
+pub(crate) enum EvalStatus {
     Pending,
     Failed,
     Timedout,
@@ -62,44 +61,48 @@ enum EvalStatus {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub(crate) struct EvalOutput {
+pub(crate) struct EvalOutput<T, K: Eq + Hash> {
     frames: FrameCondition,
-    vampirestatus: EvalStatus,
-    vampiretime: Option<String>,
-    proverstatus: EvalStatus,
-    provertime: Option<String>,
+    tests: HashMap<K, EvalTest<T>>,
 }
 
-pub(crate) trait Prover<S> {
-    fn run(&self, formula: &S, frames: FrameCondition) -> (EvalStatus, Option<String>);
+#[derive(Clone, Serialize, Deserialize)]
+struct EvalTest<T> {
+    status: EvalStatus,
+    time: Option<T>,
+}
+
+pub(crate) trait Prover<F, T, M, Q> {
+    fn run(&self, formula: &F, frames: FrameCondition) -> (EvalStatus, Option<T>);
     fn init(&mut self) -> Result<(), EvalError>;
-    fn get_maxtime(&self) -> &str;
-    fn check_status<'a>(&self, test: &'a EvalOutput) -> (EvalStatus, Option<&'a str>);
-    fn set_status(&self, test: &mut EvalOutput, status: EvalStatus, time: Option<String>);
+    fn get_maxtime(&self) -> &M;
+    fn get_key(&self) -> &Q;
 }
 
-struct Vampire<P, T> {
+pub(crate) struct Vampire<P, M, Q> {
     tmptptpfile: P,
-    maxtime: T,
+    maxtime: M,
+    key: Q,
 }
 
-impl<P, T> Vampire<P, T> {
-    fn new(tmptptpfile: P, maxtime: T) -> Self {
+impl<P, M, Q> Vampire<P, M, Q> {
+    pub(crate) fn new(tmptptpfile: P, maxtime: M, key: Q) -> Self {
         Self {
             tmptptpfile,
             maxtime,
+            key,
         }
     }
 
-    fn run_one<S>(
+    fn run_one<F>(
         &self,
-        formula: &S,
+        formula: &F,
         frames: FrameCondition,
     ) -> Result<(EvalStatus, Option<String>), EvalError>
     where
-        P: AsRef<Path> + AsRef<OsStr>,
-        T: AsRef<OsStr>,
-        S: AsRef<str>,
+        P: AsRef<Path>,
+        F: AsRef<str>,
+        M: AsRef<OsStr>,
     {
         {
             let totptp = ToTPTP { formula, frames };
@@ -113,7 +116,7 @@ impl<P, T> Vampire<P, T> {
             .arg(&self.maxtime)
             .arg("--cores")
             .arg("12")
-            .arg(&self.tmptptpfile)
+            .arg(&self.tmptptpfile.as_ref())
             .output()?;
         let stdout = String::from_utf8(output.stdout)?;
         let re0 = Regex::new(r"SZS status (Timeout)")?;
@@ -150,14 +153,15 @@ impl<P, T> Vampire<P, T> {
     }
 }
 
-impl<P, T, S> Prover<S> for Vampire<P, T>
+impl<P, F, M, Q> Prover<F, String, M, Q> for Vampire<P, M, Q>
 where
-    P: AsRef<Path> + AsRef<OsStr>,
-    T: AsRef<OsStr> + AsRef<str>,
-    S: AsRef<str>,
+    P: AsRef<Path>,
+    F: AsRef<str>,
+    M: AsRef<str> + AsRef<OsStr>,
+    Q: Eq + Hash,
 {
-    fn run(&self, formula: &S, frames: FrameCondition) -> (EvalStatus, Option<String>) {
-        match self.run_one(&formula, frames) {
+    fn run(&self, formula: &F, frames: FrameCondition) -> (EvalStatus, Option<String>) {
+        match self.run_one(formula, frames) {
             Ok((status, time)) => (status, time),
             Err(EvalError::Timeout) => (
                 EvalStatus::Timedout,
@@ -174,42 +178,40 @@ where
         Ok(())
     }
 
-    fn check_status<'a>(&self, test: &'a EvalOutput) -> (EvalStatus, Option<&'a str>) {
-        (test.vampirestatus, test.vampiretime.as_deref())
+    fn get_maxtime(&self) -> &M {
+        &self.maxtime
     }
 
-    fn set_status(&self, test: &mut EvalOutput, status: EvalStatus, time: Option<String>) {
-        test.vampirestatus = status;
-        test.vampiretime = time;
-    }
-
-    fn get_maxtime(&self) -> &str {
-        AsRef::<str>::as_ref(&self.maxtime)
+    fn get_key(&self) -> &Q {
+        &self.key
     }
 }
 
-struct MyProver<T> {
-    maxtime: T,
+pub(crate) struct MyProver<M, Q> {
+    maxtime: M,
+    key: Q,
     duration: Option<Duration>,
     reaper: Option<ThreadReaper>,
 }
 
-impl<T> MyProver<T> {
-    fn new(maxtime: T) -> Self {
+impl<T, K> MyProver<T, K> {
+    pub(crate) fn new(maxtime: T, key: K) -> Self {
         Self {
             maxtime,
+            key,
             duration: None,
             reaper: None,
         }
     }
 }
 
-impl<T, S> Prover<S> for MyProver<T>
+impl<F, M, Q> Prover<F, String, M, Q> for MyProver<M, Q>
 where
-    T: AsRef<str>,
-    S: AsRef<str>,
+    F: AsRef<str>,
+    M: AsRef<str>,
+    Q: Eq + Hash,
 {
-    fn run(&self, formula: &S, frames: FrameCondition) -> (EvalStatus, Option<String>) {
+    fn run(&self, formula: &F, frames: FrameCondition) -> (EvalStatus, Option<String>) {
         let (stop, handle) =
             StopHandler::new(self.duration.expect("Prover not initiated by .init()"));
         self.reaper
@@ -249,28 +251,27 @@ where
         Ok(())
     }
 
-    fn check_status<'a>(&self, test: &'a EvalOutput) -> (EvalStatus, Option<&'a str>) {
-        (test.proverstatus, test.provertime.as_deref())
+    fn get_maxtime(&self) -> &M {
+        &self.maxtime
     }
 
-    fn set_status(&self, test: &mut EvalOutput, status: EvalStatus, time: Option<String>) {
-        test.proverstatus = status;
-        test.provertime = time;
-    }
-
-    fn get_maxtime(&self) -> &str {
-        self.maxtime.as_ref()
+    fn get_key(&self) -> &Q {
+        &self.key
     }
 }
 
-pub(crate) fn eval_provers(
+pub(crate) fn eval_prover<M, Q>(
     datajson: impl AsRef<Path> + Send + 'static,
-    maxtime: &'static str,
-    vampire: bool,
-    myprover: bool,
-) -> Result<(), EvalError> {
+    prover: impl Prover<Arc<str>, String, M, Q>,
+) -> Result<(), EvalError>
+where
+    M: AsRef<str> + Into<String>,
+    Q: Into<String> + Clone,
+{
     const REFRESH_RATE: u64 = 15;
-    let dataset = Arc::new(RwLock::new(load_results::<Arc<str>>(&datajson)?));
+    let dataset = Arc::new(RwLock::new(load_results::<Arc<str>, String, String>(
+        &datajson,
+    )?));
     let finished = Arc::new(AtomicBool::new(false));
     let handle = {
         let results = dataset.clone();
@@ -291,40 +292,43 @@ pub(crate) fn eval_provers(
             }
         })
     };
-    if vampire {
-        run_prover(&dataset, Vampire::new("eval/tmp.p", maxtime))?;
-    }
-    if myprover {
-        run_prover(&dataset, MyProver::new(maxtime))?;
-    }
+    run_prover(&dataset, prover)?;
     finished.store(true, atomic::Ordering::Relaxed);
     handle.join().unwrap();
     Ok(())
 }
 
-pub(crate) fn load_formulae<S>(path: impl AsRef<Path>, formulae: &mut Vec<S>) -> io::Result<()>
+pub(crate) fn load_formulae<F>(path: impl AsRef<Path>, formulae: &mut Vec<F>) -> io::Result<()>
 where
-    S: AsRef<str> + From<String>,
+    F: From<String>,
 {
     for line in BufReader::new(File::open(path)?).lines() {
-        formulae.push(S::from(line?));
+        formulae.push(F::from(line?));
     }
     Ok(())
 }
 
-impl<S> DataPoint<S>
+impl<F, T, K> DataPoint<F, T, K>
 where
-    S: AsRef<str>,
+    K: Eq + Hash,
 {
-    pub(crate) fn new(formula: S, setting: Option<Setting>) -> Self {
+    pub(crate) fn new<Q>(
+        formula: F,
+        setting: Option<Setting>,
+        initkeys: impl Iterator<Item = Q> + Clone,
+    ) -> Self
+    where
+        Q: Into<K>,
+    {
         let tests = vecfor!(
             f in FrameCondition::iter()
             => EvalOutput {
                 frames: f,
-                vampiretime: None,
-                provertime: None,
-                vampirestatus: EvalStatus::Pending,
-                proverstatus: EvalStatus::Pending
+                tests: HashMap::from_iter(
+                    initkeys.clone().map(
+                        |k| (k.into(), EvalTest::<T> { status: EvalStatus::Pending, time: None })
+                    )
+                ),
             }
         );
         Self {
@@ -335,63 +339,86 @@ where
     }
 }
 
-fn load_results<S: AsRef<str>>(path: impl AsRef<Path>) -> Result<Vec<DataPoint<S>>, EvalError>
+fn load_results<F, T, K>(path: impl AsRef<Path>) -> Result<Vec<DataPoint<F, T, K>>, EvalError>
 where
-    S: for<'d> serde::Deserialize<'d>,
+    F: for<'d> serde::Deserialize<'d>,
+    T: for<'d> serde::Deserialize<'d>,
+    K: Eq + Hash + for<'d> serde::Deserialize<'d>,
 {
     Ok(serde_json::from_reader(BufReader::new(File::open(path)?))?)
 }
 
-pub(crate) fn add_formulae<S: AsRef<str>>(
-    dataset: &mut Vec<DataPoint<S>>,
-    formulae: impl Iterator<Item = S>,
+pub(crate) fn add_formulae<F, T, K, Q>(
+    dataset: &mut Vec<DataPoint<F, T, K>>,
+    formulae: impl Iterator<Item = F>,
+    initkeys: impl Iterator<Item = Q> + Clone,
 ) where
-    S: Eq + Hash,
+    F: Eq + Hash + AsRef<str>,
+    K: Eq + Hash,
+    Q: Into<K>,
 {
     let mut set: HashSet<&str> = HashSet::with_capacity(dataset.len());
     for datapoint in dataset.iter() {
         set.insert(datapoint.formula.as_ref());
     }
-    let new = vecfor!(f in formulae, if !set.contains(f.as_ref()) => DataPoint::new(f, None));
+    let new = vecfor!(
+        f in formulae,
+        if !set.contains(f.as_ref())
+        => DataPoint::new(f, None, initkeys.clone())
+    );
     dataset.extend(new);
 }
 
-pub(crate) fn save_results<S: AsRef<str>>(
-    dataset: &[DataPoint<S>],
+pub(crate) fn save_results<F, T, K>(
+    dataset: &[DataPoint<F, T, K>],
     path: impl AsRef<Path>,
 ) -> io::Result<()>
 where
-    S: Serialize,
+    F: Serialize,
+    T: Serialize,
+    K: Eq + Hash + Serialize,
 {
     let mut outfile = File::create(path)?;
     serde_json::to_writer_pretty(&mut outfile, dataset)?;
     outfile.write_all(b"\n")
 }
 
-fn run_prover<S>(
-    dataset: &Arc<RwLock<Vec<DataPoint<S>>>>,
-    mut prover: impl Prover<S>,
+fn run_prover<'q, F, T, M, K, Q>(
+    dataset: &Arc<RwLock<Vec<DataPoint<F, T, K>>>>,
+    mut prover: impl Prover<F, T, M, Q>,
 ) -> Result<(), EvalError>
 where
-    S: AsRef<str> + Clone,
+    F: AsRef<str> + Clone,
+    T: AsRef<str>,
+    M: AsRef<str>,
+    Q: Clone + Into<K>,
+    K: Eq + Hash,
 {
     let mut queue = vec![];
     {
-        let guard = dataset.read().unwrap();
-        for (i, datapoint) in guard.iter().enumerate() {
-            for (j, test) in datapoint.tests.iter().enumerate() {
-                match prover.check_status(test) {
+        let mut guard = dataset.write().unwrap();
+        for (i, datapoint) in guard.iter_mut().enumerate() {
+            for (j, test) in datapoint.tests.iter_mut().enumerate() {
+                let testdata =
+                    test.tests
+                        .entry(prover.get_key().clone().into())
+                        .or_insert(EvalTest {
+                            status: EvalStatus::Pending,
+                            time: None,
+                        });
+                match (testdata.status, &testdata.time) {
                     (EvalStatus::Pending | EvalStatus::Failed | EvalStatus::Timedout, None) => {
                         queue.push((i, j, datapoint.formula.clone(), test.frames))
                     }
                     (EvalStatus::Timedout, Some(time)) => {
                         let time: f64 = time
+                            .as_ref()
                             .trim()
                             .strip_suffix('s')
                             .ok_or(EvalError::FormatError)?
                             .trim()
                             .parse()?;
-                        let maxtime = prover.get_maxtime().parse()?;
+                        let maxtime = prover.get_maxtime().as_ref().parse()?;
                         if time < maxtime {
                             queue.push((i, j, datapoint.formula.clone(), test.frames))
                         }
@@ -403,7 +430,7 @@ where
     };
     prover.init()?;
     for (i, j, formula, frames) in queue {
-        let (out, time) = prover.run(&formula, frames);
+        let (status, time) = prover.run(&formula, frames);
         {
             let mut guard = dataset.write().unwrap();
             if let Some(datapoint) = guard.get_mut(i) {
@@ -411,8 +438,8 @@ where
                     && datapoint.formula.as_ref() == formula.as_ref()
                     && test.frames == frames
                 {
-                    test.proverstatus = out;
-                    test.provertime = time;
+                    test.tests
+                        .insert(prover.get_key().clone().into(), EvalTest { status, time });
                 }
             }
         }
@@ -490,25 +517,36 @@ mod test {
     fn test_output() {
         let folders = ["eval/results/"];
         let exts = ["json"];
-        run_on_exts(&exts, folders, template_test_output).unwrap();
+        run_on_exts(&exts, folders, |p| {
+            template_test_output(p, "vampire", "prover")
+        })
+        .unwrap();
     }
 
-    fn template_test_output(file: &Path) {
-        let results = load_results::<Rc<str>>(file).unwrap();
-        for datapoint in results {
-            for test in datapoint.tests {
-                match (test.proverstatus, test.vampirestatus) {
-                    (EvalStatus::Theorem, EvalStatus::Theorem)
-                    | (EvalStatus::Theorem, EvalStatus::CounterSatisfiable)
-                    | (EvalStatus::CounterSatisfiable, EvalStatus::Theorem)
-                    | (EvalStatus::CounterSatisfiable, EvalStatus::CounterSatisfiable) => {
-                        assert_eq!(
-                            test.proverstatus, test.vampirestatus,
-                            "Formula: {}; Frames: {}",
-                            datapoint.formula, test.frames
-                        )
-                    }
-                    _ => {}
+    fn template_test_output(file: &Path, vampirekey: impl AsRef<str>, proverkey: impl AsRef<str>) {
+        let results = load_results::<String, String, String>(file).unwrap();
+        for (i, datapoint) in results.iter().enumerate() {
+            for test in &datapoint.tests {
+                let statuses = (
+                    test.tests.get(vampirekey.as_ref()),
+                    test.tests.get(proverkey.as_ref()),
+                );
+                match statuses {
+                    (None, _) => panic!("Vampire output missing: {i} {}", test.frames),
+                    (_, None) => panic!("Prover output missing: {i} {}", test.frames),
+                    (Some(status1), Some(status2)) => match (status1.status, status2.status) {
+                        (EvalStatus::Theorem, EvalStatus::Theorem)
+                        | (EvalStatus::Theorem, EvalStatus::CounterSatisfiable)
+                        | (EvalStatus::CounterSatisfiable, EvalStatus::Theorem)
+                        | (EvalStatus::CounterSatisfiable, EvalStatus::CounterSatisfiable) => {
+                            assert_eq!(
+                                status1.status, status2.status,
+                                "Index: {i}; Frames: {}",
+                                test.frames
+                            )
+                        }
+                        _ => {}
+                    },
                 }
             }
         }

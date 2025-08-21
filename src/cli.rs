@@ -1,11 +1,16 @@
 use std::{
     env,
-    io::{self, Write},
+    fmt::Write,
+    io::{self, Write as _},
     mem,
+    sync::Arc,
 };
 
 use crate::{
-    eval::eval_provers, formula::full_parser, frame::FrameCondition, randgen::gen_formulae,
+    eval::{MyProver, Vampire, eval_prover},
+    formula::full_parser,
+    frame::FrameCondition,
+    randgen::gen_formulae,
     token::tokenize,
 };
 
@@ -24,25 +29,32 @@ pub fn run() {
                 eprintln!("Usage: {} -v <data_file.json> <time_in_seconds>", args[0]);
                 std::process::exit(1);
             }
-            if let Err(e) = eval_provers(mem::take(&mut args[2]).leak(), mem::take(&mut args[3]).leak(), true, false) {
-                eprintln!("{e}");
-            }
-        }
-        "-u" => {
-            if args.len() != 4 {
-                eprintln!("Usage: {} -p <data_file.json> <time_in_seconds>", args[0]);
-                std::process::exit(1);
-            }
-            if let Err(e) = eval_provers(mem::take(&mut args[2]).leak(), mem::take(&mut args[3]).leak(), false, true) {
+            let datajson: &'static str = mem::take(&mut args[2]).leak();
+            let vampire = Vampire::new("eval/temp.p", &args[3], "vampire");
+            if let Err(e) = eval_prover(datajson, vampire) {
                 eprintln!("{e}");
             }
         }
         "-p" => {
-            if args.len() != 4 {
-                eprintln!("Usage: {} -p <data_file.json> <time_in_seconds>", args[0]);
+            if args.len() < 4 || args.len() > 5 {
+                eprintln!(
+                    "Usage: {} -p <data_file.json> <time_in_seconds> [<testid>]",
+                    args[0]
+                );
                 std::process::exit(1);
             }
-            if let Err(e) = eval_provers(mem::take(&mut args[2]).leak(), mem::take(&mut args[3]).leak(), false, true) {
+            let datajson: &'static str = mem::take(&mut args[2]).leak();
+            let result = if args.len() == 5 {
+                let mut key = String::with_capacity("prover".len() + args[4].len());
+                write!(&mut key, "prover{}", args[4]).unwrap();
+                let key: &'static str = key.leak();
+                let prover = MyProver::new(&args[3], key);
+                eval_prover(datajson, prover)
+            } else {
+                let prover = MyProver::new(&args[3], "prover");
+                eval_prover(datajson, prover)
+            };
+            if let Err(e) = result {
                 eprintln!("{e}");
             }
         }
@@ -85,7 +97,9 @@ fn help_mode(args0: &str) {
         "Usage: {args0} -d <num_rand_formulae> <seed_int> <crafted_formulae_txt_file> <output_json_file> # Generate dataset",
     );
     println!("Usage: {args0} -v <time_in_seconds> # Evaluate vampire on dataset");
-    println!("Usage: {args0} -p <time_in_seconds> # Evaluate prover on dataset");
+    eprintln!(
+        "Usage: {args0} -p <data_file.json> <time_in_seconds> [<testid>] # Evaluate prover on dataset",
+    );
     eprintln!("Usage: {args0} -i # Interactive Mode");
 }
 
