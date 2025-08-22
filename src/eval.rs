@@ -321,7 +321,7 @@ where
         Q: Into<K>,
     {
         let tests = vecfor!(
-            f in FrameCondition::iter()
+            f in FrameCondition::array()
             => EvalOutput {
                 frames: f,
                 tests: HashMap::from_iter(

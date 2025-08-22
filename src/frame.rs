@@ -164,7 +164,7 @@ impl FrameCondition {
         }
     }
 
-    pub(crate) fn iter() -> impl Iterator<Item = Self> {
+    pub(crate) fn array() -> [Self; 15] {
         [
             FrameCondition::K,
             FrameCondition::D,
@@ -182,7 +182,6 @@ impl FrameCondition {
             FrameCondition::KB5,
             FrameCondition::S5,
         ]
-        .into_iter()
     }
 
     pub(crate) const fn ord_key(&self) -> u8 {
@@ -202,6 +201,26 @@ impl FrameCondition {
             FrameCondition::D45 => 12,
             FrameCondition::KB5 => 13,
             FrameCondition::S5 => 14,
+        }
+    }
+
+    pub(crate) const fn serial(&self) -> bool {
+        match self {
+            FrameCondition::K
+            | FrameCondition::KB
+            | FrameCondition::K4
+            | FrameCondition::K5
+            | FrameCondition::K45
+            | FrameCondition::KB5 => false,
+            FrameCondition::D
+            | FrameCondition::T
+            | FrameCondition::DB
+            | FrameCondition::TB
+            | FrameCondition::D4
+            | FrameCondition::S4
+            | FrameCondition::D5
+            | FrameCondition::D45
+            | FrameCondition::S5 => true,
         }
     }
 

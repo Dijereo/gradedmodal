@@ -36,7 +36,7 @@ const W_MODAL: [[u8; 4]; 5] = [
     [4, 1, 1, 4],
     [1, 1, 1, 1],
 ];
-const GRADE: RangeInclusive<u8> = 2..=5;
+pub(crate) const GRADE: RangeInclusive<u8> = 2..=5;
 const IMPLY: [u8; 3] = [8, 1, 1];
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -58,9 +58,14 @@ pub(crate) fn gen_formulae(
 ) -> Result<(), EvalError> {
     let mut craftedformulae = vec![];
     load_formulae(craftedtxt, &mut craftedformulae)?;
-    let mut datapoints: Vec<DataPoint<Cow<'_, str>, &str, &'static str>> = Vec::with_capacity(2 * n + craftedformulae.len());
+    let mut datapoints: Vec<DataPoint<Cow<'_, str>, &str, &'static str>> =
+        Vec::with_capacity(2 * n + craftedformulae.len());
     const INIT_KEYS: [&'static str; 2] = ["vampire", "prover"];
-    add_formulae(&mut datapoints, craftedformulae.into_iter(), INIT_KEYS.into_iter());
+    add_formulae(
+        &mut datapoints,
+        craftedformulae.into_iter(),
+        INIT_KEYS.into_iter(),
+    );
     let mut rng = StdRng::seed_from_u64(seed);
     let mut buffers = vec!["¬(".to_string(); n];
     for buffer in &mut buffers {
@@ -103,7 +108,7 @@ impl Setting {
     }
 }
 
-fn rand_choice_weighted<'a, C, W>(
+pub(crate) fn rand_choice_weighted<'a, C, W>(
     choices: &'a C,
     weights: &[W],
     rng: &mut impl Rng,
@@ -118,43 +123,44 @@ where
         .sample(rng)]
 }
 
-fn rand_choice<'a, T>(choices: &'a [T], rng: &mut impl Rng) -> &'a T {
+pub(crate) fn rand_choice<'a, T>(choices: &'a [T], rng: &mut impl Rng) -> &'a T {
     &choices[rng.random_range(0..choices.len())]
 }
 
-struct Phi(Disj);
+pub(crate) struct Phi(pub(crate) Disj);
 
-struct Disj {
-    conjs: Vec<Conj>,
-    conn: DisjConn,
+pub(crate) struct Disj {
+    pub(crate) conjs: Vec<Conj>,
+    pub(crate) conn: DisjConn,
 }
 
 #[derive(Debug, Clone, Copy)]
-enum DisjConn {
+pub(crate) enum DisjConn {
     Or,
     Imply,
     Iff,
 }
 
-struct Conj {
-    units: Vec<Unit>,
+pub(crate) struct Conj {
+    pub(crate) units: Vec<Unit>,
 }
 
-enum Unit {
+pub(crate) enum Unit {
     A(Atom),
     M(Modal, Atom),
     Nest(Modal, Disj),
 }
 
-enum Modal {
+pub(crate) enum Modal {
     Bx,
     Dm,
     Ge(u8),
     Le(u8),
 }
 
-enum Atom {
-    P(bool, u8),
+#[derive(Clone)]
+pub(crate) enum Atom {
+    P(bool, char, Option<u8>),
     B(bool),
 }
 
@@ -170,7 +176,7 @@ impl Phi {
         vecfor!(
             i in 0..cmp::min(numatoms, setting.num_props as usize) as u8,
             into atoms
-            => Atom::P(Atom::rand_sign(setting, rng), i)
+            => Atom::P(Atom::rand_sign(setting, rng), 'p', Some(i))
         );
         atoms.partial_shuffle(rng, cmp::min(numatoms, setting.num_props as usize));
         this.0.set_atoms(&mut atoms.into_iter());
@@ -320,7 +326,8 @@ impl Atom {
             1 => Atom::B(true),
             2 => Atom::P(
                 Self::rand_sign(setting, rng),
-                rng.random_range(0..setting.num_props),
+                'p',
+                Some(rng.random_range(0..setting.num_props)),
             ),
             _ => unreachable!("Only values in 0..=2 should occur."),
         }
@@ -390,8 +397,10 @@ impl fmt::Display for Unit {
 impl fmt::Display for Atom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Atom::P(true, i) => write!(f, "p{i}"),
-            Atom::P(false, i) => write!(f, "¬p{i}"),
+            Atom::P(true, p, None) => write!(f, "{p}"),
+            Atom::P(true, p, Some(i)) => write!(f, "{p}{i}"),
+            Atom::P(false, p, None) => write!(f, "¬{p}"),
+            Atom::P(false, p, Some(i)) => write!(f, "¬{p}{i}"),
             Atom::B(true) => write!(f, "⊤"),
             Atom::B(false) => write!(f, "⊥"),
         }

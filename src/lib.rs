@@ -21,6 +21,7 @@ mod kb;
 mod model;
 mod parser;
 mod randgen;
+mod randthm;
 mod rules;
 mod rules3;
 mod signed;

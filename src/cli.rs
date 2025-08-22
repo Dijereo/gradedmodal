@@ -30,7 +30,7 @@ pub fn run() {
                 std::process::exit(1);
             }
             let datajson: &'static str = mem::take(&mut args[2]).leak();
-            let vampire = Vampire::new("eval/temp.p", &args[3], "vampire");
+            let vampire = Vampire::new("eval/tmp/tmp.p", &args[3], "vampire");
             if let Err(e) = eval_prover(datajson, vampire) {
                 eprintln!("{e}");
             }
