@@ -26,68 +26,84 @@ fn rand_true(
     frames: FrameCondition,
     deeper: u8,
 ) -> Rc<Formula> {
-    if deeper <= 1 || rng.random_range(0..=1) == 1 {
+    let deeper = deeper.saturating_sub(1);
+    if deeper == 0 || rng.random_range(0..=1) == 1 {
         let phi = rand_any(symbols, rng);
-        let deeper = deeper.saturating_sub(1);
         match rng.random_range(0..=7) {
-            0 => nec(&phi, rng, deeper).imply(&suff(&phi, rng, deeper)),
-            1 => suff(&phi, rng, deeper).or(&nec(&phi, rng, deeper).not()),
-            2 => eqv(&phi, rng, deeper).iff(&eqv(&phi, rng, deeper)),
+            0 => nec(&phi, symbols, rng, frames, deeper).imply(&suff(&phi, symbols, rng, deeper)),
+            1 => {
+                suff(&phi, symbols, rng, deeper).or(&nec(&phi, symbols, rng, frames, deeper).not())
+            }
+            2 => eqv(&phi, symbols, rng, frames, deeper)
+                .iff(&eqv(&phi, symbols, rng, frames, deeper)),
             3 => {
                 let c = rng.random_range(GRADE) as u32;
                 let c2 = rng.random_range(1..=c);
                 rand_any(symbols, rng)
                     .dmge(c)
-                    .and(&nec(&phi, rng, deeper))
-                    .imply(&suff(&phi, rng, deeper).dmge(c2))
+                    .and(&nec(&phi, symbols, rng, frames, deeper))
+                    .imply(&suff(&phi, symbols, rng, deeper).dmge(c2))
             }
             4 => {
                 let c = rng.random_range(GRADE) as u32;
                 let c2 = rng.random_range(1..=c);
-                nec(&phi, rng, deeper)
+                nec(&phi, symbols, rng, frames, deeper)
                     .dmle(c)
-                    .or(&suff(&phi, rng, deeper).dmge(c2))
+                    .or(&suff(&phi, symbols, rng, deeper).dmge(c2))
             }
-            5 => {
-                let phi2 = rand_any(symbols, rng);
-                nec(&phi, rng, deeper)
-                    .imply(&suff(&phi2, rng, deeper))
-                    .box_()
-                    .imply(
-                        &nec(&phi, rng, deeper)
-                            .box_()
-                            .imply(&suff(&phi2, rng, deeper).box_()),
-                    )
-            }
-            6 if frames.reflexive() => {
-                nec(&phi.box_(), rng, deeper).imply(&suff(&phi, rng, deeper))
-            }
-            6 if frames.serial() => {
-                nec(&phi.box_(), rng, deeper).imply(&suff(&phi.diamond(), rng, deeper))
-            }
-            7 if frames.symmetric() => {
+            5 if frames.reflexive() => nec(&phi.box_(), symbols, rng, frames, deeper)
+                .imply(&suff(&phi, symbols, rng, deeper)),
+            5 if frames.serial() => suff(&phi, symbols, rng, deeper).diamond().or(&nec(
+                &phi.not(),
+                symbols,
+                rng,
+                frames,
+                deeper,
+            )),
+            6 if frames.symmetric() => {
                 let c = rng.random_range(GRADE) as u32;
                 let c2 = rng.random_range(1..=c);
-                nec(&phi, rng, deeper)
+                nec(&phi, symbols, rng, frames, deeper)
                     .and(&rand_any(symbols, rng).dmge(c))
-                    .imply(&suff(&phi.diamond().dmge(c2), rng, deeper))
+                    .imply(&suff(&phi.diamond().dmge(c2), symbols, rng, deeper))
             }
-            7 if frames.euclidean() => {
+            6 if frames.euclidean() => {
                 let c1 = rng.random_range(GRADE) as u32;
                 let c2 = rng.random_range(1..=c1);
                 let c3 = rng.random_range(1..=c1);
-                nec(&phi.dmge(c1), rng, deeper).imply(&suff(&phi.dmge(c2).dmge(c3), rng, deeper))
+                nec(&phi.dmge(c1), symbols, rng, frames, deeper).imply(&suff(
+                    &phi.dmge(c2).dmge(c3),
+                    symbols,
+                    rng,
+                    deeper,
+                ))
             }
-            7 if frames.transitive() => {
+            6 if frames.transitive() => {
                 let c1 = rng.random_range(GRADE) as u32;
                 let c2 = rng.random_range(GRADE) as u32;
                 let c3 = rng.random_range(1..=max(c1, c2));
-                nec(&phi.dmge(c1).dmge(c2), rng, deeper).imply(&suff(&phi.dmge(c3), rng, deeper))
+                nec(&phi.dmge(c1).dmge(c2), symbols, rng, frames, deeper).imply(&suff(
+                    &phi.dmge(c3),
+                    symbols,
+                    rng,
+                    deeper,
+                ))
+            }
+            5 | 6 => {
+                let phi2 = rand_any(symbols, rng);
+                nec(&phi, symbols, rng, frames, deeper)
+                    .imply(&suff(&phi2, symbols, rng, deeper))
+                    .box_()
+                    .imply(
+                        &nec(&phi, symbols, rng, frames, deeper)
+                            .box_()
+                            .imply(&suff(&phi2, symbols, rng, deeper).box_()),
+                    )
             }
             _ => unreachable!("Only values in 0..=7 should occur."),
         }
     } else {
-        let thm = rand_true(symbols, rng, frames, deeper.saturating_sub(1));
+        let thm = rand_true(symbols, rng, frames, deeper);
         match rng.random_range(0..=5) {
             0 => thm.box_(),
             1 => thm.not().dmle(rng.random_range(GRADE) as u32 - 1),
@@ -101,25 +117,109 @@ fn rand_true(
     }
 }
 
-fn nec(formula: &Rc<Formula>, rng: &mut impl Rng, deeper: u8) -> Rc<Formula> {
+fn nec(
+    formula: &Rc<Formula>,
+    symbols: &[Rc<Formula>],
+    rng: &mut impl Rng,
+    frames: FrameCondition,
+    deeper: u8,
+) -> Rc<Formula> {
     if deeper == 0 {
         return formula.clone();
     }
-    todo!()
+    let deeper = deeper.saturating_sub(1);
+    match rand_choice_weighted(&[0, 1, 2, 3], &[2, 6, 1, 1], rng) {
+        0 => rand_any(symbols, rng).and(&nec(formula, symbols, rng, frames, deeper)),
+        1 => match formula.as_ref() {
+            Formula::Bottom | Formula::Top | Formula::PropVar(_, _) | Formula::Iff(_, _) => {
+                formula.clone()
+            }
+            Formula::Not(phi) => suff(phi, symbols, rng, deeper).not(),
+            Formula::Box(phi) => nec(phi, symbols, rng, frames, deeper).box_(),
+            Formula::Diamond(phi) => {
+                nec(phi, symbols, rng, frames, deeper).dmge(rng.random_range(GRADE) as u32)
+            }
+            Formula::DiamondGe(c, phi) => {
+                let c2 = rng.random_range(*c..=(*GRADE.end() as u32));
+                nec(phi, symbols, rng, frames, deeper).dmge(c2)
+            }
+            Formula::DiamondLe(c, phi) => {
+                let c2 = rng.random_range(1..=*c);
+                suff(phi, symbols, rng, deeper).dmle(c2)
+            }
+            Formula::And(phi1, phi2) => nec(phi1, symbols, rng, frames, deeper)
+                .and(&nec(phi2, symbols, rng, frames, deeper)),
+            Formula::Or(phi1, phi2) => {
+                if rng.random_ratio(1, 2) {
+                    nec(phi1, symbols, rng, frames, deeper)
+                } else {
+                    nec(phi2, symbols, rng, frames, deeper)
+                }
+            }
+            Formula::Imply(phi1, phi2) => {
+                suff(phi1, symbols, rng, deeper).imply(&nec(phi2, symbols, rng, frames, deeper))
+            }
+        },
+        i @ (2 | 3) => match formula.as_ref() {
+            Formula::Box(phi) if *i == 2 && frames.serial() => {
+                suff(&phi.diamond(), symbols, rng, deeper)
+            }
+            Formula::Box(phi) if *i == 2 && frames.reflexive() => suff(&phi, symbols, rng, deeper),
+            Formula::Box(phi) if *i == 3 && frames.symmetric() => {
+                suff(&phi.diamond().diamond().box_(), symbols, rng, deeper)
+            }
+            Formula::Box(phi) if *i == 3 && frames.euclidean() => {
+                suff(&phi.diamond().box_().box_(), symbols, rng, deeper)
+            }
+            Formula::Box(_) if *i == 3 && frames.symmetric() => {
+                suff(&formula.box_(), symbols, rng, deeper)
+            }
+            _ => formula.clone(),
+        },
+        _ => unreachable!("Only values in 0..=3 should occur."),
+    }
 }
 
-fn suff(formula: &Rc<Formula>, rng: &mut impl Rng, deeper: u8) -> Rc<Formula> {
+fn suff(
+    formula: &Rc<Formula>,
+    symbols: &[Rc<Formula>],
+    rng: &mut impl Rng,
+    deeper: u8,
+) -> Rc<Formula> {
     if deeper == 0 {
         return formula.clone();
     }
-    todo!()
+    let deeper = deeper.saturating_sub(1);
+    match rand_choice_weighted(&[0, 1, 2], &[1, 3, 1], rng) {
+        0 => todo!(),
+        1 => todo!(),
+        2 => todo!(),
+        _ => unreachable!("Only values in 0..=2 should occur."),
+    }
 }
 
-fn eqv(formula: &Rc<Formula>, rng: &mut impl Rng, deeper: u8) -> Rc<Formula> {
+fn eqv(
+    formula: &Rc<Formula>,
+    symbols: &[Rc<Formula>],
+    rng: &mut impl Rng,
+    frames: FrameCondition,
+    deeper: u8,
+) -> Rc<Formula> {
     if deeper == 0 {
         return formula.clone();
     }
-    todo!()
+    let deeper = deeper.saturating_sub(1);
+    match rand_choice_weighted(&[0, 1, 2, 3], &[1, 3, 1, 4], rng) {
+        0 => {
+            rand_true(symbols, rng, frames, deeper).and(&eqv(formula, symbols, rng, frames, deeper))
+        }
+        1 => rand_true(symbols, rng, frames, deeper)
+            .not()
+            .or(&eqv(formula, symbols, rng, frames, deeper)),
+        2 => formula.not().not(),
+        3 => formula.clone(),
+        _ => unreachable!("Only values in 0..=3 should occur."),
+    }
 }
 
 fn rand_any(symbols: &[Rc<Formula>], rng: &mut impl Rng) -> Rc<Formula> {
