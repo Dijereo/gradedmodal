@@ -383,7 +383,7 @@ where
     outfile.write_all(b"\n")
 }
 
-fn run_prover<'q, F, T, M, K, Q>(
+fn run_prover<F, T, M, K, Q>(
     dataset: &Arc<RwLock<Vec<DataPoint<F, T, K>>>>,
     mut prover: impl Prover<F, T, M, Q>,
 ) -> Result<(), EvalError>
@@ -406,11 +406,12 @@ where
                             status: EvalStatus::Pending,
                             time: None,
                         });
-                match (testdata.status, &testdata.time) {
-                    (EvalStatus::Pending | EvalStatus::Failed | EvalStatus::Timedout, None) => {
+                match (testdata.status, &testdata.time, test.frames) {
+                    (_, _, FrameCondition::K4 | FrameCondition::D4 | FrameCondition::S4) => {}
+                    (EvalStatus::Pending | EvalStatus::Failed | EvalStatus::Timedout, None, _) => {
                         queue.push((i, j, datapoint.formula.clone(), test.frames))
                     }
-                    (EvalStatus::Timedout, Some(time)) => {
+                    (EvalStatus::Timedout, Some(time), _) => {
                         let time: f64 = time
                             .as_ref()
                             .trim()
@@ -442,6 +443,9 @@ where
                         .insert(prover.get_key().clone().into(), EvalTest { status, time });
                 }
             }
+        }
+        if status == EvalStatus::Timedout {
+            thread::sleep(Duration::from_secs(3));
         }
     }
     Ok(())
