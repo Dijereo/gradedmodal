@@ -2,14 +2,16 @@ use std::{
     cell::RefCell,
     collections::{HashMap, VecDeque},
     fmt,
+    ops::RangeInclusive,
     rc::Rc,
 };
 
 use good_lp::{Expression, ProblemVariables, Solution, SolverModel, Variable, solvers, variable};
 
 use crate::{
+    formula::Formula,
     model::{Edge, IntoModelGraph, Node},
-    rules3::{Calculus, Feasibility},
+    rules3::{Calculus, Feasibility, ForkType},
     tableau2::{TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},
     transit::{
@@ -22,7 +24,10 @@ pub(crate) struct TransitTB {
     pub(crate) feasibility: Feasibility,
     pub(crate) paraws: ParallelWorlds<Self>,
     pub(crate) constraints: Constraints,
+    pub(crate) boxforks: Vec<(Rc<Formula>, usize)>,
+    pub(crate) forkids: Vec<RangeInclusive<usize>>,
     pub(crate) solution: Vec<u32>,
+    pub(crate) backchoices: Option<Vec<(usize, usize)>>,
 }
 
 impl BaseTransit for TransitTB {
@@ -41,7 +46,7 @@ impl BaseTransit for TransitTB {
 
 impl SolveTransit for TransitTB {
     fn solve(&mut self, toh: &impl TimeoutHandler) -> MayTimeout<()> {
-        todo!()
+        Ok(())
     }
 
     fn from_modals(
@@ -50,7 +55,8 @@ impl SolveTransit for TransitTB {
         calc: &mut Calculus,
         toh: &impl TimeoutHandler,
     ) -> MayTimeout<Self> {
-        let (forks, constraints) = modals.to_deep_forks_constraints(&mut calc.forks, toh)?;
+        let (forks, constraints, boxforks) =
+            modals.to_deep_forks_constraints(&mut calc.forks, toh)?;
         let mut formulae = vec![];
         leaf.borrow().traverse_anc_formulae(&mut |formula| {
             formulae.push(formula.clone());
@@ -59,13 +65,16 @@ impl SolveTransit for TransitTB {
         for formula in &mut formulae {
             formula.lemma = true;
         }
-        let paraws = ParallelWorlds::from_forks(formulae, forks, Some(leaf), calc, toh)?;
+        let paraws = ParallelWorlds::from_forks(formulae, forks.clone(), Some(leaf), calc, toh)?;
         let feasibility = paraws.tab.borrow().feasibility;
         Ok(Self {
             feasibility,
             paraws,
             constraints,
             solution: vec![],
+            backchoices: None,
+            boxforks,
+            forkids: forks,
         })
     }
 
@@ -76,9 +85,15 @@ impl SolveTransit for TransitTB {
         let mut flowers = Vec::new();
         TableauNode2::get_flowers(&self.paraws.tab, &mut flowers);
         for flower in flowers {
-            if let Some(transit) = Self::full_transit(&flower, calc, toh)? {
-                flower.borrow_mut().feasibility = transit.feasibility();
-                flower.borrow_mut().children = TabChildren::Transition(transit);
+            match Self::full_transit(&flower, calc, toh)? {
+                TransitResult::None => {}
+                TransitResult::BackContra => {
+                    flower.borrow_mut().feasibility = Feasibility::Contradiction
+                }
+                TransitResult::Transit(transit) => {
+                    flower.borrow_mut().feasibility = transit.feasibility();
+                    flower.borrow_mut().children = TabChildren::Transition(transit);
+                }
             }
         }
         TableauNode2::set_feasibility_rec(&self.paraws.tab);
@@ -86,55 +101,69 @@ impl SolveTransit for TransitTB {
     }
 }
 
+enum TransitResult {
+    None,
+    BackContra,
+    Transit(TransitTB),
+}
+
 impl TransitTB {
     fn full_transit(
         fruit: &Rc<RefCell<TableauNode2<TransitTB>>>,
         calc: &mut Calculus,
         toh: &impl TimeoutHandler,
-    ) -> MayTimeout<Option<Self>> {
-        todo!();
+    ) -> MayTimeout<TransitResult> {
         let mut formulae = vec![];
         fruit.borrow().traverse_anc_formulae(&mut |formula| {
             formulae.push(formula.clone());
             true
         });
         let modals = Modals::new(formulae.iter(), false, false, toh)?;
-        // TODO: check boxes valid
         if modals.ge.is_empty() {
             // TODO: check all le <=2 or valid
-            return Ok(None);
+            return Ok(TransitResult::None);
         }
-        let mut transit = Self::from_modals(modals, fruit, calc, toh)?;
+        let mut transit = Self::from_existing_modals(modals, fruit, calc, toh)?;
+        let mut transit = if let Some(transit) = transit {
+            transit
+        } else {
+            return Ok(TransitResult::BackContra);
+        };
         if transit.is_closed() {
-            return Ok(Some(transit));
+            return Ok(TransitResult::Transit(transit));
         }
         transit.recurse(calc, toh)?;
         if transit.is_closed() {
-            return Ok(Some(transit));
+            return Ok(TransitResult::Transit(transit));
         }
-        transit.solve();
-        Ok(Some(transit))
+        transit.full_solve();
+        Ok(TransitResult::Transit(transit))
     }
 
-    pub(crate) fn solve(&mut self) {
-        todo!()
-        // self.solutions = (0..self.constraints.len())
-        //     .map(|_| TBSolution::None)
-        //     .collect();
-        // for pws in &mut self.paraws {
-        //     pws.set_choices(true);
-        // }
-        // for i in (1..self.constraints.len()).rev() {
-        //     if self.solve_forward(i) {
-        //         continue;
-        //     }
-        //     self.solve_reflex(i);
-        //     self.solve_backward(i);
-        // }
-        // if !self.solve_forward(0) {
-        //     self.solve_reflex(0);
-        //     self.solve_backward(0);
-        // }
+    fn from_existing_modals(
+        modals: Modals,
+        fruit: &Rc<RefCell<TableauNode2<TransitTB>>>,
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Option<Self>> {
+        let (forks, constraints, boxforks) = modals.to_deep_forks_constraints(&mut calc.forks, toh)?;
+        let mut back_choices = vec![];
+        fruit.borrow().get_matching_choices(&mut back_choices, &mut constraints.gradings.clone(), &calc.forks);
+        for boxsubf in constraints.boxsubforms {
+            todo!()
+        }
+        let formulae = todo!();
+        let paraws = ParallelWorlds::from_forks(formulae, forks.clone(), Some(fruit), calc, toh)?;
+        let feasibility = paraws.tab.borrow().feasibility;
+        Ok(Some(Self {
+                    feasibility,
+                    paraws,
+                    constraints,
+                    solution: vec![],
+                    backchoices: None,
+                    boxforks,
+                    forkids: forks.clone(),
+                }))
     }
 
     pub(crate) fn solve_forward(&mut self, i: usize) -> bool {
@@ -256,6 +285,10 @@ impl TransitTB {
         //         Ok(solution) => Some(vars.into_iter().map(|v| solution.value(v) as u32).collect()),
         //         Err(_) => None,
         //     }
+    }
+    
+    fn full_solve(&self) {
+        todo!()
     }
 }
 

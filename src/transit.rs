@@ -259,8 +259,9 @@ impl Modals {
     pub(crate) fn to_box_forks_constraints(
         self,
         forkstore: &mut ForkStore,
-    ) -> (Option<RangeInclusive<usize>>, Constraints) {
+    ) -> (Option<RangeInclusive<usize>>, Constraints, Vec<(Rc<Formula>, usize)>) {
         let (forks, constraints) = self.to_forks_constraints(forkstore);
+        let mut boxforks = vec![];
         let mut startid = None;
         let mut endid = 0;
         for formula in &constraints.boxsubforms {
@@ -273,6 +274,7 @@ impl Modals {
                 startid = Some(fork.id);
             }
             endid = fork.id;
+            boxforks.push((formula.formula.clone(), fork.id));
         }
         let range = match (forks, startid) {
             (None, None) => None,
@@ -280,18 +282,14 @@ impl Modals {
             (r @ Some(_), None) => r,
             (Some(r), Some(_)) => Some(*r.start()..=endid),
         };
-        (range, constraints)
+        (range, constraints, boxforks)
     }
 
     pub(crate) fn to_deep_forks_constraints(
         self,
         forkstore: &mut ForkStore,
         toh: &impl TimeoutHandler,
-    ) -> MayTimeout<(Vec<RangeInclusive<usize>>, Constraints)> {
-        if self.ge.is_empty() && self.le.is_empty() {
-            let (forks, constraints) = self.to_forks_constraints(forkstore);
-            return Ok((forks.into_iter().collect(), constraints));
-        }
+    ) -> MayTimeout<(Vec<RangeInclusive<usize>>, Constraints, Vec<(Rc<Formula>, usize)>)> {
         let mut newformulae = vec![];
         for formula in self.iter_all() {
             formula.store_modals(&mut |f| newformulae.push(f));
@@ -299,26 +297,27 @@ impl Modals {
         let (forks, mut constraints) = self.to_forks_constraints(forkstore);
         let mut forks: Vec<_> = forks.into_iter().collect();
         let mut modals = Modals::new(newformulae.iter(), false, false, toh)?;
+        let mut boxforks = vec![];
         while !modals.ge.is_empty() || !modals.le.is_empty() {
             newformulae.clear();
             for formula in modals.iter_all() {
                 formula.store_modals(&mut |f| newformulae.push(f));
             }
-            let (fks, cns) = modals.to_box_forks_constraints(forkstore);
+            let (fks, cns, bxfks) = modals.to_box_forks_constraints(forkstore);
             forks.extend(fks);
             constraints.gradings.extend(cns.gradings);
-            constraints.boxsubforms.extend(cns.boxsubforms);
+            boxforks.extend(bxfks);
             modals = Modals::new(newformulae.iter(), false, false, toh)?;
         }
-        Ok((forks, constraints))
+        Ok((forks, constraints, boxforks))
     }
 
     pub(crate) fn to_existing_forks(
         self,
+        src_range: &Vec<RangeInclusive<usize>>,
         src_constraints: Constraints,
         forkstore: &ForkStore,
     ) -> (Vec<RangeInclusive<usize>>, Constraints) {
-        todo!();
         let mut constraints = Vec::with_capacity(self.ge.len() + self.le.len());
         let mut forkids = Vec::with_capacity(self.ge.len() + self.le.len());
         let formulae = self.ge.into_iter().map(|(c, formula)| (c, true, formula));

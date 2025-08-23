@@ -21,16 +21,16 @@ struct PropFork;
 struct TLinear;
 struct BLinear;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum ForkType {
     Disjunction,
     ParallelWorlds,
 }
 
 #[derive(Clone, Debug)]
-struct Branch {
-    id: usize,
-    labels: Vec<LabeledFormula>,
+pub(crate) struct Branch {
+    pub(crate) id: usize,
+    pub(crate) labels: Vec<LabeledFormula>,
 }
 
 #[derive(Clone, Debug)]

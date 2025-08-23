@@ -1,15 +1,15 @@
 use std::{
     cell::RefCell,
     collections::VecDeque,
-    fmt,
+    fmt, mem,
     ops::RangeInclusive,
     rc::{Rc, Weak},
 };
 
 use crate::{
     formula::Formula,
-    rules3::Feasibility,
-    transit::{BaseTransit, DisplayTransit},
+    rules3::{Feasibility, ForkStore, ForkType},
+    transit::{BaseTransit, DisplayTransit, Grading},
 };
 
 pub(crate) enum TabChildren<T> {
@@ -247,6 +247,38 @@ impl<T> TableauNode2<T> {
                 .iter()
                 .filter(|(fid, _)| forkranges.iter().any(|r| r.contains(fid))),
         )
+    }
+
+    pub(crate) fn get_matching_choices(
+        &self,
+        choices: &mut Vec<(usize, usize)>,
+        src_gradings: &mut Vec<Grading>,
+        forkstore: &ForkStore,
+    ) {
+        // OPT: bin search + remove
+        if let Some(parent) = self.parent.upgrade() {
+            if let TabChildren::Fork { .. } = parent.borrow().children {
+                parent
+                    .borrow()
+                    .get_matching_choices(choices, src_gradings, forkstore);
+            }
+        }
+        'outer: for grading in mem::take(src_gradings) {
+            for (fid, bid) in &self.choices {
+                if forkstore.forks[*fid].fktype != ForkType::ParallelWorlds {
+                    continue;
+                }
+                let choice_formula = &forkstore.forks[*fid].branches[*bid].labels[0].formula;
+                if choice_formula.directly_equivalent(&grading.formula) {
+                    choices.push((grading.forkid, 1));
+                    continue 'outer;
+                } else if choice_formula.directly_contradicts(&grading.formula) {
+                    choices.push((grading.forkid, 0));
+                    continue 'outer;
+                }
+            }
+            src_gradings.push(grading);
+        }
     }
 
     pub(crate) fn get_depths(&self) -> VecDeque<Vec<usize>> {
