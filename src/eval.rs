@@ -47,8 +47,15 @@ pub(crate) enum EvalError {
 #[derive(Serialize, Deserialize)]
 pub(crate) struct DataPoint<F, T, K: Eq + Hash> {
     pub(crate) formula: F,
-    pub(crate) setting: Option<Setting>,
+    pub(crate) setting: EvalSetting,
     pub(crate) tests: Vec<EvalOutput<T, K>>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) enum EvalSetting {
+    DNF(Setting),
+    Thm(FrameCondition),
+    Crafted,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -314,7 +321,7 @@ where
 {
     pub(crate) fn new<Q>(
         formula: F,
-        setting: Option<Setting>,
+        setting: EvalSetting,
         initkeys: impl Iterator<Item = Q> + Clone,
     ) -> Self
     where
@@ -364,7 +371,7 @@ pub(crate) fn add_formulae<F, T, K, Q>(
     let new = vecfor!(
         f in formulae,
         if !set.contains(f.as_ref())
-        => DataPoint::new(f, None, initkeys.clone())
+        => DataPoint::new(f, EvalSetting::Crafted, initkeys.clone())
     );
     dataset.extend(new);
 }

@@ -17,7 +17,7 @@ use rand::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    eval::{DataPoint, EvalError, add_formulae, load_formulae, save_results},
+    eval::{DataPoint, EvalError, EvalSetting, add_formulae, load_formulae, save_results},
     vecfor,
 };
 
@@ -77,12 +77,12 @@ pub(crate) fn gen_formulae(
         subbuffer.next_back();
         datapoints.push(DataPoint::new(
             Cow::Borrowed(subbuffer.as_str()),
-            Some(setting.clone()),
+            EvalSetting::DNF(setting.clone()),
             INIT_KEYS.into_iter(),
         ));
         datapoints.push(DataPoint::new(
             Cow::Borrowed(buffer.as_str()),
-            Some(setting.clone()),
+            EvalSetting::DNF(setting.clone()),
             INIT_KEYS.into_iter(),
         ));
     }
