@@ -352,7 +352,7 @@ impl<T> TableauNode2<T> {
                 write!(f, "  ")?;
                 i += 1;
             }
-            writeln!(f, "• {}", label.formula)?;
+            writeln!(f, "  {}", label.formula)?;
         }
         match &thisref.children {
             TabChildren::Leaf => {}

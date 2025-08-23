@@ -201,6 +201,23 @@ impl Formula {
         Rc::new(Formula::Not(self.clone()))
     }
 
+    pub(crate) fn neg_modal(self: &Rc<Formula>) -> Rc<Formula> {
+        match self.as_ref() {
+            Formula::Box(phi) => phi.not().diamond(),
+            Formula::Diamond(phi) => phi.not().box_(),
+            Formula::DiamondGe(c, phi) => phi.dmle(c - 1),
+            Formula::DiamondLe(c, phi) => phi.dmge(c + 1),
+            Formula::Bottom
+            | Formula::Top
+            | Formula::PropVar(_, _)
+            | Formula::Not(_)
+            | Formula::And(_, _)
+            | Formula::Or(_, _)
+            | Formula::Imply(_, _)
+            | Formula::Iff(_, _) => unreachable!("Should only be called on modals"),
+        }
+    }
+
     pub(crate) fn and(self: &Rc<Formula>, other: &Rc<Formula>) -> Rc<Formula> {
         Rc::new(Formula::And(self.clone(), other.clone()))
     }

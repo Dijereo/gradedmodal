@@ -66,7 +66,7 @@ impl<T: BaseTransit> ParaClique<T> {
                 formula: if *sign {
                     label.formula.clone()
                 } else {
-                    label.formula.not()
+                    label.formula.neg_modal()
                 },
                 conflictset: label.conflictset.clone(),
                 lemma: false,
@@ -112,7 +112,7 @@ impl SolveTransit for Transit5 {
         let mut feasibility = Feasibility::Contradiction;
         // OPT: Get initial spotlight para worlds and break if contradiction
         loop {
-            let paraclique = ParaClique::new(
+            let mut paraclique = ParaClique::new(
                 submodals.iter(),
                 &settings,
                 spotconstraints.boxsubforms.iter().cloned(),
@@ -121,9 +121,14 @@ impl SolveTransit for Transit5 {
                 calc,
                 toh,
             )?;
+            if paraclique.feasibility == Feasibility::Contradiction {
+                paracliques.push(paraclique);
+                continue;
+            }
+            paraclique.solve(&spotconstraints.gradings, toh)?;
             feasibility = feasibility.better(&paraclique.feasibility);
             paracliques.push(paraclique);
-            if !Self::next_setting(&mut settings) {
+            if !Self::next_setting(&mut settings) || feasibility == Feasibility::Feasible {
                 break;
             }
         }
@@ -135,13 +140,7 @@ impl SolveTransit for Transit5 {
         })
     }
 
-    fn solve(&mut self, toh: &impl TimeoutHandler) -> MayTimeout<()> {
-        let mut feasibility = Feasibility::NoSolution;
-        for paraclique in &mut self.paracliques {
-            paraclique.solve(&self.spotconstraints.gradings, toh)?;
-            feasibility = feasibility.better(&paraclique.feasibility);
-        }
-        self.feasibility = feasibility;
+    fn solve(&mut self, _toh: &impl TimeoutHandler) -> MayTimeout<()> {
         Ok(())
     }
 }
@@ -275,6 +274,7 @@ impl DisplayTransit for Transit5 {
                 }
                 writeln!(f)?;
             }
+            writeln!(f)?;
         }
         Ok(())
     }
