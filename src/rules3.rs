@@ -1,4 +1,9 @@
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, VecDeque},
+    ops::RangeInclusive,
+    rc::Rc,
+};
 
 use crate::{
     flatformula::FlatFormula,
@@ -6,7 +11,7 @@ use crate::{
     frame::FrameCondition,
     tableau2::{Conflict, DupContra, LabeledFormula, TabBranch, TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},
-    transit::BaseTransit,
+    transit::{BaseTransit, Constraints, Grading},
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -79,7 +84,7 @@ impl Calculus {
         if tab.borrow().is_closed() {
             return Ok(tab);
         }
-        calc.transition(&tab, true, toh)?;
+        calc.transition(&tab, true, None, toh)?;
         Ok(tab)
     }
 
@@ -87,6 +92,7 @@ impl Calculus {
         &mut self,
         tab: &Rc<RefCell<TableauNode2<T>>>,
         early_break: bool,
+        subsume: Option<(&Vec<RangeInclusive<usize>>, &Constraints)>,
         toh: &impl TimeoutHandler,
     ) -> MayTimeout<()> {
         if tab.borrow().is_closed() {
@@ -94,7 +100,18 @@ impl Calculus {
         }
         let mut flowers = Vec::new();
         TableauNode2::get_flowers(tab, &mut flowers);
+        let mut choices = vec![];
         for flower in flowers {
+            if let Some((forkranges, constraints)) = subsume {
+                let mut newchoices = vec![];
+                flower.borrow().get_choices(&mut newchoices, forkranges);
+                if Self::is_subsumed(&choices, &newchoices, &constraints.gradings) {
+                    flower.borrow_mut().feasibility = Feasibility::NoSolution;
+                    continue;
+                } else {
+                    choices.push(newchoices);
+                }
+            }
             if let Some(transit) = T::transit(&flower, self, toh)? {
                 flower.borrow_mut().feasibility = transit.feasibility();
                 flower.borrow_mut().children = TabChildren::Transition(transit);
@@ -105,6 +122,25 @@ impl Calculus {
         }
         TableauNode2::set_feasibility_rec(tab);
         Ok(())
+    }
+
+    pub(crate) fn is_subsumed(
+        choices: &[Vec<(usize, usize)>],
+        newchoices: &[(usize, usize)],
+        senses: &[Grading],
+    ) -> bool {
+        let new_map: HashMap<usize, usize> = newchoices.iter().cloned().collect();
+        let sense_map: HashMap<usize, bool> = senses.iter().map(|g| (g.forkid, g.sense)).collect();
+        choices.iter().any(|choice| {
+            choice.iter().all(|&(id, cval)| {
+                if let (Some(&nval), Some(&sense)) = (new_map.get(&id), sense_map.get(&id)) {
+                    if sense { cval >= nval } else { cval <= nval }
+                } else {
+                    // if id missing in newchoices or senses, treat as mismatch
+                    false
+                }
+            })
+        })
     }
 
     pub(crate) fn expand_static<T: BaseTransit>(

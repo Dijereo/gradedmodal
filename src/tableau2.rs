@@ -165,7 +165,10 @@ impl<T> TableauNode2<T> {
         self.feasibility.is_bad()
     }
 
-    pub(crate) fn get_flowers(this: &Rc<RefCell<Self>>, flowers: &mut Vec<Rc<RefCell<Self>>>) {
+    pub(crate) fn get_flowers(
+        this: &Rc<RefCell<Self>>,
+        flowers: &mut Vec<Rc<RefCell<Self>>>,
+    ) {
         if this.borrow().is_closed() {
             return;
         }
