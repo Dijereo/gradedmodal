@@ -1,7 +1,7 @@
 [
   {
     "formula": "[](p->q)->[]p->[]q",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -202,7 +202,7 @@
   },
   {
     "formula": "~([](p->q)->[]p->[]q)",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -403,7 +403,7 @@
   },
   {
     "formula": "[]p1-><>p1",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -604,7 +604,7 @@
   },
   {
     "formula": "~([]p1-><>p1)",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -805,7 +805,7 @@
   },
   {
     "formula": "[]p2->p2",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -1006,7 +1006,7 @@
   },
   {
     "formula": "~([]p2->p2)",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -1207,7 +1207,7 @@
   },
   {
     "formula": "p3->[]<>p3",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -1408,7 +1408,7 @@
   },
   {
     "formula": "~(p3->[]<>p3)",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -1609,7 +1609,7 @@
   },
   {
     "formula": "[]p4->[][]p4",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -1810,7 +1810,7 @@
   },
   {
     "formula": "~([]p4->[][]p4)",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -2011,7 +2011,7 @@
   },
   {
     "formula": "<>p5->[]<>p5",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -2212,7 +2212,7 @@
   },
   {
     "formula": "~(<>p5->[]<>p5)",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -2413,7 +2413,7 @@
   },
   {
     "formula": "<><=1([]p6 & []~p6)",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -2614,7 +2614,7 @@
   },
   {
     "formula": "<>>=2([]p6 & []~p6)",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -2815,7 +2815,7 @@
   },
   {
     "formula": "~p7 | q7 | <><=2 (p7&q7) | <>>=4 p7",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -3016,7 +3016,7 @@
   },
   {
     "formula": "p7 & ~q7 & <>>=3 (p7&q7) & <><=3 p7",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -3217,7 +3217,7 @@
   },
   {
     "formula": "~p9 | q9 | []<><=2 (p9&q9) | <><>>=4 p9",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -3418,7 +3418,7 @@
   },
   {
     "formula": "p9 & ~q9 & <><>>=3 (p9&q9) & []<><=3 p9",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -3619,7 +3619,7 @@
   },
   {
     "formula": "~p8 | <><=1 (~p8 & q8 & <>>=3 (~p8 & ~q8)) | <>>=5 ~p8",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -3820,7 +3820,7 @@
   },
   {
     "formula": "p8 & <>>=2 (~p8 & q8 & <>>=3 (~p8 & ~q8)) & <><=4 ~p8",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -4021,7 +4021,7 @@
   },
   {
     "formula": "<><=5 p0 | []<>>=6 p0",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -4222,7 +4222,7 @@
   },
   {
     "formula": "<>>=6 p0 & <><><=5 p0",
-    "setting": null,
+    "setting": "Crafted",
     "tests": [
       {
         "frames": "K",
@@ -4424,22 +4424,24 @@
   {
     "formula": "p0 ∧ ◇≥2(◇≤3 p1 ∧ ¬p0 ∨ ◇≤5(◇≥5 ¬p1 ∧ p0 ∧ p0)) ∧ □(p0 ∧ ◇≥2(◇≥5 p1 ∧ ◇(p0 ∧ p1 ∧ p0) ∨ ◇≥2(¬p1 ∧ p1 ∨ p0 ∧ p1 ∧ p0)) ∨ ◇≥3(◇≥3(p1 ∧ p0 ↔ p1 ∧ p0) ∧ ◇p1) ∧ ¬p0) ∨ ◇(p0 ∨ ◇≥3(◇≤2(p1 ∧ ¬p0 ∨ ¬p0) ∧ □p1 ∧ ◇p1) ∧ ¬p0 ∧ p0) ∧ □(□(p1 ∧ p0 ∧ ◇≤3(p1) → ◇(p0 ∧ p1 ∧ p0 → p0 ∧ ¬p0) ∧ ◇≥5(p0 ∧ ¬p1 ∧ p0 ↔ ¬p0 ∧ p1 ∧ p0)) ∧ p1)",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -4642,22 +4644,24 @@
   {
     "formula": "¬(p0 ∧ ◇≥2(◇≤3 p1 ∧ ¬p0 ∨ ◇≤5(◇≥5 ¬p1 ∧ p0 ∧ p0)) ∧ □(p0 ∧ ◇≥2(◇≥5 p1 ∧ ◇(p0 ∧ p1 ∧ p0) ∨ ◇≥2(¬p1 ∧ p1 ∨ p0 ∧ p1 ∧ p0)) ∨ ◇≥3(◇≥3(p1 ∧ p0 ↔ p1 ∧ p0) ∧ ◇p1) ∧ ¬p0) ∨ ◇(p0 ∨ ◇≥3(◇≤2(p1 ∧ ¬p0 ∨ ¬p0) ∧ □p1 ∧ ◇p1) ∧ ¬p0 ∧ p0) ∧ □(□(p1 ∧ p0 ∧ ◇≤3(p1) → ◇(p0 ∧ p1 ∧ p0 → p0 ∧ ¬p0) ∧ ◇≥5(p0 ∧ ¬p1 ∧ p0 ↔ ¬p0 ∧ p1 ∧ p0)) ∧ p1))",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -4860,22 +4864,24 @@
   {
     "formula": "¬p1 ∧ ¬p1 ∧ p0 ↔ p0 ∧ p0 ∧ ¬p0 ↔ ¬p0",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 3,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 5,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 3,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 5,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -5078,22 +5084,24 @@
   {
     "formula": "¬(¬p1 ∧ ¬p1 ∧ p0 ↔ p0 ∧ p0 ∧ ¬p0 ↔ ¬p0)",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 3,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 5,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 3,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 5,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -5296,22 +5304,24 @@
   {
     "formula": "◇≤2(¬p6 ∧ p5 ∨ ¬p8 ∧ p1) ∧ p6 ∨ ¬p3 ∧ □(p7 ∧ ¬p3 ∨ p0 ∧ p1 ∧ p8 ∨ p6 ∧ p4) ∧ ¬p3 ∨ ¬p7 ∧ ¬p2 ∧ ◇≥4(p4 ∧ p2 ∨ ¬p1 ∧ p0 ∧ p0 ∨ p7 ∨ p4) ∨ ◇(p5 ∧ ¬p5 ∧ ¬p2 ∨ p9 ∧ p9 ∨ ¬p0 ∧ ¬p9 ∧ ¬p9 ∨ ¬p8 ∨ p5 ∧ ¬p0 ∧ p3) ∧ ◇¬p7 ∨ □(p2 ∨ ¬p9 ∧ p1) ∧ □p4 ∧ ¬p5",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 5,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 10,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 5,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 10,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -5514,22 +5524,24 @@
   {
     "formula": "¬(◇≤2(¬p6 ∧ p5 ∨ ¬p8 ∧ p1) ∧ p6 ∨ ¬p3 ∧ □(p7 ∧ ¬p3 ∨ p0 ∧ p1 ∧ p8 ∨ p6 ∧ p4) ∧ ¬p3 ∨ ¬p7 ∧ ¬p2 ∧ ◇≥4(p4 ∧ p2 ∨ ¬p1 ∧ p0 ∧ p0 ∨ p7 ∨ p4) ∨ ◇(p5 ∧ ¬p5 ∧ ¬p2 ∨ p9 ∧ p9 ∨ ¬p0 ∧ ¬p9 ∧ ¬p9 ∨ ¬p8 ∨ p5 ∧ ¬p0 ∧ p3) ∧ ◇¬p7 ∨ □(p2 ∨ ¬p9 ∧ p1) ∧ □p4 ∧ ¬p5)",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 5,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 10,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 5,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 10,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -5732,22 +5744,24 @@
   {
     "formula": "□(p0 ∧ p1) ∧ ◇≥5(p1 ∧ ¬p1 ∨ p0 ∧ p1) ∨ □(p1 ∨ p1 ∧ p1) ∧ □(p0 ∧ p0)",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -5950,22 +5964,24 @@
   {
     "formula": "¬(□(p0 ∧ p1) ∧ ◇≥5(p1 ∧ ¬p1 ∨ p0 ∧ p1) ∨ □(p1 ∨ p1 ∧ p1) ∧ □(p0 ∧ p0))",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -6168,22 +6184,24 @@
   {
     "formula": "p3 ∧ ¬p3 ∧ □(□(¬p1 ∧ ¬p3 ∧ □(¬p0 ∨ p1 ∧ p3)) ↔ ◇≤3(◇(¬p1 ∧ ¬p2 ∨ p3 ∧ ¬p3 ∧ p1) → ◇≤5(p0 ∨ ¬p0 ∧ p2 ∧ p3) ∧ ◇(p3 ∧ ¬p0 ∨ p0))) ∨ p1 ∧ □(◇≤4(□(p0 ∨ ¬p0))) ∧ □(p1 ∧ ◇≥2 ¬p2 ∧ ¬p0)",
     "setting": {
-      "num_props": 4,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 10,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 10,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -6386,22 +6404,24 @@
   {
     "formula": "¬(p3 ∧ ¬p3 ∧ □(□(¬p1 ∧ ¬p3 ∧ □(¬p0 ∨ p1 ∧ p3)) ↔ ◇≤3(◇(¬p1 ∧ ¬p2 ∨ p3 ∧ ¬p3 ∧ p1) → ◇≤5(p0 ∨ ¬p0 ∧ p2 ∧ p3) ∧ ◇(p3 ∧ ¬p0 ∨ p0))) ∨ p1 ∧ □(◇≤4(□(p0 ∨ ¬p0))) ∧ □(p1 ∧ ◇≥2 ¬p2 ∧ ¬p0))",
     "setting": {
-      "num_props": 4,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 10,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 10,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -6604,22 +6624,24 @@
   {
     "formula": "◇≤4(◇(¬p0 ∨ p0 ∧ p1) ↔ ◇(¬p0 ∧ p0 ∨ p0 ∧ p1 ∨ p0) ↔ ◇(p0 ∧ p1 ∨ p1 ∧ p1 ∨ p1 ∧ p1 ∨ p0 ∧ p1 ∨ p0 ∧ p1) ∧ ◇≥2(p1 ∨ ¬p0 ∧ p1)) ∨ ◇≤2 p1 ∧ ◇≤4(◇≥2(p1 ∧ ¬p0 ∨ p1 ∧ p1 ∨ p1 ∧ p0 ∨ p0)) ∨ p0 ∧ ◇≥2(p0 ∧ □(p1 ∨ p1 ∧ p1 ∨ p0 ∨ p0 ∨ p1) ∨ ◇≤3(p1 ∨ p0) ∨ ◇≥2(p0 ∧ p1 ∨ p0 ∧ p0 ∨ p0 ∨ ¬p1) ∨ □(p1 ∨ p0 ∨ p1 ∧ p0 ∨ p1 ∨ p1) ∧ ◇(¬p1 ∨ ¬p0 ∨ ¬p0 ∨ p0 ∧ p1 ∨ p0)) ∨ ◇≤5(□(p1 ∧ ¬p0) ∨ ◇(p1 ↔ p0 ∧ p1) ∨ □(¬p1)) ∧ p0 ∨ ◇≤3(◇≤4(p1) ∧ □(p0 ∨ p0 ∧ p0) → ◇≤3(p0 ∧ p1) → ◇≤5(p0 ∨ p0 ∨ ¬p0 ∨ p1 ∧ p0) ∧ ◇≤5(p0 ∨ p1 ∧ p1 ∨ p0 ∧ p1 ∨ p0 ∧ p1 ∨ p0 ∧ ¬p0) → ◇(p1 ∨ p1 ∧ ¬p0 ∨ p1))",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -6822,22 +6844,24 @@
   {
     "formula": "¬(◇≤4(◇(¬p0 ∨ p0 ∧ p1) ↔ ◇(¬p0 ∧ p0 ∨ p0 ∧ p1 ∨ p0) ↔ ◇(p0 ∧ p1 ∨ p1 ∧ p1 ∨ p1 ∧ p1 ∨ p0 ∧ p1 ∨ p0 ∧ p1) ∧ ◇≥2(p1 ∨ ¬p0 ∧ p1)) ∨ ◇≤2 p1 ∧ ◇≤4(◇≥2(p1 ∧ ¬p0 ∨ p1 ∧ p1 ∨ p1 ∧ p0 ∨ p0)) ∨ p0 ∧ ◇≥2(p0 ∧ □(p1 ∨ p1 ∧ p1 ∨ p0 ∨ p0 ∨ p1) ∨ ◇≤3(p1 ∨ p0) ∨ ◇≥2(p0 ∧ p1 ∨ p0 ∧ p0 ∨ p0 ∨ ¬p1) ∨ □(p1 ∨ p0 ∨ p1 ∧ p0 ∨ p1 ∨ p1) ∧ ◇(¬p1 ∨ ¬p0 ∨ ¬p0 ∨ p0 ∧ p1 ∨ p0)) ∨ ◇≤5(□(p1 ∧ ¬p0) ∨ ◇(p1 ↔ p0 ∧ p1) ∨ □(¬p1)) ∧ p0 ∨ ◇≤3(◇≤4(p1) ∧ □(p0 ∨ p0 ∧ p0) → ◇≤3(p0 ∧ p1) → ◇≤5(p0 ∨ p0 ∨ ¬p0 ∨ p1 ∧ p0) ∧ ◇≤5(p0 ∨ p1 ∧ p1 ∨ p0 ∧ p1 ∨ p0 ∧ p1 ∨ p0 ∧ ¬p0) → ◇(p1 ∨ p1 ∧ ¬p0 ∨ p1)))",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -7040,22 +7064,24 @@
   {
     "formula": "□(p5 ∧ □(◇(p0 ∧ p4 ∨ p9)) ∨ ◇≤5(p1 ∧ ◇(p7 ∨ p0 ∧ ¬p6 ∧ p2) ∧ p6) ∧ p3) ∧ p3 ∧ p8 ∨ ◇(◇(□(p4 ↔ p7 ∧ p7) ∧ ◇(p2 ∧ p9 ∧ ¬p0 ∨ p8)) ∧ p5)",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        1,
-        2
-      ],
-      "depth": 3,
-      "numer_neg": 5,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          1,
+          2
+        ],
+        "depth": 3,
+        "numer_neg": 5,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -7258,22 +7284,24 @@
   {
     "formula": "¬(□(p5 ∧ □(◇(p0 ∧ p4 ∨ p9)) ∨ ◇≤5(p1 ∧ ◇(p7 ∨ p0 ∧ ¬p6 ∧ p2) ∧ p6) ∧ p3) ∧ p3 ∧ p8 ∨ ◇(◇(□(p4 ↔ p7 ∧ p7) ∧ ◇(p2 ∧ p9 ∧ ¬p0 ∨ p8)) ∧ p5))",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        1,
-        2
-      ],
-      "depth": 3,
-      "numer_neg": 5,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          1,
+          2
+        ],
+        "depth": 3,
+        "numer_neg": 5,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -7476,22 +7504,24 @@
   {
     "formula": "p2 → p1 ∧ p0 → p3 ∧ p3",
     "setting": {
-      "num_props": 4,
-      "conj_size": 2,
-      "disj_size": 3,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 0,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 2,
+        "disj_size": 3,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 0,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -7694,22 +7724,24 @@
   {
     "formula": "¬(p2 → p1 ∧ p0 → p3 ∧ p3)",
     "setting": {
-      "num_props": 4,
-      "conj_size": 2,
-      "disj_size": 3,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 0,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 2,
+        "disj_size": 3,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 0,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -7912,22 +7944,24 @@
   {
     "formula": "p1 ∧ □(◇≥4(p1 ∧ p3) ∧ □(p3 ↔ p0)) ∨ □(□(p3 ∧ p0) ∨ ◇(p0 ∧ p3 ∨ p2 ∧ p0) ∧ □p3)",
     "setting": {
-      "num_props": 4,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        1,
-        2
-      ],
-      "depth": 2,
-      "numer_neg": 0,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          1,
+          2
+        ],
+        "depth": 2,
+        "numer_neg": 0,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -8130,22 +8164,24 @@
   {
     "formula": "¬(p1 ∧ □(◇≥4(p1 ∧ p3) ∧ □(p3 ↔ p0)) ∨ □(□(p3 ∧ p0) ∨ ◇(p0 ∧ p3 ∨ p2 ∧ p0) ∧ □p3))",
     "setting": {
-      "num_props": 4,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        1,
-        2
-      ],
-      "depth": 2,
-      "numer_neg": 0,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          1,
+          2
+        ],
+        "depth": 2,
+        "numer_neg": 0,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -8348,22 +8384,24 @@
   {
     "formula": "p0 ∧ □(p0 ∧ ◇(¬p1 ∨ p2) ∨ ◇≤3 ¬p1 ∧ ◇(p4 ∧ p0) ∨ ◇(p4 ∧ p2) ∨ □p2 ∧ ◇≤4(p0 ∨ p0 ∨ p0 ∨ p2)) ∨ ◇(□(p2 ∨ p1 ∧ p3) ∧ ◇≥2 p0 ∨ □(p0 ∧ ¬p1) ∨ ◇(p0 ∨ p1 ∧ ¬p1 ∨ p3 ∨ p4 ∧ p2 ∨ ¬p1) ∨ □(¬p4 ∧ p2 ∨ p1 ∧ p1 ∨ p2) ∨ p2 ∧ □(p4 ∧ p3 ∨ p4 ∧ p0 ∨ p0 ∧ p4)) ∧ ◇(p1 ∧ p1 ∨ ◇p1 ∧ p0 ∨ ◇¬p3) ∨ ◇(□(p2 ∨ p1 ∨ p0 ∨ p1 ∧ p3 ∨ p1 ∧ ¬p2) ∨ ◇≤4(p2 ∨ p1 ∧ p0 ∨ p2 ∧ p0 ∨ p2 ∧ p3 ∨ ¬p2) ∧ p3 ∨ □(p4 ∧ p1)) ∨ ◇≥4 p1 ∧ ◇(□(p3 ∧ p3 ∨ p4) ∨ □(¬p3 ∨ ¬p4) ∧ □(p1 ∧ p0 ↔ p3 ∧ p3 ↔ ¬p4 ∧ p1 ↔ p4 ↔ p1) ∨ □(p0 → p1 → p2 ∧ p0 → p4) ∨ □(p4 ∧ p0 ∨ p3 ∧ p3 ∨ ¬p3 ∧ p3 ∨ p1 ∧ p0) ∨ ◇≥5(p2 ∧ p3 ∨ p1 ∧ p2 ∨ p0 ∧ p4 ∨ p0 ∨ p2 ∧ p1)) ∨ □(◇≤2(p4 ∧ p2 ∨ p4 ∧ p2 ∨ p2 ∧ p2 ∨ p4 ∨ p4 ∧ p3) ∧ □(p4 ∧ p1 ∨ p2 ∨ p2)) ∧ ◇≥2 p4",
     "setting": {
-      "num_props": 5,
-      "conj_size": 2,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 2,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -8566,22 +8604,24 @@
   {
     "formula": "¬(p0 ∧ □(p0 ∧ ◇(¬p1 ∨ p2) ∨ ◇≤3 ¬p1 ∧ ◇(p4 ∧ p0) ∨ ◇(p4 ∧ p2) ∨ □p2 ∧ ◇≤4(p0 ∨ p0 ∨ p0 ∨ p2)) ∨ ◇(□(p2 ∨ p1 ∧ p3) ∧ ◇≥2 p0 ∨ □(p0 ∧ ¬p1) ∨ ◇(p0 ∨ p1 ∧ ¬p1 ∨ p3 ∨ p4 ∧ p2 ∨ ¬p1) ∨ □(¬p4 ∧ p2 ∨ p1 ∧ p1 ∨ p2) ∨ p2 ∧ □(p4 ∧ p3 ∨ p4 ∧ p0 ∨ p0 ∧ p4)) ∧ ◇(p1 ∧ p1 ∨ ◇p1 ∧ p0 ∨ ◇¬p3) ∨ ◇(□(p2 ∨ p1 ∨ p0 ∨ p1 ∧ p3 ∨ p1 ∧ ¬p2) ∨ ◇≤4(p2 ∨ p1 ∧ p0 ∨ p2 ∧ p0 ∨ p2 ∧ p3 ∨ ¬p2) ∧ p3 ∨ □(p4 ∧ p1)) ∨ ◇≥4 p1 ∧ ◇(□(p3 ∧ p3 ∨ p4) ∨ □(¬p3 ∨ ¬p4) ∧ □(p1 ∧ p0 ↔ p3 ∧ p3 ↔ ¬p4 ∧ p1 ↔ p4 ↔ p1) ∨ □(p0 → p1 → p2 ∧ p0 → p4) ∨ □(p4 ∧ p0 ∨ p3 ∧ p3 ∨ ¬p3 ∧ p3 ∨ p1 ∧ p0) ∨ ◇≥5(p2 ∧ p3 ∨ p1 ∧ p2 ∨ p0 ∧ p4 ∨ p0 ∨ p2 ∧ p1)) ∨ □(◇≤2(p4 ∧ p2 ∨ p4 ∧ p2 ∨ p2 ∧ p2 ∨ p4 ∨ p4 ∧ p3) ∧ □(p4 ∧ p1 ∨ p2 ∨ p2)) ∧ ◇≥2 p4)",
     "setting": {
-      "num_props": 5,
-      "conj_size": 2,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 2,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -8784,22 +8824,24 @@
   {
     "formula": "p4 ∧ ◇(p3 ∧ p0 ∧ p3 ↔ p1 ∧ p2 ∧ p0) ∧ p3 ∧ ◇≤3(p1) ∧ p0 → p4 ∧ p3 ∧ ◇≤4 p2 ∧ ◇(p3 ∨ p2 ∧ p2 ∧ p0 ∧ p4 ∧ p3) ∧ ◇p4",
     "setting": {
-      "num_props": 5,
-      "conj_size": 5,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 0,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 5,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 0,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -9002,22 +9044,24 @@
   {
     "formula": "¬(p4 ∧ ◇(p3 ∧ p0 ∧ p3 ↔ p1 ∧ p2 ∧ p0) ∧ p3 ∧ ◇≤3(p1) ∧ p0 → p4 ∧ p3 ∧ ◇≤4 p2 ∧ ◇(p3 ∨ p2 ∧ p2 ∧ p0 ∧ p4 ∧ p3) ∧ ◇p4)",
     "setting": {
-      "num_props": 5,
-      "conj_size": 5,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 0,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 5,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 0,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -9220,22 +9264,24 @@
   {
     "formula": "p0 ∧ p3 ∧ □(◇≤5(p2 ∨ p0 ∧ ¬p1 ∧ p4) → □(p0 ∧ p0 ∧ p4)) ∨ p2 ∧ p4 ∧ ◇(◇(p2 ∧ p4 ∨ p4 ∧ p1) ∧ □(p1 ↔ p3 ∧ p1) ∧ p1 ∨ □(p2 → p4 ∧ p1 ∧ p2))",
     "setting": {
-      "num_props": 5,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -9438,22 +9484,24 @@
   {
     "formula": "¬(p0 ∧ p3 ∧ □(◇≤5(p2 ∨ p0 ∧ ¬p1 ∧ p4) → □(p0 ∧ p0 ∧ p4)) ∨ p2 ∧ p4 ∧ ◇(◇(p2 ∧ p4 ∨ p4 ∧ p1) ∧ □(p1 ↔ p3 ∧ p1) ∧ p1 ∨ □(p2 → p4 ∧ p1 ∧ p2)))",
     "setting": {
-      "num_props": 5,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -9656,22 +9704,24 @@
   {
     "formula": "◇≥5 ¬p3 ∧ ◇(p9 ∨ ¬p8 ∧ ¬p0 ∨ ¬p9) ∨ ◇(¬p1 ∧ p3 ∨ p8 ∧ ¬p4 ∨ p6 ∧ ¬p2) ∧ p0 ∨ ◇(p4) ∧ ◇≥2(p8 ∧ p7 ∨ ¬p1 ∨ p5)",
     "setting": {
-      "num_props": 10,
-      "conj_size": 2,
-      "disj_size": 3,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 10,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 2,
+        "disj_size": 3,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 10,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -9874,22 +9924,24 @@
   {
     "formula": "¬(◇≥5 ¬p3 ∧ ◇(p9 ∨ ¬p8 ∧ ¬p0 ∨ ¬p9) ∨ ◇(¬p1 ∧ p3 ∨ p8 ∧ ¬p4 ∨ p6 ∧ ¬p2) ∧ p0 ∨ ◇(p4) ∧ ◇≥2(p8 ∧ p7 ∨ ¬p1 ∨ p5))",
     "setting": {
-      "num_props": 10,
-      "conj_size": 2,
-      "disj_size": 3,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 10,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 2,
+        "disj_size": 3,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 10,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -10092,22 +10144,24 @@
   {
     "formula": "◇≥4(◇≤4(p6 ∨ ¬p9)) ∧ p0 ∧ □(¬p6 ∨ ◇p7 ∧ p9 ∧ ◇≥3(p8 ∧ p3 ∧ ¬p3 ↔ ¬p7 ∧ p7 ∧ p2 ↔ p7 ∧ p8 ∧ p9)) ∨ ◇(◇≥5(p5 ∨ p9 ∧ p4 ∧ ¬p4) ∧ ◇¬p6 ∨ ◇≥2 p0 ∧ ◇≥4(p4 ∧ p0 ∧ ¬p4 → p3 ∧ p9 → p7 ∧ ¬p6 ∧ p0) ∧ ◇(¬p0 ∨ p3 ∧ ¬p7)) ∧ ◇≤4 p7 ∨ ◇(◇≥5(p8 ∧ ¬p0 ∧ p3 ∨ ¬p8 ∧ p6 ∧ ¬p1) ∨ ◇(¬p1 ∨ p2 ∧ p6 ∨ p2 ∧ p4) ∧ ◇≥4(p5) ∧ ◇≥2 p2 ∨ ◇≤4(p1)) ∧ ◇(p4) ∧ p0",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 3,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 3,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -10310,22 +10364,24 @@
   {
     "formula": "¬(◇≥4(◇≤4(p6 ∨ ¬p9)) ∧ p0 ∧ □(¬p6 ∨ ◇p7 ∧ p9 ∧ ◇≥3(p8 ∧ p3 ∧ ¬p3 ↔ ¬p7 ∧ p7 ∧ p2 ↔ p7 ∧ p8 ∧ p9)) ∨ ◇(◇≥5(p5 ∨ p9 ∧ p4 ∧ ¬p4) ∧ ◇¬p6 ∨ ◇≥2 p0 ∧ ◇≥4(p4 ∧ p0 ∧ ¬p4 → p3 ∧ p9 → p7 ∧ ¬p6 ∧ p0) ∧ ◇(¬p0 ∨ p3 ∧ ¬p7)) ∧ ◇≤4 p7 ∨ ◇(◇≥5(p8 ∧ ¬p0 ∧ p3 ∨ ¬p8 ∧ p6 ∧ ¬p1) ∨ ◇(¬p1 ∨ p2 ∧ p6 ∨ p2 ∧ p4) ∧ ◇≥4(p5) ∧ ◇≥2 p2 ∨ ◇≤4(p1)) ∧ ◇(p4) ∧ p0)",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 3,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 3,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -10528,22 +10584,24 @@
   {
     "formula": "◇(¬p0 ∧ p1 ∧ ¬p2) ∧ ◇¬p0 ∧ p2 ∧ ¬p1 ∧ p2 ∨ ◇≤5 ¬p2 ∧ ◇≥5(p3 ∧ ¬p1 ∧ p2 ∨ p3 ∧ ¬p0 ∨ p1) ∧ ◇(¬p1 ∧ p1 ∧ p0 ∨ p2 ∧ p2 ∧ p0 ∨ ¬p3 ∧ ¬p3) ∧ ¬p0 ∧ p2 ∨ ◇≥4(¬p0 ∧ ¬p0 ∧ ¬p0 ∨ ¬p3 ∨ p1 ∧ ¬p3 ∧ ¬p3 ∧ p3 ∧ p1 ∨ p1 ∧ ¬p3 ∧ ¬p2 ∧ ¬p0 ∨ ¬p0 ∧ ¬p3 ∧ p1) ∨ ◇≥2 p2 ∧ ◇≤4(¬p2 ∧ ¬p2 ∧ p2 ∧ p0 ∨ p3 ∨ p2 ∧ p2 ∧ p0 ∧ ¬p1 ∨ ¬p0 ∧ p1 ∧ ¬p0 ∧ p2 ∨ p2 ∧ p3 ∧ p1 ∧ ¬p2) ∧ ◇≥2(¬p0 ∧ p1 ∨ ¬p0 ∧ ¬p0 ∧ p3) ∨ ◇≥2(¬p0 ∧ p3 ∧ p3 ∧ p2 ∧ ¬p1) ∧ ◇≥5(p0 ∧ p2 ∧ ¬p0 ∧ p0 ∧ ¬p0 ∨ ¬p3 ∧ ¬p1 ∧ p1 ∧ ¬p2 ∨ ¬p1 ∧ p3 ∧ p1 ∧ p3 ∧ p1)",
     "setting": {
-      "num_props": 4,
-      "conj_size": 5,
-      "disj_size": 5,
-      "w_nest": [
-        6,
-        1,
-        2
-      ],
-      "depth": 1,
-      "numer_neg": 10,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 5,
+        "disj_size": 5,
+        "w_nest": [
+          6,
+          1,
+          2
+        ],
+        "depth": 1,
+        "numer_neg": 10,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -10746,22 +10804,24 @@
   {
     "formula": "¬(◇(¬p0 ∧ p1 ∧ ¬p2) ∧ ◇¬p0 ∧ p2 ∧ ¬p1 ∧ p2 ∨ ◇≤5 ¬p2 ∧ ◇≥5(p3 ∧ ¬p1 ∧ p2 ∨ p3 ∧ ¬p0 ∨ p1) ∧ ◇(¬p1 ∧ p1 ∧ p0 ∨ p2 ∧ p2 ∧ p0 ∨ ¬p3 ∧ ¬p3) ∧ ¬p0 ∧ p2 ∨ ◇≥4(¬p0 ∧ ¬p0 ∧ ¬p0 ∨ ¬p3 ∨ p1 ∧ ¬p3 ∧ ¬p3 ∧ p3 ∧ p1 ∨ p1 ∧ ¬p3 ∧ ¬p2 ∧ ¬p0 ∨ ¬p0 ∧ ¬p3 ∧ p1) ∨ ◇≥2 p2 ∧ ◇≤4(¬p2 ∧ ¬p2 ∧ p2 ∧ p0 ∨ p3 ∨ p2 ∧ p2 ∧ p0 ∧ ¬p1 ∨ ¬p0 ∧ p1 ∧ ¬p0 ∧ p2 ∨ p2 ∧ p3 ∧ p1 ∧ ¬p2) ∧ ◇≥2(¬p0 ∧ p1 ∨ ¬p0 ∧ ¬p0 ∧ p3) ∨ ◇≥2(¬p0 ∧ p3 ∧ p3 ∧ p2 ∧ ¬p1) ∧ ◇≥5(p0 ∧ p2 ∧ ¬p0 ∧ p0 ∧ ¬p0 ∨ ¬p3 ∧ ¬p1 ∧ p1 ∧ ¬p2 ∨ ¬p1 ∧ p3 ∧ p1 ∧ p3 ∧ p1))",
     "setting": {
-      "num_props": 4,
-      "conj_size": 5,
-      "disj_size": 5,
-      "w_nest": [
-        6,
-        1,
-        2
-      ],
-      "depth": 1,
-      "numer_neg": 10,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 5,
+        "disj_size": 5,
+        "w_nest": [
+          6,
+          1,
+          2
+        ],
+        "depth": 1,
+        "numer_neg": 10,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -10964,22 +11024,24 @@
   {
     "formula": "p4 ∧ p3 ∨ p3 ∧ p1 ∨ p0 ∧ p2 ∨ p1 ∨ p2 ∧ p4",
     "setting": {
-      "num_props": 5,
-      "conj_size": 2,
-      "disj_size": 5,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 0,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 2,
+        "disj_size": 5,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 0,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -11182,22 +11244,24 @@
   {
     "formula": "¬(p4 ∧ p3 ∨ p3 ∧ p1 ∨ p0 ∧ p2 ∨ p1 ∨ p2 ∧ p4)",
     "setting": {
-      "num_props": 5,
-      "conj_size": 2,
-      "disj_size": 5,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 0,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 2,
+        "disj_size": 5,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 0,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -11400,22 +11464,24 @@
   {
     "formula": "p3 ∧ ¬p4 ∧ p0 ∧ p3 ∨ p1 ∧ ¬p3 ∧ p1 ∨ ¬p1 ∧ p2 ∧ ¬p3 ∧ ¬p1 ∧ p2",
     "setting": {
-      "num_props": 5,
-      "conj_size": 5,
-      "disj_size": 3,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 10,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 5,
+        "disj_size": 3,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 10,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -11618,22 +11684,24 @@
   {
     "formula": "¬(p3 ∧ ¬p4 ∧ p0 ∧ p3 ∨ p1 ∧ ¬p3 ∧ p1 ∨ ¬p1 ∧ p2 ∧ ¬p3 ∧ ¬p1 ∧ p2)",
     "setting": {
-      "num_props": 5,
-      "conj_size": 5,
-      "disj_size": 3,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 10,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 5,
+        "disj_size": 3,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 10,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -11836,22 +11904,24 @@
   {
     "formula": "◇≤3(□¬p1 ∧ p0 ∨ p1 ∧ ◇≥3(p1 ∧ p2 ∧ p2 → p1 ∧ p1 → p1 ∧ p0 ∧ p1 → p0) ∧ p1 ∨ ◇(p2 ∧ p0 ∧ p1 ∧ p1 ∧ p2 ∨ p0 ∨ p2 ∨ p1 ∨ ¬p2) ∧ ◇≤4 p1 ∧ ◇≤3 p1 ∨ ◇≥3(p0) ∧ p0 ∧ □p2) ∧ ◇≤5(□(p2 ∧ p2 ∨ p2 ∧ p2 ∧ ¬p0 ∧ p0 ∧ p2 ∨ p1 ∧ p1) ∨ ◇(p2 ∧ p2 ∧ p2 ∧ p0 ∧ p0 ∨ p1 ∧ p1 ∧ p2 ∧ p1 ∧ ¬p0 ∨ p1 ∨ p1 ∧ ¬p0) ∧ p0 ∧ ◇≤4 p1 ∧ □p2 ∨ ◇≤3(p0 ∧ p2 ∧ p0 ∨ p1 ∧ p0 ∧ p0 ∧ p1) ∧ ◇(p0 ∧ p1 ↔ p0 ∧ p2 ∧ p2 ↔ p0 ∧ p1 ∧ p1 ↔ p1 ∧ p1 ∧ p1 ∧ p0 ∧ p2 ↔ p2 ∧ p1 ∧ p2 ∧ p2 ∧ ¬p0) ∧ p2 ∧ ◇(p1 ∧ p2 ∧ p0 ∧ p1 ∨ p0 ∧ p1 ∧ p0 ∧ p1 ∨ ¬p0 ∨ p2 ∧ ¬p2 ∧ p2 ∨ p1) ∨ ◇(p1 ∧ ¬p2 ∨ p0 ∧ ¬p1 ∧ p0 ∧ p1 ∧ p0 ∨ p0 ∧ p2 ∧ p2 ∧ p2 ∧ p1 ∨ p2 ∧ p0)) ∧ p1 ∧ p1 ∧ p1 ∨ ◇(p0 ∧ p1 ∧ ◇(p2 ∧ p0 ∧ p0 ∧ p2 ∨ p1 ∧ p0 ∧ p0 ∧ p0 ∨ p1 ∧ p2 ∧ p0 ∧ p0) ∧ □p0 ∧ p1 ↔ ◇≥4 p1 ∧ p2 ∧ ◇≥4 p2 ∧ ◇≤3(p0 ∧ p0 ∧ p1 ∧ p2 ∨ p0 ∧ p0 ∨ p0 ∧ p2 ∨ p0 ∧ p0) ∧ □(p2 ∧ p1) ↔ ◇≤4(p2 ∧ p1 ∧ p2 ∧ p0 ∨ p0 ∧ p2 ∧ p0 ∧ p0 ∧ p2 ∨ p1 ∧ p2 ∧ ¬p1) ∧ p0 ∧ p1 ∧ ◇≤3(p0 ∧ p2 ∧ p1 ∧ p0 ↔ p1 ∧ p0 ∧ p1 ↔ p0 ↔ p1) ∧ p1 ↔ ◇p1 ∧ ◇≥2(p1 ∨ p0 ∧ p1 ∧ p0 ∧ p1 ∨ ⊤ ∧ ¬p2 ∧ p1 ∨ p0) ∧ ◇≥3(p0) ↔ ¬p2 ∧ □(¬p1 ∨ p1 ∨ p2 ∨ p2 ∨ p2 ∧ p1) ∧ □p0) ∨ ◇p0 ∧ □p2 ∧ ◇(◇(p2 ∧ p0 ∧ p2 ∨ p2 ∧ p2 ∨ p1 ∧ p0 ∧ p1 ∧ p2 ∨ p2) ∧ p2 ∧ □(p1 ∧ p1 ∧ p0 ∧ p1 ∨ p1 ∧ p0 ∧ ¬p0 ∧ p1 ∨ p0 ∨ p0 ∧ p1 ∧ p0 ∧ p1 ∨ p0 ∧ p2 ∧ p0) ∧ p1 ∨ ◇≤2 p0 ∧ ◇≥3(p0 ∧ p0 ∧ p2 ∨ ¬p2 ∧ p1 ∧ p2 ∧ p1 ∧ ¬p0 ∨ p0 ∧ p1 ∧ ¬p0 ∧ p0) ∧ □(p1 ∧ p1 ∧ p2 ∧ p1 ∧ p1 ∨ p1 ∧ p2 ∧ p1 ∨ p1 ∧ p2 ∧ p1 ∧ p1 ∧ p2 ∨ p2 ∧ p1 ∧ p1 ∧ ¬p1 ∧ p0 ∨ p0 ∧ ¬p1 ∧ ¬p1 ∧ p2 ∧ p0) ∨ p2 ∧ p0 ∧ p2 ∧ □(p1 ∧ p1 ∧ p2) ∨ □(¬p1 ∧ p2 ∧ p0 ∨ p1) ∨ ◇≥2(¬p1 ∧ p2 ∧ p1 ∧ p0) ∧ ◇≥5(¬p2 ∧ p1 ∧ p1) ∧ p2) ∧ p0 ∧ □(p1 ∧ p1 ∨ ◇≥5(p0 ∧ p1 ∧ ¬p1 ∧ p0 ∨ p2 ∧ p2 ∧ p1 ∧ p2 ∧ p0 ∨ p1 ∧ ¬p2) ∧ □p2 ∨ ◇≥2(⊤ ∧ p1 ∧ p2 ∨ p2) ∧ p0 ∧ ◇(p0 ∧ p1 ∧ p2 ∧ p0 ∧ p0 → ¬p0) ∧ p1 ∨ p1 ∧ ◇p1 ∨ ◇≤5(p2 ∧ p0 ∧ p1 ∧ p0 ∧ p0 ∨ p1 ∧ p2 ∨ ⊤ ∧ ¬p2 ∨ p1 ∧ p0 ∧ p0 ∨ p1 ∧ p0) ∧ p2) ∨ ◇(p2 ∧ ◇(p1 ∧ p1 ∧ p0 ∧ p2) ∧ ◇p1 ∨ ◇≤3(p2 ∧ p2 ∧ p2 ∧ p2 ∧ p1) ∨ □(p1 ∨ p0 ∧ ¬p0 ∧ p2 ∨ p2 ∨ p2 ∧ p2) ∨ p0 ∧ □(p2 ∧ p1 ∧ p2 ∨ p0 ∧ p0 ∧ ¬p2 ∨ p1 ∧ p0 ∨ p2 ∨ p0) ∧ ◇(p0 ∧ p2 ∧ p0 ∨ p1 ∧ p2 ∧ p1 ∨ p1 ∧ p1 ∨ p2 ∧ ¬p2 ∧ p0 ∧ p1 ∨ ¬p1) ∧ ◇(p1 ∧ p2 ∨ p0 ∧ p1 ∧ p1 ∨ p1 ∧ p0 ∧ p2 ∧ ⊤ ∨ p0) ∧ p1 ∨ ◇≥3(p1)) ∨ ◇(p1 ∧ p2 ∧ p0 ∧ p1 ∨ p2 ∧ p2 ∨ p1 ∧ p2 ∧ p1 ∨ □(¬p2 ∧ p2 ∧ p0 ∧ p1 ∧ p0 ↔ p2 ∧ p2 ∧ p1 ∧ p1 ↔ p0 ∧ p1) ∧ p0 ∧ p1 ∧ ◇(p0 ∧ p1 ∧ p0 ∨ p0 ∧ p0 ∧ p0 ∨ p0 ∧ p1 ∧ p0 ∧ p2 ∧ p1) ∨ ◇(p2 ∧ p1 ∧ p2 ∨ p2)) ∧ p2 ∧ ◇≥2(◇≥5(p0 ∧ ⊤ ∧ p0 ∧ p2 ∨ p2 ∧ p0 ∧ p2 ∧ p1 ∨ p0) ∧ ◇≤5 p0) ∧ □(p2 ∧ p2 ∧ p1 ∧ ◇(p0 ∧ p0 ∧ p2 ∧ p0 ∨ p1 ∧ p1 ∨ p2 ∧ p2 ∧ p2 ∧ p0) ∧ p1 ∨ p2 ∧ p1 ∨ ◇≤3 p2 ∧ p1 ∧ □p2 ∧ ◇≤4(p2 ∧ p2) ∨ ◇≥5 p0 ∨ □(p2 ∧ p1 ∧ p0 ∧ p1 → p1 ∧ p0 ∧ p1))",
     "setting": {
-      "num_props": 3,
-      "conj_size": 5,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 3,
+        "conj_size": 5,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -12054,22 +12124,24 @@
   {
     "formula": "¬(◇≤3(□¬p1 ∧ p0 ∨ p1 ∧ ◇≥3(p1 ∧ p2 ∧ p2 → p1 ∧ p1 → p1 ∧ p0 ∧ p1 → p0) ∧ p1 ∨ ◇(p2 ∧ p0 ∧ p1 ∧ p1 ∧ p2 ∨ p0 ∨ p2 ∨ p1 ∨ ¬p2) ∧ ◇≤4 p1 ∧ ◇≤3 p1 ∨ ◇≥3(p0) ∧ p0 ∧ □p2) ∧ ◇≤5(□(p2 ∧ p2 ∨ p2 ∧ p2 ∧ ¬p0 ∧ p0 ∧ p2 ∨ p1 ∧ p1) ∨ ◇(p2 ∧ p2 ∧ p2 ∧ p0 ∧ p0 ∨ p1 ∧ p1 ∧ p2 ∧ p1 ∧ ¬p0 ∨ p1 ∨ p1 ∧ ¬p0) ∧ p0 ∧ ◇≤4 p1 ∧ □p2 ∨ ◇≤3(p0 ∧ p2 ∧ p0 ∨ p1 ∧ p0 ∧ p0 ∧ p1) ∧ ◇(p0 ∧ p1 ↔ p0 ∧ p2 ∧ p2 ↔ p0 ∧ p1 ∧ p1 ↔ p1 ∧ p1 ∧ p1 ∧ p0 ∧ p2 ↔ p2 ∧ p1 ∧ p2 ∧ p2 ∧ ¬p0) ∧ p2 ∧ ◇(p1 ∧ p2 ∧ p0 ∧ p1 ∨ p0 ∧ p1 ∧ p0 ∧ p1 ∨ ¬p0 ∨ p2 ∧ ¬p2 ∧ p2 ∨ p1) ∨ ◇(p1 ∧ ¬p2 ∨ p0 ∧ ¬p1 ∧ p0 ∧ p1 ∧ p0 ∨ p0 ∧ p2 ∧ p2 ∧ p2 ∧ p1 ∨ p2 ∧ p0)) ∧ p1 ∧ p1 ∧ p1 ∨ ◇(p0 ∧ p1 ∧ ◇(p2 ∧ p0 ∧ p0 ∧ p2 ∨ p1 ∧ p0 ∧ p0 ∧ p0 ∨ p1 ∧ p2 ∧ p0 ∧ p0) ∧ □p0 ∧ p1 ↔ ◇≥4 p1 ∧ p2 ∧ ◇≥4 p2 ∧ ◇≤3(p0 ∧ p0 ∧ p1 ∧ p2 ∨ p0 ∧ p0 ∨ p0 ∧ p2 ∨ p0 ∧ p0) ∧ □(p2 ∧ p1) ↔ ◇≤4(p2 ∧ p1 ∧ p2 ∧ p0 ∨ p0 ∧ p2 ∧ p0 ∧ p0 ∧ p2 ∨ p1 ∧ p2 ∧ ¬p1) ∧ p0 ∧ p1 ∧ ◇≤3(p0 ∧ p2 ∧ p1 ∧ p0 ↔ p1 ∧ p0 ∧ p1 ↔ p0 ↔ p1) ∧ p1 ↔ ◇p1 ∧ ◇≥2(p1 ∨ p0 ∧ p1 ∧ p0 ∧ p1 ∨ ⊤ ∧ ¬p2 ∧ p1 ∨ p0) ∧ ◇≥3(p0) ↔ ¬p2 ∧ □(¬p1 ∨ p1 ∨ p2 ∨ p2 ∨ p2 ∧ p1) ∧ □p0) ∨ ◇p0 ∧ □p2 ∧ ◇(◇(p2 ∧ p0 ∧ p2 ∨ p2 ∧ p2 ∨ p1 ∧ p0 ∧ p1 ∧ p2 ∨ p2) ∧ p2 ∧ □(p1 ∧ p1 ∧ p0 ∧ p1 ∨ p1 ∧ p0 ∧ ¬p0 ∧ p1 ∨ p0 ∨ p0 ∧ p1 ∧ p0 ∧ p1 ∨ p0 ∧ p2 ∧ p0) ∧ p1 ∨ ◇≤2 p0 ∧ ◇≥3(p0 ∧ p0 ∧ p2 ∨ ¬p2 ∧ p1 ∧ p2 ∧ p1 ∧ ¬p0 ∨ p0 ∧ p1 ∧ ¬p0 ∧ p0) ∧ □(p1 ∧ p1 ∧ p2 ∧ p1 ∧ p1 ∨ p1 ∧ p2 ∧ p1 ∨ p1 ∧ p2 ∧ p1 ∧ p1 ∧ p2 ∨ p2 ∧ p1 ∧ p1 ∧ ¬p1 ∧ p0 ∨ p0 ∧ ¬p1 ∧ ¬p1 ∧ p2 ∧ p0) ∨ p2 ∧ p0 ∧ p2 ∧ □(p1 ∧ p1 ∧ p2) ∨ □(¬p1 ∧ p2 ∧ p0 ∨ p1) ∨ ◇≥2(¬p1 ∧ p2 ∧ p1 ∧ p0) ∧ ◇≥5(¬p2 ∧ p1 ∧ p1) ∧ p2) ∧ p0 ∧ □(p1 ∧ p1 ∨ ◇≥5(p0 ∧ p1 ∧ ¬p1 ∧ p0 ∨ p2 ∧ p2 ∧ p1 ∧ p2 ∧ p0 ∨ p1 ∧ ¬p2) ∧ □p2 ∨ ◇≥2(⊤ ∧ p1 ∧ p2 ∨ p2) ∧ p0 ∧ ◇(p0 ∧ p1 ∧ p2 ∧ p0 ∧ p0 → ¬p0) ∧ p1 ∨ p1 ∧ ◇p1 ∨ ◇≤5(p2 ∧ p0 ∧ p1 ∧ p0 ∧ p0 ∨ p1 ∧ p2 ∨ ⊤ ∧ ¬p2 ∨ p1 ∧ p0 ∧ p0 ∨ p1 ∧ p0) ∧ p2) ∨ ◇(p2 ∧ ◇(p1 ∧ p1 ∧ p0 ∧ p2) ∧ ◇p1 ∨ ◇≤3(p2 ∧ p2 ∧ p2 ∧ p2 ∧ p1) ∨ □(p1 ∨ p0 ∧ ¬p0 ∧ p2 ∨ p2 ∨ p2 ∧ p2) ∨ p0 ∧ □(p2 ∧ p1 ∧ p2 ∨ p0 ∧ p0 ∧ ¬p2 ∨ p1 ∧ p0 ∨ p2 ∨ p0) ∧ ◇(p0 ∧ p2 ∧ p0 ∨ p1 ∧ p2 ∧ p1 ∨ p1 ∧ p1 ∨ p2 ∧ ¬p2 ∧ p0 ∧ p1 ∨ ¬p1) ∧ ◇(p1 ∧ p2 ∨ p0 ∧ p1 ∧ p1 ∨ p1 ∧ p0 ∧ p2 ∧ ⊤ ∨ p0) ∧ p1 ∨ ◇≥3(p1)) ∨ ◇(p1 ∧ p2 ∧ p0 ∧ p1 ∨ p2 ∧ p2 ∨ p1 ∧ p2 ∧ p1 ∨ □(¬p2 ∧ p2 ∧ p0 ∧ p1 ∧ p0 ↔ p2 ∧ p2 ∧ p1 ∧ p1 ↔ p0 ∧ p1) ∧ p0 ∧ p1 ∧ ◇(p0 ∧ p1 ∧ p0 ∨ p0 ∧ p0 ∧ p0 ∨ p0 ∧ p1 ∧ p0 ∧ p2 ∧ p1) ∨ ◇(p2 ∧ p1 ∧ p2 ∨ p2)) ∧ p2 ∧ ◇≥2(◇≥5(p0 ∧ ⊤ ∧ p0 ∧ p2 ∨ p2 ∧ p0 ∧ p2 ∧ p1 ∨ p0) ∧ ◇≤5 p0) ∧ □(p2 ∧ p2 ∧ p1 ∧ ◇(p0 ∧ p0 ∧ p2 ∧ p0 ∨ p1 ∧ p1 ∨ p2 ∧ p2 ∧ p2 ∧ p0) ∧ p1 ∨ p2 ∧ p1 ∨ ◇≤3 p2 ∧ p1 ∧ □p2 ∧ ◇≤4(p2 ∧ p2) ∨ ◇≥5 p0 ∨ □(p2 ∧ p1 ∧ p0 ∧ p1 → p1 ∧ p0 ∧ p1)))",
     "setting": {
-      "num_props": 3,
-      "conj_size": 5,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 3,
+        "conj_size": 5,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -12272,22 +12344,24 @@
   {
     "formula": "◇≤2(p4 ∨ p3 ∧ p1) ∨ p3 ∧ p4 ∧ ◇≥4 p0 ∧ ◇≥4(p2 ∧ p0 ∧ p4) ∧ ◇≥4(p2 ∧ p1 ∧ p3 ∧ p0)",
     "setting": {
-      "num_props": 5,
-      "conj_size": 5,
-      "disj_size": 2,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 0,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 5,
+        "disj_size": 2,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 0,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -12490,22 +12564,24 @@
   {
     "formula": "¬(◇≤2(p4 ∨ p3 ∧ p1) ∨ p3 ∧ p4 ∧ ◇≥4 p0 ∧ ◇≥4(p2 ∧ p0 ∧ p4) ∧ ◇≥4(p2 ∧ p1 ∧ p3 ∧ p0))",
     "setting": {
-      "num_props": 5,
-      "conj_size": 5,
-      "disj_size": 2,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 0,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 5,
+        "disj_size": 2,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 0,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -12708,22 +12784,24 @@
   {
     "formula": "p0 ∧ ◇≥4(◇(p0 ∧ ¬p1 ↔ p0)) ∨ □(◇(p0 ∧ p0) ∧ p0 ∨ □(¬p1 → p0 ∧ p0) ∧ ◇(p0 ∧ ¬p1)) ∧ p0",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -12926,22 +13004,24 @@
   {
     "formula": "¬(p0 ∧ ◇≥4(◇(p0 ∧ ¬p1 ↔ p0)) ∨ □(◇(p0 ∧ p0) ∧ p0 ∨ □(¬p1 → p0 ∧ p0) ∧ ◇(p0 ∧ ¬p1)) ∧ p0)",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -13144,22 +13224,24 @@
   {
     "formula": "◇≥4(◇(¬p0 ∧ p0) ∧ p1) ∧ p0 ∨ ◇(◇≥3(p0 ∨ p1 ∧ p1) ∧ ◇(p1) ∨ □(¬p0 ∨ p0)) ∧ p0",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -13362,22 +13444,24 @@
   {
     "formula": "¬(◇≥4(◇(¬p0 ∧ p0) ∧ p1) ∧ p0 ∨ ◇(◇≥3(p0 ∨ p1 ∧ p1) ∧ ◇(p1) ∨ □(¬p0 ∨ p0)) ∧ p0)",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 2,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 2,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -13580,22 +13664,24 @@
   {
     "formula": "◇(p0 ∧ ◇≤2(p0 ∧ ◇≥2(p0 ∧ p1 ∧ ¬p1) ∧ p0 ∨ p0 ∧ p0) ∧ ◇¬p1 ∨ ¬p0 ∧ ◇≥5 p0 ∨ ◇≥2 ¬p1 ∧ ◇≥2 p1 ∧ ◇≤2(p1 ∧ ¬p0 ∧ p0 ∨ p1 ∧ p1 ∧ ◇⊥ ∨ ◇≥3(p1) ∧ ◇≥3(p1 ↔ p1 ∧ p0 ∧ p0))) ∧ ◇≤2(◇(□(p0 ∧ ¬p0 ∧ p0 → p1) ∧ p1 ∧ ◇p1 ∨ ◇≥5(p0 ∨ p0 ∧ p1 ∧ p0 ∨ ¬p1) ∧ ◇p0 ∧ ◇(p1 ∧ p0 ∧ ¬p0))) ∨ p0 ∧ ◇≥2(¬p0 ∧ ◇(◇≥4(p1 ∧ ¬p1 ∧ ¬p0) → ◇≥5(p1 ∧ p0)) ∧ ◇≥2 ¬p1 ∨ ◇≥2(◇(¬p0 ∧ p0 ∧ p0) ∧ ◇(p0 ↔ p0 ∧ p1 ↔ p1 ∧ p1) ∨ ◇(p0 ∨ ¬p0)) ∨ ◇(◇(p1 ∧ p0))) ∧ □(◇≥3(◇≤3 ¬p1 ∧ p0) ∧ ◇(◇p1 ∧ p1 ∨ ◇≥5 p0 ∧ ◇≥2(p1 ∨ p0 ∧ p0 ∧ p0) ∧ ◇(p1 ∧ p1 ∧ p0 ∨ p0 ∧ p0 ∨ p0 ∧ p0)) ∨ □(¬p1 ∨ ◇≥5(p1 ∧ p1 ∧ p0 ∨ p0 ∧ p0 ∧ p1 ∨ p0 ∧ ¬p1) ∧ ◇(¬p1 ∧ ¬p1 ∧ p0 → p1 ∧ p0 ∧ p1) ∧ ¬p0) ∨ ◇(¬p0 ∧ p0 ∨ ¬p0 ∨ p1 ∧ p1 ∧ p0)) ∨ ◇≥5(□(◇(p1 ∧ p1) ∨ p1 ∧ ◇≥4(p0 ∧ p1 ∧ p0 ∨ p1 ∧ p1 ∧ ¬p0)) ∧ ◇≥4 p0 ∨ ◇(◇(p1) ∧ ◇≤3 p1 ∨ ◇≥3(p1) ∧ ◇≥2(¬p1 ↔ ¬p0 ∧ p0 ∧ p0) ∧ ◇≤2 p1)) ∧ ◇p1 ∧ ◇(◇≥4 p1 ∧ ◇≥3(◇≥4(¬p1 ∧ p1 ∧ p1)) ∧ ◇¬p1 ∨ □(◇≤2(p0 ∧ ¬p0 ∧ ¬p1 → p0 → ¬p0 ∧ p1 ∧ p0) ∧ ◇(p1 ∧ p0 ∨ p1) ∨ p0 ∧ ◇≥4(p0 ∧ p1 ∨ ¬p1 ∧ p1 ∧ p1) ∨ ◇≥2(p1)) ∧ ◇(□(p1 ∧ p1 ∧ ¬p1 → p0 ∧ p0 → ¬p1 ∧ ¬p1 ∧ ¬p1)))",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 3,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 3,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -13798,22 +13884,24 @@
   {
     "formula": "¬(◇(p0 ∧ ◇≤2(p0 ∧ ◇≥2(p0 ∧ p1 ∧ ¬p1) ∧ p0 ∨ p0 ∧ p0) ∧ ◇¬p1 ∨ ¬p0 ∧ ◇≥5 p0 ∨ ◇≥2 ¬p1 ∧ ◇≥2 p1 ∧ ◇≤2(p1 ∧ ¬p0 ∧ p0 ∨ p1 ∧ p1 ∧ ◇⊥ ∨ ◇≥3(p1) ∧ ◇≥3(p1 ↔ p1 ∧ p0 ∧ p0))) ∧ ◇≤2(◇(□(p0 ∧ ¬p0 ∧ p0 → p1) ∧ p1 ∧ ◇p1 ∨ ◇≥5(p0 ∨ p0 ∧ p1 ∧ p0 ∨ ¬p1) ∧ ◇p0 ∧ ◇(p1 ∧ p0 ∧ ¬p0))) ∨ p0 ∧ ◇≥2(¬p0 ∧ ◇(◇≥4(p1 ∧ ¬p1 ∧ ¬p0) → ◇≥5(p1 ∧ p0)) ∧ ◇≥2 ¬p1 ∨ ◇≥2(◇(¬p0 ∧ p0 ∧ p0) ∧ ◇(p0 ↔ p0 ∧ p1 ↔ p1 ∧ p1) ∨ ◇(p0 ∨ ¬p0)) ∨ ◇(◇(p1 ∧ p0))) ∧ □(◇≥3(◇≤3 ¬p1 ∧ p0) ∧ ◇(◇p1 ∧ p1 ∨ ◇≥5 p0 ∧ ◇≥2(p1 ∨ p0 ∧ p0 ∧ p0) ∧ ◇(p1 ∧ p1 ∧ p0 ∨ p0 ∧ p0 ∨ p0 ∧ p0)) ∨ □(¬p1 ∨ ◇≥5(p1 ∧ p1 ∧ p0 ∨ p0 ∧ p0 ∧ p1 ∨ p0 ∧ ¬p1) ∧ ◇(¬p1 ∧ ¬p1 ∧ p0 → p1 ∧ p0 ∧ p1) ∧ ¬p0) ∨ ◇(¬p0 ∧ p0 ∨ ¬p0 ∨ p1 ∧ p1 ∧ p0)) ∨ ◇≥5(□(◇(p1 ∧ p1) ∨ p1 ∧ ◇≥4(p0 ∧ p1 ∧ p0 ∨ p1 ∧ p1 ∧ ¬p0)) ∧ ◇≥4 p0 ∨ ◇(◇(p1) ∧ ◇≤3 p1 ∨ ◇≥3(p1) ∧ ◇≥2(¬p1 ↔ ¬p0 ∧ p0 ∧ p0) ∧ ◇≤2 p1)) ∧ ◇p1 ∧ ◇(◇≥4 p1 ∧ ◇≥3(◇≥4(¬p1 ∧ p1 ∧ p1)) ∧ ◇¬p1 ∨ □(◇≤2(p0 ∧ ¬p0 ∧ ¬p1 → p0 → ¬p0 ∧ p1 ∧ p0) ∧ ◇(p1 ∧ p0 ∨ p1) ∨ p0 ∧ ◇≥4(p0 ∧ p1 ∨ ¬p1 ∧ p1 ∧ p1) ∨ ◇≥2(p1)) ∧ ◇(□(p1 ∧ p1 ∧ ¬p1 → p0 ∧ p0 → ¬p1 ∧ ¬p1 ∧ ¬p1))))",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 3,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 3,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -14016,22 +14104,24 @@
   {
     "formula": "◇≤5(◇(◇(p4 ∧ p0) ∧ ◇(p1)) ∧ ◇p2 ∨ □(◇≤4(p0 ∨ p1 ∨ p2) ∨ □(p4 ∧ p1) ∧ ◇≥4(p0)) ∨ ◇(◇(p4 ∧ p4 ∨ p0 ∨ p1 ∧ p0)) ∧ □(p2 ∧ p2 ∨ □p3 ∧ p1 ∨ ◇≥5 p0)) ∧ p1 ∨ p4 ∧ ◇(◇(p4 ∧ ◇≥3(p0) ∨ □(p3 ∧ p1 ∨ p3 ∧ p3 ∨ p2 ∧ p0)) ∨ □(◇(p1) ∧ □p3 ∨ □(p4) ∧ ◇p3) ∧ □p1 ∨ □(◇p4 ∧ ◇(p2 ∧ p2))) ∨ ◇(□(□p2 ∧ ◇(p1 ∨ p0 ∧ p4 ∨ p1 ∧ p0) → ◇≤5 p2 ∧ ◇≥3 p3 → ◇≥3 p0 ∧ ◇(p4 ∧ p0)) ∧ ◇(p4 ∧ ◇(p0 ∧ p1 ∨ p4 ∨ p1 ∧ p3) ∨ □(p0) ∧ ◇≤4(p0 ∧ p1 ∨ p4 ∨ p0 ∧ p2) ∨ p4 ∧ ◇(p2 → p3)) ∨ ◇(◇≥3(p3 ∨ p3 ∨ p1) ∨ ◇(p4 ∧ p3) ∧ p2 ∨ ◇(p4 ∨ p2 ∨ p1)) ∨ □(□p2 ∧ ◇(p3 ∨ p0 ∧ p4) ∨ ◇(p2 ∧ p4 → p0) ∧ □p2))",
     "setting": {
-      "num_props": 5,
-      "conj_size": 2,
-      "disj_size": 3,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 0,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 2,
+        "disj_size": 3,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 0,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -14234,22 +14324,24 @@
   {
     "formula": "¬(◇≤5(◇(◇(p4 ∧ p0) ∧ ◇(p1)) ∧ ◇p2 ∨ □(◇≤4(p0 ∨ p1 ∨ p2) ∨ □(p4 ∧ p1) ∧ ◇≥4(p0)) ∨ ◇(◇(p4 ∧ p4 ∨ p0 ∨ p1 ∧ p0)) ∧ □(p2 ∧ p2 ∨ □p3 ∧ p1 ∨ ◇≥5 p0)) ∧ p1 ∨ p4 ∧ ◇(◇(p4 ∧ ◇≥3(p0) ∨ □(p3 ∧ p1 ∨ p3 ∧ p3 ∨ p2 ∧ p0)) ∨ □(◇(p1) ∧ □p3 ∨ □(p4) ∧ ◇p3) ∧ □p1 ∨ □(◇p4 ∧ ◇(p2 ∧ p2))) ∨ ◇(□(□p2 ∧ ◇(p1 ∨ p0 ∧ p4 ∨ p1 ∧ p0) → ◇≤5 p2 ∧ ◇≥3 p3 → ◇≥3 p0 ∧ ◇(p4 ∧ p0)) ∧ ◇(p4 ∧ ◇(p0 ∧ p1 ∨ p4 ∨ p1 ∧ p3) ∨ □(p0) ∧ ◇≤4(p0 ∧ p1 ∨ p4 ∨ p0 ∧ p2) ∨ p4 ∧ ◇(p2 → p3)) ∨ ◇(◇≥3(p3 ∨ p3 ∨ p1) ∨ ◇(p4 ∧ p3) ∧ p2 ∨ ◇(p4 ∨ p2 ∨ p1)) ∨ □(□p2 ∧ ◇(p3 ∨ p0 ∧ p4) ∨ ◇(p2 ∧ p4 → p0) ∧ □p2)))",
     "setting": {
-      "num_props": 5,
-      "conj_size": 2,
-      "disj_size": 3,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 0,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 2,
+        "disj_size": 3,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 0,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -14452,22 +14544,24 @@
   {
     "formula": "p0 ∨ p1 ∧ p0 ∧ p1 ∨ p1 ∧ p0 ∧ p0 ∨ p1 ∨ p1 ∧ p1 ∧ p0",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -14670,22 +14764,24 @@
   {
     "formula": "¬(p0 ∨ p1 ∧ p0 ∧ p1 ∨ p1 ∧ p0 ∧ p0 ∨ p1 ∨ p1 ∧ p1 ∧ p0)",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -14888,22 +14984,24 @@
   {
     "formula": "□(□(□(p3 ∧ p2 ∧ p1 ∨ p0 ∧ p2 ∧ ⊥ ∧ ¬p0 ∧ p3 ∨ p1 ∧ p3 ∨ p2 ∧ p0 ∧ ¬p3) ∧ p0 ∨ ◇≤2(p3)) ∨ □(p1 ∧ □(p2 ∧ p3 ∧ p2 ∧ p3) ∧ □(p1 ∧ p0 ∧ p2 ↔ p1 ∧ p2) ∧ p1 ∨ ◇≤4(p0) ∨ ◇≥4(p1 ∨ p2 ∧ p1 ∧ p2 ∨ p3) ∧ □(p1 ∧ p1 ∧ p1 ∧ p2 ∨ p2 ∧ ¬p2 ∧ p2 ∧ ¬p1 ∧ p0 ∨ p1 ∧ ¬p3 ∨ ¬p0 ∧ ¬p2 ∧ p2 ∨ p0 ∧ p2) ∨ p3 ∧ □(p2 ∨ p2 ∧ p1 ∧ p2 ∧ ¬p2 ∧ p0 ∨ p0 ∧ p0) ∧ □(p2 ∧ p2 ∧ p1 ∧ p3 ∨ p2 ∧ p2 ∧ p1 ∨ p2 ∧ p3 ∨ p0 ∧ p3 ∧ p3) ∨ p1 ∧ □(p0 ∧ p1 ∧ ¬p3 ∧ p1 ∨ p2 ∧ p3 ∧ p2 ∧ p0 ∧ p1 ∨ ¬p3 ∧ p2 ∧ p1 ∨ ⊥ ∧ p2 ∧ p0 ∧ p1 ∧ ⊤ ∨ p3 ∧ p3))) ∨ □(◇≤4(□p0 ∧ ◇≤2 p1 ∧ p1 ∧ ◇(p1 ∧ p2 ∨ p2 ∧ p2 ∧ p2 ∨ p0 ∧ p0 ∧ p0 ∧ p1 ∧ p0 ∨ p0 ∧ p1 ∧ p3 ∨ p3 ∧ p0 ∧ ¬p1 ∧ p0) ∧ ◇≤2 p2 ∨ □(p1 ∨ p1 ∧ p1 ∧ p1 ∧ p3 ∧ p1) ∨ ◇≤2(p0 ↔ ¬p3 ∧ p3 ∧ p2 ↔ p3 ∧ p1 ∧ p3 ∧ p3) ∧ □p3 ∧ p1 ∧ p3 ∧ □(p0 ∧ p1 ∧ ⊥ ∧ p3 ∧ p3) ∨ p3 ∧ □(p2 ∧ p3 ∧ ¬p3 → p1 ∧ p3 ∧ p3 → p2 ∧ p0 ∧ p0 ∧ p1 ∧ p1 → p0 ∧ p0 ∧ p3) ∧ ◇(p2 ∨ p3 ∧ ¬p0 ∧ p2 ∧ p1 ∧ p0 ∨ p3 ∧ p0 ∧ p3 ∧ p1 ∧ ¬p1 ∨ ¬p0 ∧ p0 ∧ p1 ∧ p2 ∧ p1) ∧ ◇≤4(p0 ∧ p1 ∧ ¬p1 ∧ p0) ∨ □p2 ∧ □(p0 ∧ p3 ↔ p2 ∧ p2 ↔ p3 ∧ p2 ∧ p1 ∧ p3) ∧ □(p2 ∧ p3 ∧ p1 ∧ p3 ∨ p2 ∧ p2 ∨ p1 ∨ p1 ∧ p0 ∧ p0 ∨ ¬p1 ∧ p0 ∧ p1 ∧ ¬p2)) ∨ ◇≤4 p2 ∧ ◇≤5(p1 ∧ ◇≤5(p3 ∨ p2 ∧ p2 ∧ p1 ∧ p0 ∧ p1 ∨ p3 ∧ p3 ∨ p0 ∧ p3 ∧ p1 ∧ p1 ∧ p0 ∨ p3 ∧ p3 ∧ p0 ∧ ¬p2 ∧ p2) ∧ p0 ∧ p3) ∨ □(□(p3 ∧ p1 ∨ p1 ∧ ¬p3 ∧ ¬p0 ∧ p3) ∨ ◇≥3(p3 ∧ p3 → p0 ∧ p1) ∧ □(p3 ∧ p0 ∧ p0 ∨ p1 ∨ p0 ∧ ¬p2 ∧ p3 ∧ p3 ∧ p2) ∧ ¬p1 ∧ ◇≤5(p3 ∧ p1 ∧ p3 ∧ p0 ∧ p0 ∨ p2 ∧ p1 ∨ p3 ∧ p0 ∧ p3 ∧ p1 ∨ p2 ∧ p2 ∧ p3 ∧ p0 ∧ p0) ∨ □(p1 ∨ p1 ∧ p0 ∨ p3 ∧ p2 ∧ p2 ∧ p0 ∨ p2 ∧ p1 ∧ p1 ∧ p2 ∨ p1 ∧ p1 ∧ p0 ∧ p3 ∧ p0) ∧ p3 ∧ ◇≤3(p3 ∧ p0 ∧ p2 ∨ p3 ∧ p0 ∨ p2 ∧ p0 ∧ p0 ∧ p0) ∧ p2 ∧ ◇≤2 p0) ∧ □(p3 ∧ p2 ∨ ◇≤2(p2 ∨ p3 ∧ p1 ∧ p2 ∧ p2 ∧ p1 ∨ ¬p2 ∧ p3 ∧ p0 ∧ p3) ∧ ◇≤3 p2 ∧ p1 ∧ □(p2 → p1 ∧ p1 ∧ p2 ∧ p2 → p0 ∧ p3 → p1 ∧ p1 ∧ p3 ∧ p3 → p2 ∧ p1 ∧ p0) ∨ ¬p0 ∧ p2 ∧ p2 ∧ p1 ∨ p2)) ∧ p3 ∧ p0 ∨ p1 ∧ ◇≥2(◇≤5(p1 ∧ ¬p0 ∧ □(p0 ∧ p2 ∧ p2 ∨ p0 ∧ p0 ∧ ¬p1 ∧ p3) ∧ p2 → p0 → p3 ∧ □p0) ∧ p1 ∨ ◇≤5(□(p1 ∧ p0 ∧ p2 ∧ p1 ∧ ⊤ ∨ p2 ∧ ¬p1) ∧ □(p2 ∨ p1 ∧ ¬p1 ∨ p3 ∧ p1 ∧ p1 ∧ p3 ∨ p0 ∧ p0 ∧ p2) ∧ p2 ∧ p2 ∧ □p2) ∧ ◇≤2 p1 ∧ ¬p2 ∨ p2 ∧ ◇≤5(□(p0 ∧ p1) ∨ □p2 ∧ p3) ∧ p0) ∧ p3 ∧ ◇(□p0 ∧ p1 ∧ □(p2 ∧ ◇≤2(p3 ∧ p2 ↔ p1 ∧ p2 ∧ p1 ↔ p2 ↔ p3 ∧ p2 ∧ p2) ∧ p0 → ◇≤4(p1 ∧ p3 ∧ ¬p3 ∨ p0 ∧ p0 ∧ p0 ∨ p2 ∧ p0) ∧ ◇≤4(¬p3 ∧ p1 ∨ p2 ∧ p0 ∨ p3 ∧ p1 ∧ p1) ∧ □p1 → ◇≤2(p0 ∧ p0 ∧ p3 ∨ ¬p2 ∧ p3 ∧ p2 ∧ p2 ∧ p2 ∨ p3 ∨ p3) ∧ □(p3 ∧ p3 ∧ p3 ∧ p2 → p3 ∧ p1 ∧ p1 ∧ p1 ∧ p1 → p3 ∧ p3) → □(p0 ∧ p3 ∧ p1 ∧ p1 ∧ p1 ∨ p3) ∧ ¬p0)) ∨ □(p0 ∧ p0 ∧ □(p2 ↔ ◇(p3 ∧ p3 ∧ p2 ∧ p0) ↔ □¬p0 ∧ p1 ∧ p1 ∧ ◇≤3(p1 ∧ p0 ∧ ¬p3 ∧ p1 ∨ p1 ∧ p2 ∧ p2 ∧ p2 ∧ p1 ∨ p3 ∧ p3 ∧ p2 ∧ ¬p0 ∧ p0 ∨ p3 ∧ p1 ∧ p1 ∧ ⊤ ∧ p3 ∨ p0 ∧ p2 ∧ p3 ∧ p0 ∧ p2)) ∧ ◇≥5(◇≤4 p2 ∨ p1 ∧ □p3 ∨ □(p0 ∨ p1 ∨ p3 ∧ p0 ∧ p2 ∧ ⊤ ∧ p2) ∧ ◇≤3 p2 ∧ p1 ∧ p1 ∨ ◇≤2 p3 ∧ p3) ∨ p0 ∧ □p3 ∨ ¬p2 ∧ ◇≤4(p1 ∧ p1 ∧ □p1 ∨ ◇≤2(p0 ∧ ¬p0 ∨ p1 ∨ p0 ∧ p2 ∧ p2 ∧ p2 ∧ ¬p2 ∨ p1 ∧ p1 ∧ p1 ∧ p0 ∧ p2 ∨ p3 ∧ p2) ∧ ◇≤3 p1 ∨ p3) ∨ ◇≥3(□(p2) ∧ ¬p0 ∧ □p3 ↔ □(p2 ∧ p2 ∧ p0) ∧ □(p2) ∧ ◇≤2(p1 ∧ p3 ∨ p2 ∧ p1 ∧ p1 ∧ p3 ∨ p3 ∧ p0) ↔ □(p0 ∧ p1 ∧ p0 ∨ p0))) ∧ ◇≤4 p2 ∧ □(◇≤2(◇≤2(p2 ∧ ¬p2 ∧ p3 ∧ p3 ∨ p3 ∨ ¬p1 ∧ p1 ∧ p2 ∧ p2 ∨ p1 ∧ p3 ∧ p1 ∧ p0 ∨ p3) ∨ □(p3 ∧ p2 ∧ p2 ∧ p0 ∨ p1 ∧ p1 ∧ p1 ∨ p2 ∧ p0 ∨ ¬p3 ∨ p0) ∧ p1 ∧ ◇≥4(p0 ∧ p3 ∧ p2 ∧ p2 ∧ p1 → p2 ∧ p2 ∧ p1 ∧ p3 ∧ p0) ∧ p1 ∨ ◇≤5(p1 ∧ p2 ∨ p2 ∧ p3 ∧ ¬p3 ∧ p0 ∨ p3 ∧ p2) ∧ □p3 ∧ ◇≤2 p3 ∨ □(p0 ∧ ¬p3 ∧ p0 ∧ ¬p1 ∨ p2 ∨ p0 ∧ p3 ∧ p2 ∧ ¬p2 ∧ ⊤ ∨ ¬p2 ∧ ¬p2 ∧ p0 ∨ ¬p3 ∧ ¬p3 ∧ p3 ∧ p1 ∧ p0)) ∧ p1 ∧ ◇≤5 p0 ∨ □(¬p1 ∧ ¬p2 ∧ p2 ∧ ◇≤2(p2 ∧ p2 ∧ p1 ∨ ⊥ ∧ p1 ∧ p1 ∨ ¬p2 ∧ ¬p1 ∧ p2 ∧ p3) ∧ □p2 ∨ □p3) ∧ ◇≤3(◇≤5(p3 ∨ p1 ∧ p2 ∧ p2 ∧ p1) ∧ ◇≤4(p1 ∧ p0 ∧ p0 ∨ p3 ∧ p1 ∧ p2 ∧ p2 ∨ p3) ∨ ◇(p2 ∧ p0 ∧ p3 ∧ p2)) ∨ p1 ∧ ¬p1 ∧ □(p0 ∧ ◇(p0 ∧ p1 ∧ ¬p2 ∧ p3 ∨ p1 ∧ p3 ∧ p1 ∧ p1 ∨ p0 ∧ p2 ∧ p0 ∧ p2 ∨ p1)) ∧ p0 ∧ ◇≤3(□p1 ∧ p2 ∧ ◇≤5(p2 ∧ ⊤ ∧ p3 ∧ p0 ∨ ¬p0 ∧ p0 ∧ p1 ∧ p2 ∨ p0 ∧ p1 ∧ p3 ∧ p1 ∧ p0 ∨ p3 ∧ p2 ∧ p3 ∨ p0 ∧ p1 ∧ p3 ∧ p2 ∧ p0) ∨ ◇≥4(p0 ∧ p1 ∧ p2 ∧ p1 ↔ p0 ↔ ¬p2 ∧ ¬p3 ∧ ¬p1 ∧ p3 ∧ p2 ↔ p1 ∧ p3 ∧ p0 ↔ p3) ∨ ◇≤4(p0 ∨ p3 ∨ p1 ∧ p0 ∧ p2 ∨ p1 ∧ p1 ∧ p3 ∧ p3 ∧ p3) ∧ ¬p3 ∧ □p2 ∧ ◇≤4(p3 ∧ p3 ∧ p3 ∧ p1 ∧ p0 ∨ p3 ∨ p1 ∧ p3 ∧ p3 ∧ p1 ∨ ¬p0 ∧ p1 ∧ p0 ∧ p2) ∧ ◇≤4 p1 ∨ □p2 ∧ □(¬p1 ∧ p1 ∧ p2 ∨ p0 ∧ p1 ∧ p3 ∧ p1 ∧ p3) ∧ □p1 ∧ ◇≤4(p2 ∧ ¬p3 ∧ p2 ∨ p1 ∧ p0 ∧ ⊤ ∧ p1 ∧ p1 ∨ p1 ∧ p2 ∧ p0 ∧ p2 ∨ p2 ∧ p0 ∨ p2)) ∨ p0 ∧ ◇(□(p3 ∧ p1 ∧ p1) ∧ □(p0 ∧ p0 ∨ p3) ∧ p2 ∧ ◇(p3 ∨ p0 ∧ p2 ∧ p1 ∧ p3 ∧ p1 ∨ p1 ∧ p3 ∧ p3 ∨ ¬p0 ∧ p1 ∧ p1) ∧ □p0) ∧ □(□p1 ∧ ◇≤2(p3 ∧ p1 ∧ p1 ∧ p1 ∨ p1 ∧ p2 ∧ p3 ∧ p1 ∧ p0 ∨ ¬p1 ∧ p3 ∧ ¬p0 ∧ p1 ∧ p3 ∨ p0 ∨ p3 ∧ p3 ∧ p1) ∨ p0 ∧ □(p1 ∧ p1 ∧ ¬p1 ∧ p1 ∧ p0 → p2 ∧ p0 ∧ p0) ∨ p3 ∧ □(p3 ∧ p3 ∧ p2 ∨ p1) ∧ p1 ∨ ◇≤4 p2 ∧ ◇≤2 ¬p1 ∧ □(p1 ∧ p2 ∧ p2 ∧ p3 ∨ p2 ∧ p1 ∧ p2 ∧ p1 ∨ ¬p0 ∧ p0 ∧ p3) ∧ □(p2 ∨ p1))) ∧ p3 ∧ □(◇≤2(¬p3 ∧ ⊥ ∧ p2 ∧ ◇(¬p1 ∧ p2 ∧ p0 ∧ p2 ∨ p0 ∧ p1 ∧ p2 ∧ p2 ∧ p0 ∨ p2 ∧ p3 ∨ p1 ∧ p3 ∧ p0 ∨ p3 ∧ p2) ↔ □p0 ↔ ¬p0 ∧ p1 ∧ □(p3 ∧ p2 ∧ p1 ∧ p3 ∧ p0 ∨ p2 ∧ p0 ∧ p2 ∧ p3 ∧ p3 ∨ p2 ∧ p2 ∧ p1) ∧ ◇≤3 p3 ↔ p3 ∧ p0 ↔ ◇≤4 p3 ∧ □p1 ∧ □(p0 ∨ p3 ∧ p1 ∧ p2 ∧ p3 ∨ ¬p1 ∧ p0)) ∧ p3 ∧ ◇≤4 p0 ∧ p2) ∨ ◇≤4(□(p1 ∧ p3 ∧ p0 ∧ ◇≤3(p0 ∧ p2 ∧ ¬p3 ∧ p1 → p0 → p2 ∧ p1 ∧ p3 ∧ p0 → p2 ∧ p0 ∧ p3 ∧ p0 ∧ ¬p1 → p2 ∧ p0 ∧ p2) ∧ ◇≥2 p1 ↔ ◇¬p3 ∧ ◇≤3 p2 ∧ ¬p1 ↔ ◇(p2 ∧ p1 ∧ p3 ∨ p2 ∧ p3 ∧ p2) ∧ p2 ∧ □(p3 ∧ p2 ∧ p0 ∧ ¬p2 ∨ p0 ∧ p0 ∧ p0 ∧ p1 ∧ p3 ∨ p0 ∧ p2 ∧ p1 ∧ p3 ∧ ¬p0) ∧ p3 ↔ p0 ∧ ¬p3) ∧ □¬p1 ∧ □(□(p2 ∧ ¬p0 ∧ p3 ∧ p3 ∧ p1 ∨ ¬p1 ∧ p1 ∧ p3 ∨ p1 ∧ p2 ∧ p1 ∧ p3 ∨ p2 ∨ p2 ∧ p3) ∧ p3 ∧ p0 ∧ ¬p3 ∧ □(p0 ∧ p1 ∧ p1 ∧ ¬p1 ∧ p0 ∨ p2 ∨ p2 ∨ p2 ∧ p0 ∧ p0 ∨ p0 ∧ p1 ∧ p2 ∧ p3 ∧ p1) ∨ p2 ∧ p0 ∧ ◇≥5(p0 ∧ p0 ∧ p2 ∧ p0 ∧ p2) ∨ ◇≤3(p2 ∧ p2 ∧ p0 ∧ p2 ∧ p2 ∨ p3 ∨ p3 ∧ p2 ∧ p2 ∧ p1 ∧ p3 ∨ p0 ∨ p0 ∧ p0 ∧ p1 ∧ p3) ∧ ◇≤4(p0 ∨ p3 ∨ p2 ∧ p2 ∧ p1 ∧ p2 ∨ p3 ∧ p0 ∧ p1 ∧ p2 ∧ p2)) ∧ p0 ∨ □(◇≤3(p2 ∧ p0 ∧ p2 ∨ p2 ∨ p3 ∧ p0 ∧ p1 ∧ p1 ∧ p2 ∨ p2 ∧ p3 ∨ p2 ∧ p0 ∧ p3) ∨ p3 ∧ ◇≤4(p3 ∧ p2 ↔ p3 ∧ p1 ∧ p1 ∧ p1) ∧ ◇≤5 p3 ∧ p0 ∨ p0 ∧ □(p1 ∧ p0 ∧ p0 ∧ p2 ∧ p3 ∨ p0 ∧ p3 ∨ p0 ∧ p1 ∧ p3 ∧ p0 ∧ p3) ∧ ◇≤4(⊥ ∧ p2 ∧ p3 ∧ p2) ∨ □p0 ∧ ◇(p0 ∧ p0 ∧ p2 ∨ p2 ∧ p1 ∧ p1 ∧ p2 ∧ p1 ∨ p1 ∧ p0 ∧ p3 ∧ p1 ∧ p3 ∨ p3 ∨ p0 ∧ p2 ∧ p1 ∧ p3) ∧ p1 ∧ ◇≤3(p1 ∧ p1 ∧ p0 ∧ p0 ∨ ¬p3 ∧ p1 ∨ p1 ∧ p0 ∧ ¬p2 ∧ p3) ∧ □(p1 ∧ ¬p1 ∧ p2 ∧ ⊥ ∧ p2 ↔ p1 ↔ p3 ∧ ¬p2 ∧ p2 ↔ p0 ∧ p3 ↔ p1 ∧ p2) ∨ □(¬p3 ↔ p0 ∧ p3 ↔ p1 ∧ p3 ∧ p1)) ∧ p3 ∧ □p2 ∨ ◇≤3(◇≤4(p1 ∧ p0 ∨ ¬p1 ∧ p2 ∧ p0 ∧ p2 ∧ p1 ∨ p0 ∧ p1 ∧ p1 ∧ p1 ∨ p1 ∨ p0 ∧ p3 ∧ p2 ∧ p0 ∧ p3) ∧ p1 ∧ ¬p1 ∧ p3 ∧ ◇≤2(p3 ∧ p2 ∧ p0 ∨ p3 ∧ p3 ∨ p2 ∧ p0 ∨ ¬p0 ∧ ¬p0 ∧ p1) ∨ ◇≤4(p0) ∨ p1 ∧ ◇≤5(p0 ↔ p3 ∧ p0 ∧ p0 ∧ p1 ↔ p2 ∧ ¬p1 ∧ p2) ∧ ◇≤3(p2 ∧ p0 ∧ ¬p1 ∨ p2 ∧ p2 ∧ p1 ∨ p1 ∧ p1 ∧ p3 ∨ p0 ∧ ¬p0 ∧ p2 ∧ p1 ∧ p3 ∨ p3 ∧ p0 ∧ p2 ∧ ⊥ ∧ p3) ∧ ◇≤4 p2) ∧ ◇≤4 p0 ∧ p3 ∨ □(□p1 ∧ ◇(p0 ∧ p3 ∨ p1 ∧ p0 ∨ p3 ∧ ⊤) ∨ ◇≤3 p2 ∧ p2 ∨ □p2 ∧ p0 ∧ ◇≤3(p1 ∧ p2 ∨ p1 ∨ p2 ∧ p0 ∧ ¬p0 ∧ p3 ∧ p2) ∧ ◇≤4(¬p2 ∧ p2 ∧ p1 ∧ p1 ∨ p2 ∧ p2 ∧ p0) ∧ □(p1 ∧ p0 ∧ ¬p2 ∨ p2 ∧ p2 ∧ p3 ∧ p0 ∨ p2 ∧ p2 ∧ p0 ∧ ¬p1 ∨ p1 ∧ p3) ∨ p1 ∧ ¬p3 ∧ p3 ∨ ◇≤2 p3 ∧ p2) ∧ □(◇≤3(p0 ∧ p1 ∧ p3 ∧ p1 ∨ p1 ∧ p0 ∧ p3 ∧ p2 ∨ p0 ∧ p2 ∧ p3 ∧ p2 ∧ p3 ∨ p0 ∨ ¬p0 ∧ p0 ∧ p3 ∧ p3) ∧ p3 ∨ □(p2 ∧ p0 ∧ p3 ∧ p1 ∧ p2 ∨ p1 ∧ p0 ∧ p2 ∧ p2) ∧ p0 ∨ ◇≤4(¬p2 ∧ p1 ∨ p0 ∧ p1 ∧ p2 ∨ p1 ∧ p3 ∧ p0 ∨ p3) ∧ □(p3 ∧ p2 ∧ p2 ∨ p3 ∧ p3 ∨ p3 ∧ p2 ∨ p3 ∧ p2 ∧ p3 ∧ p2) ∧ □p2 ∧ □p0 ∨ ¬p0 ∧ ◇≤3(p0 ∧ p1 ∧ p1 ∧ p0 ∨ p2 ∧ p3 ∧ p0 ∨ p3 ∧ ¬p2 ∧ ¬p3 ∧ p0 ∧ p3 ∨ p0 ∧ p1 ∨ p3) ∧ □(p2 ∧ p3 ∨ p3 ∧ ¬p3) ∨ ◇≤2 p2 ∧ □(p0 ∧ p2 ∧ p0 ∧ p1 ∧ p3 ∨ p0 ∧ p0 ∧ ¬p2 ∧ p1 ∧ p1 ∨ p1 ∧ p0)) ∨ ◇≤4(p2 ∧ ◇(p2 ∧ p2 ∨ p1 ∨ p1 ∧ p3 ∧ p3 ∧ ⊥ ∧ ¬p0 ∨ ¬p1 ∧ ¬p2 ∧ p0) ∧ p2 ∧ □(p0 ∧ p3 ∧ ¬p3 ∨ p1 ∧ p0 ∧ p2 ∧ p2 ∧ ¬p3 ∨ p0 ∧ p2 ∧ ¬p1 ∧ ¬p3 ∧ p2 ∨ p2 ∧ p1 ∧ p1 ∨ p1 ∧ ¬p1 ∧ p2 ∧ p3 ∧ p0) → □(p1 ∧ ¬p0 ∧ p3 ↔ p2 ∧ p3 ∧ ¬p1 ↔ p2 ↔ p2 ∧ p2 ↔ p3 ∧ p3 ∧ p3 ∧ p1)))",
     "setting": {
-      "num_props": 4,
-      "conj_size": 5,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 5,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -15106,22 +15204,24 @@
   {
     "formula": "¬(□(□(□(p3 ∧ p2 ∧ p1 ∨ p0 ∧ p2 ∧ ⊥ ∧ ¬p0 ∧ p3 ∨ p1 ∧ p3 ∨ p2 ∧ p0 ∧ ¬p3) ∧ p0 ∨ ◇≤2(p3)) ∨ □(p1 ∧ □(p2 ∧ p3 ∧ p2 ∧ p3) ∧ □(p1 ∧ p0 ∧ p2 ↔ p1 ∧ p2) ∧ p1 ∨ ◇≤4(p0) ∨ ◇≥4(p1 ∨ p2 ∧ p1 ∧ p2 ∨ p3) ∧ □(p1 ∧ p1 ∧ p1 ∧ p2 ∨ p2 ∧ ¬p2 ∧ p2 ∧ ¬p1 ∧ p0 ∨ p1 ∧ ¬p3 ∨ ¬p0 ∧ ¬p2 ∧ p2 ∨ p0 ∧ p2) ∨ p3 ∧ □(p2 ∨ p2 ∧ p1 ∧ p2 ∧ ¬p2 ∧ p0 ∨ p0 ∧ p0) ∧ □(p2 ∧ p2 ∧ p1 ∧ p3 ∨ p2 ∧ p2 ∧ p1 ∨ p2 ∧ p3 ∨ p0 ∧ p3 ∧ p3) ∨ p1 ∧ □(p0 ∧ p1 ∧ ¬p3 ∧ p1 ∨ p2 ∧ p3 ∧ p2 ∧ p0 ∧ p1 ∨ ¬p3 ∧ p2 ∧ p1 ∨ ⊥ ∧ p2 ∧ p0 ∧ p1 ∧ ⊤ ∨ p3 ∧ p3))) ∨ □(◇≤4(□p0 ∧ ◇≤2 p1 ∧ p1 ∧ ◇(p1 ∧ p2 ∨ p2 ∧ p2 ∧ p2 ∨ p0 ∧ p0 ∧ p0 ∧ p1 ∧ p0 ∨ p0 ∧ p1 ∧ p3 ∨ p3 ∧ p0 ∧ ¬p1 ∧ p0) ∧ ◇≤2 p2 ∨ □(p1 ∨ p1 ∧ p1 ∧ p1 ∧ p3 ∧ p1) ∨ ◇≤2(p0 ↔ ¬p3 ∧ p3 ∧ p2 ↔ p3 ∧ p1 ∧ p3 ∧ p3) ∧ □p3 ∧ p1 ∧ p3 ∧ □(p0 ∧ p1 ∧ ⊥ ∧ p3 ∧ p3) ∨ p3 ∧ □(p2 ∧ p3 ∧ ¬p3 → p1 ∧ p3 ∧ p3 → p2 ∧ p0 ∧ p0 ∧ p1 ∧ p1 → p0 ∧ p0 ∧ p3) ∧ ◇(p2 ∨ p3 ∧ ¬p0 ∧ p2 ∧ p1 ∧ p0 ∨ p3 ∧ p0 ∧ p3 ∧ p1 ∧ ¬p1 ∨ ¬p0 ∧ p0 ∧ p1 ∧ p2 ∧ p1) ∧ ◇≤4(p0 ∧ p1 ∧ ¬p1 ∧ p0) ∨ □p2 ∧ □(p0 ∧ p3 ↔ p2 ∧ p2 ↔ p3 ∧ p2 ∧ p1 ∧ p3) ∧ □(p2 ∧ p3 ∧ p1 ∧ p3 ∨ p2 ∧ p2 ∨ p1 ∨ p1 ∧ p0 ∧ p0 ∨ ¬p1 ∧ p0 ∧ p1 ∧ ¬p2)) ∨ ◇≤4 p2 ∧ ◇≤5(p1 ∧ ◇≤5(p3 ∨ p2 ∧ p2 ∧ p1 ∧ p0 ∧ p1 ∨ p3 ∧ p3 ∨ p0 ∧ p3 ∧ p1 ∧ p1 ∧ p0 ∨ p3 ∧ p3 ∧ p0 ∧ ¬p2 ∧ p2) ∧ p0 ∧ p3) ∨ □(□(p3 ∧ p1 ∨ p1 ∧ ¬p3 ∧ ¬p0 ∧ p3) ∨ ◇≥3(p3 ∧ p3 → p0 ∧ p1) ∧ □(p3 ∧ p0 ∧ p0 ∨ p1 ∨ p0 ∧ ¬p2 ∧ p3 ∧ p3 ∧ p2) ∧ ¬p1 ∧ ◇≤5(p3 ∧ p1 ∧ p3 ∧ p0 ∧ p0 ∨ p2 ∧ p1 ∨ p3 ∧ p0 ∧ p3 ∧ p1 ∨ p2 ∧ p2 ∧ p3 ∧ p0 ∧ p0) ∨ □(p1 ∨ p1 ∧ p0 ∨ p3 ∧ p2 ∧ p2 ∧ p0 ∨ p2 ∧ p1 ∧ p1 ∧ p2 ∨ p1 ∧ p1 ∧ p0 ∧ p3 ∧ p0) ∧ p3 ∧ ◇≤3(p3 ∧ p0 ∧ p2 ∨ p3 ∧ p0 ∨ p2 ∧ p0 ∧ p0 ∧ p0) ∧ p2 ∧ ◇≤2 p0) ∧ □(p3 ∧ p2 ∨ ◇≤2(p2 ∨ p3 ∧ p1 ∧ p2 ∧ p2 ∧ p1 ∨ ¬p2 ∧ p3 ∧ p0 ∧ p3) ∧ ◇≤3 p2 ∧ p1 ∧ □(p2 → p1 ∧ p1 ∧ p2 ∧ p2 → p0 ∧ p3 → p1 ∧ p1 ∧ p3 ∧ p3 → p2 ∧ p1 ∧ p0) ∨ ¬p0 ∧ p2 ∧ p2 ∧ p1 ∨ p2)) ∧ p3 ∧ p0 ∨ p1 ∧ ◇≥2(◇≤5(p1 ∧ ¬p0 ∧ □(p0 ∧ p2 ∧ p2 ∨ p0 ∧ p0 ∧ ¬p1 ∧ p3) ∧ p2 → p0 → p3 ∧ □p0) ∧ p1 ∨ ◇≤5(□(p1 ∧ p0 ∧ p2 ∧ p1 ∧ ⊤ ∨ p2 ∧ ¬p1) ∧ □(p2 ∨ p1 ∧ ¬p1 ∨ p3 ∧ p1 ∧ p1 ∧ p3 ∨ p0 ∧ p0 ∧ p2) ∧ p2 ∧ p2 ∧ □p2) ∧ ◇≤2 p1 ∧ ¬p2 ∨ p2 ∧ ◇≤5(□(p0 ∧ p1) ∨ □p2 ∧ p3) ∧ p0) ∧ p3 ∧ ◇(□p0 ∧ p1 ∧ □(p2 ∧ ◇≤2(p3 ∧ p2 ↔ p1 ∧ p2 ∧ p1 ↔ p2 ↔ p3 ∧ p2 ∧ p2) ∧ p0 → ◇≤4(p1 ∧ p3 ∧ ¬p3 ∨ p0 ∧ p0 ∧ p0 ∨ p2 ∧ p0) ∧ ◇≤4(¬p3 ∧ p1 ∨ p2 ∧ p0 ∨ p3 ∧ p1 ∧ p1) ∧ □p1 → ◇≤2(p0 ∧ p0 ∧ p3 ∨ ¬p2 ∧ p3 ∧ p2 ∧ p2 ∧ p2 ∨ p3 ∨ p3) ∧ □(p3 ∧ p3 ∧ p3 ∧ p2 → p3 ∧ p1 ∧ p1 ∧ p1 ∧ p1 → p3 ∧ p3) → □(p0 ∧ p3 ∧ p1 ∧ p1 ∧ p1 ∨ p3) ∧ ¬p0)) ∨ □(p0 ∧ p0 ∧ □(p2 ↔ ◇(p3 ∧ p3 ∧ p2 ∧ p0) ↔ □¬p0 ∧ p1 ∧ p1 ∧ ◇≤3(p1 ∧ p0 ∧ ¬p3 ∧ p1 ∨ p1 ∧ p2 ∧ p2 ∧ p2 ∧ p1 ∨ p3 ∧ p3 ∧ p2 ∧ ¬p0 ∧ p0 ∨ p3 ∧ p1 ∧ p1 ∧ ⊤ ∧ p3 ∨ p0 ∧ p2 ∧ p3 ∧ p0 ∧ p2)) ∧ ◇≥5(◇≤4 p2 ∨ p1 ∧ □p3 ∨ □(p0 ∨ p1 ∨ p3 ∧ p0 ∧ p2 ∧ ⊤ ∧ p2) ∧ ◇≤3 p2 ∧ p1 ∧ p1 ∨ ◇≤2 p3 ∧ p3) ∨ p0 ∧ □p3 ∨ ¬p2 ∧ ◇≤4(p1 ∧ p1 ∧ □p1 ∨ ◇≤2(p0 ∧ ¬p0 ∨ p1 ∨ p0 ∧ p2 ∧ p2 ∧ p2 ∧ ¬p2 ∨ p1 ∧ p1 ∧ p1 ∧ p0 ∧ p2 ∨ p3 ∧ p2) ∧ ◇≤3 p1 ∨ p3) ∨ ◇≥3(□(p2) ∧ ¬p0 ∧ □p3 ↔ □(p2 ∧ p2 ∧ p0) ∧ □(p2) ∧ ◇≤2(p1 ∧ p3 ∨ p2 ∧ p1 ∧ p1 ∧ p3 ∨ p3 ∧ p0) ↔ □(p0 ∧ p1 ∧ p0 ∨ p0))) ∧ ◇≤4 p2 ∧ □(◇≤2(◇≤2(p2 ∧ ¬p2 ∧ p3 ∧ p3 ∨ p3 ∨ ¬p1 ∧ p1 ∧ p2 ∧ p2 ∨ p1 ∧ p3 ∧ p1 ∧ p0 ∨ p3) ∨ □(p3 ∧ p2 ∧ p2 ∧ p0 ∨ p1 ∧ p1 ∧ p1 ∨ p2 ∧ p0 ∨ ¬p3 ∨ p0) ∧ p1 ∧ ◇≥4(p0 ∧ p3 ∧ p2 ∧ p2 ∧ p1 → p2 ∧ p2 ∧ p1 ∧ p3 ∧ p0) ∧ p1 ∨ ◇≤5(p1 ∧ p2 ∨ p2 ∧ p3 ∧ ¬p3 ∧ p0 ∨ p3 ∧ p2) ∧ □p3 ∧ ◇≤2 p3 ∨ □(p0 ∧ ¬p3 ∧ p0 ∧ ¬p1 ∨ p2 ∨ p0 ∧ p3 ∧ p2 ∧ ¬p2 ∧ ⊤ ∨ ¬p2 ∧ ¬p2 ∧ p0 ∨ ¬p3 ∧ ¬p3 ∧ p3 ∧ p1 ∧ p0)) ∧ p1 ∧ ◇≤5 p0 ∨ □(¬p1 ∧ ¬p2 ∧ p2 ∧ ◇≤2(p2 ∧ p2 ∧ p1 ∨ ⊥ ∧ p1 ∧ p1 ∨ ¬p2 ∧ ¬p1 ∧ p2 ∧ p3) ∧ □p2 ∨ □p3) ∧ ◇≤3(◇≤5(p3 ∨ p1 ∧ p2 ∧ p2 ∧ p1) ∧ ◇≤4(p1 ∧ p0 ∧ p0 ∨ p3 ∧ p1 ∧ p2 ∧ p2 ∨ p3) ∨ ◇(p2 ∧ p0 ∧ p3 ∧ p2)) ∨ p1 ∧ ¬p1 ∧ □(p0 ∧ ◇(p0 ∧ p1 ∧ ¬p2 ∧ p3 ∨ p1 ∧ p3 ∧ p1 ∧ p1 ∨ p0 ∧ p2 ∧ p0 ∧ p2 ∨ p1)) ∧ p0 ∧ ◇≤3(□p1 ∧ p2 ∧ ◇≤5(p2 ∧ ⊤ ∧ p3 ∧ p0 ∨ ¬p0 ∧ p0 ∧ p1 ∧ p2 ∨ p0 ∧ p1 ∧ p3 ∧ p1 ∧ p0 ∨ p3 ∧ p2 ∧ p3 ∨ p0 ∧ p1 ∧ p3 ∧ p2 ∧ p0) ∨ ◇≥4(p0 ∧ p1 ∧ p2 ∧ p1 ↔ p0 ↔ ¬p2 ∧ ¬p3 ∧ ¬p1 ∧ p3 ∧ p2 ↔ p1 ∧ p3 ∧ p0 ↔ p3) ∨ ◇≤4(p0 ∨ p3 ∨ p1 ∧ p0 ∧ p2 ∨ p1 ∧ p1 ∧ p3 ∧ p3 ∧ p3) ∧ ¬p3 ∧ □p2 ∧ ◇≤4(p3 ∧ p3 ∧ p3 ∧ p1 ∧ p0 ∨ p3 ∨ p1 ∧ p3 ∧ p3 ∧ p1 ∨ ¬p0 ∧ p1 ∧ p0 ∧ p2) ∧ ◇≤4 p1 ∨ □p2 ∧ □(¬p1 ∧ p1 ∧ p2 ∨ p0 ∧ p1 ∧ p3 ∧ p1 ∧ p3) ∧ □p1 ∧ ◇≤4(p2 ∧ ¬p3 ∧ p2 ∨ p1 ∧ p0 ∧ ⊤ ∧ p1 ∧ p1 ∨ p1 ∧ p2 ∧ p0 ∧ p2 ∨ p2 ∧ p0 ∨ p2)) ∨ p0 ∧ ◇(□(p3 ∧ p1 ∧ p1) ∧ □(p0 ∧ p0 ∨ p3) ∧ p2 ∧ ◇(p3 ∨ p0 ∧ p2 ∧ p1 ∧ p3 ∧ p1 ∨ p1 ∧ p3 ∧ p3 ∨ ¬p0 ∧ p1 ∧ p1) ∧ □p0) ∧ □(□p1 ∧ ◇≤2(p3 ∧ p1 ∧ p1 ∧ p1 ∨ p1 ∧ p2 ∧ p3 ∧ p1 ∧ p0 ∨ ¬p1 ∧ p3 ∧ ¬p0 ∧ p1 ∧ p3 ∨ p0 ∨ p3 ∧ p3 ∧ p1) ∨ p0 ∧ □(p1 ∧ p1 ∧ ¬p1 ∧ p1 ∧ p0 → p2 ∧ p0 ∧ p0) ∨ p3 ∧ □(p3 ∧ p3 ∧ p2 ∨ p1) ∧ p1 ∨ ◇≤4 p2 ∧ ◇≤2 ¬p1 ∧ □(p1 ∧ p2 ∧ p2 ∧ p3 ∨ p2 ∧ p1 ∧ p2 ∧ p1 ∨ ¬p0 ∧ p0 ∧ p3) ∧ □(p2 ∨ p1))) ∧ p3 ∧ □(◇≤2(¬p3 ∧ ⊥ ∧ p2 ∧ ◇(¬p1 ∧ p2 ∧ p0 ∧ p2 ∨ p0 ∧ p1 ∧ p2 ∧ p2 ∧ p0 ∨ p2 ∧ p3 ∨ p1 ∧ p3 ∧ p0 ∨ p3 ∧ p2) ↔ □p0 ↔ ¬p0 ∧ p1 ∧ □(p3 ∧ p2 ∧ p1 ∧ p3 ∧ p0 ∨ p2 ∧ p0 ∧ p2 ∧ p3 ∧ p3 ∨ p2 ∧ p2 ∧ p1) ∧ ◇≤3 p3 ↔ p3 ∧ p0 ↔ ◇≤4 p3 ∧ □p1 ∧ □(p0 ∨ p3 ∧ p1 ∧ p2 ∧ p3 ∨ ¬p1 ∧ p0)) ∧ p3 ∧ ◇≤4 p0 ∧ p2) ∨ ◇≤4(□(p1 ∧ p3 ∧ p0 ∧ ◇≤3(p0 ∧ p2 ∧ ¬p3 ∧ p1 → p0 → p2 ∧ p1 ∧ p3 ∧ p0 → p2 ∧ p0 ∧ p3 ∧ p0 ∧ ¬p1 → p2 ∧ p0 ∧ p2) ∧ ◇≥2 p1 ↔ ◇¬p3 ∧ ◇≤3 p2 ∧ ¬p1 ↔ ◇(p2 ∧ p1 ∧ p3 ∨ p2 ∧ p3 ∧ p2) ∧ p2 ∧ □(p3 ∧ p2 ∧ p0 ∧ ¬p2 ∨ p0 ∧ p0 ∧ p0 ∧ p1 ∧ p3 ∨ p0 ∧ p2 ∧ p1 ∧ p3 ∧ ¬p0) ∧ p3 ↔ p0 ∧ ¬p3) ∧ □¬p1 ∧ □(□(p2 ∧ ¬p0 ∧ p3 ∧ p3 ∧ p1 ∨ ¬p1 ∧ p1 ∧ p3 ∨ p1 ∧ p2 ∧ p1 ∧ p3 ∨ p2 ∨ p2 ∧ p3) ∧ p3 ∧ p0 ∧ ¬p3 ∧ □(p0 ∧ p1 ∧ p1 ∧ ¬p1 ∧ p0 ∨ p2 ∨ p2 ∨ p2 ∧ p0 ∧ p0 ∨ p0 ∧ p1 ∧ p2 ∧ p3 ∧ p1) ∨ p2 ∧ p0 ∧ ◇≥5(p0 ∧ p0 ∧ p2 ∧ p0 ∧ p2) ∨ ◇≤3(p2 ∧ p2 ∧ p0 ∧ p2 ∧ p2 ∨ p3 ∨ p3 ∧ p2 ∧ p2 ∧ p1 ∧ p3 ∨ p0 ∨ p0 ∧ p0 ∧ p1 ∧ p3) ∧ ◇≤4(p0 ∨ p3 ∨ p2 ∧ p2 ∧ p1 ∧ p2 ∨ p3 ∧ p0 ∧ p1 ∧ p2 ∧ p2)) ∧ p0 ∨ □(◇≤3(p2 ∧ p0 ∧ p2 ∨ p2 ∨ p3 ∧ p0 ∧ p1 ∧ p1 ∧ p2 ∨ p2 ∧ p3 ∨ p2 ∧ p0 ∧ p3) ∨ p3 ∧ ◇≤4(p3 ∧ p2 ↔ p3 ∧ p1 ∧ p1 ∧ p1) ∧ ◇≤5 p3 ∧ p0 ∨ p0 ∧ □(p1 ∧ p0 ∧ p0 ∧ p2 ∧ p3 ∨ p0 ∧ p3 ∨ p0 ∧ p1 ∧ p3 ∧ p0 ∧ p3) ∧ ◇≤4(⊥ ∧ p2 ∧ p3 ∧ p2) ∨ □p0 ∧ ◇(p0 ∧ p0 ∧ p2 ∨ p2 ∧ p1 ∧ p1 ∧ p2 ∧ p1 ∨ p1 ∧ p0 ∧ p3 ∧ p1 ∧ p3 ∨ p3 ∨ p0 ∧ p2 ∧ p1 ∧ p3) ∧ p1 ∧ ◇≤3(p1 ∧ p1 ∧ p0 ∧ p0 ∨ ¬p3 ∧ p1 ∨ p1 ∧ p0 ∧ ¬p2 ∧ p3) ∧ □(p1 ∧ ¬p1 ∧ p2 ∧ ⊥ ∧ p2 ↔ p1 ↔ p3 ∧ ¬p2 ∧ p2 ↔ p0 ∧ p3 ↔ p1 ∧ p2) ∨ □(¬p3 ↔ p0 ∧ p3 ↔ p1 ∧ p3 ∧ p1)) ∧ p3 ∧ □p2 ∨ ◇≤3(◇≤4(p1 ∧ p0 ∨ ¬p1 ∧ p2 ∧ p0 ∧ p2 ∧ p1 ∨ p0 ∧ p1 ∧ p1 ∧ p1 ∨ p1 ∨ p0 ∧ p3 ∧ p2 ∧ p0 ∧ p3) ∧ p1 ∧ ¬p1 ∧ p3 ∧ ◇≤2(p3 ∧ p2 ∧ p0 ∨ p3 ∧ p3 ∨ p2 ∧ p0 ∨ ¬p0 ∧ ¬p0 ∧ p1) ∨ ◇≤4(p0) ∨ p1 ∧ ◇≤5(p0 ↔ p3 ∧ p0 ∧ p0 ∧ p1 ↔ p2 ∧ ¬p1 ∧ p2) ∧ ◇≤3(p2 ∧ p0 ∧ ¬p1 ∨ p2 ∧ p2 ∧ p1 ∨ p1 ∧ p1 ∧ p3 ∨ p0 ∧ ¬p0 ∧ p2 ∧ p1 ∧ p3 ∨ p3 ∧ p0 ∧ p2 ∧ ⊥ ∧ p3) ∧ ◇≤4 p2) ∧ ◇≤4 p0 ∧ p3 ∨ □(□p1 ∧ ◇(p0 ∧ p3 ∨ p1 ∧ p0 ∨ p3 ∧ ⊤) ∨ ◇≤3 p2 ∧ p2 ∨ □p2 ∧ p0 ∧ ◇≤3(p1 ∧ p2 ∨ p1 ∨ p2 ∧ p0 ∧ ¬p0 ∧ p3 ∧ p2) ∧ ◇≤4(¬p2 ∧ p2 ∧ p1 ∧ p1 ∨ p2 ∧ p2 ∧ p0) ∧ □(p1 ∧ p0 ∧ ¬p2 ∨ p2 ∧ p2 ∧ p3 ∧ p0 ∨ p2 ∧ p2 ∧ p0 ∧ ¬p1 ∨ p1 ∧ p3) ∨ p1 ∧ ¬p3 ∧ p3 ∨ ◇≤2 p3 ∧ p2) ∧ □(◇≤3(p0 ∧ p1 ∧ p3 ∧ p1 ∨ p1 ∧ p0 ∧ p3 ∧ p2 ∨ p0 ∧ p2 ∧ p3 ∧ p2 ∧ p3 ∨ p0 ∨ ¬p0 ∧ p0 ∧ p3 ∧ p3) ∧ p3 ∨ □(p2 ∧ p0 ∧ p3 ∧ p1 ∧ p2 ∨ p1 ∧ p0 ∧ p2 ∧ p2) ∧ p0 ∨ ◇≤4(¬p2 ∧ p1 ∨ p0 ∧ p1 ∧ p2 ∨ p1 ∧ p3 ∧ p0 ∨ p3) ∧ □(p3 ∧ p2 ∧ p2 ∨ p3 ∧ p3 ∨ p3 ∧ p2 ∨ p3 ∧ p2 ∧ p3 ∧ p2) ∧ □p2 ∧ □p0 ∨ ¬p0 ∧ ◇≤3(p0 ∧ p1 ∧ p1 ∧ p0 ∨ p2 ∧ p3 ∧ p0 ∨ p3 ∧ ¬p2 ∧ ¬p3 ∧ p0 ∧ p3 ∨ p0 ∧ p1 ∨ p3) ∧ □(p2 ∧ p3 ∨ p3 ∧ ¬p3) ∨ ◇≤2 p2 ∧ □(p0 ∧ p2 ∧ p0 ∧ p1 ∧ p3 ∨ p0 ∧ p0 ∧ ¬p2 ∧ p1 ∧ p1 ∨ p1 ∧ p0)) ∨ ◇≤4(p2 ∧ ◇(p2 ∧ p2 ∨ p1 ∨ p1 ∧ p3 ∧ p3 ∧ ⊥ ∧ ¬p0 ∨ ¬p1 ∧ ¬p2 ∧ p0) ∧ p2 ∧ □(p0 ∧ p3 ∧ ¬p3 ∨ p1 ∧ p0 ∧ p2 ∧ p2 ∧ ¬p3 ∨ p0 ∧ p2 ∧ ¬p1 ∧ ¬p3 ∧ p2 ∨ p2 ∧ p1 ∧ p1 ∨ p1 ∧ ¬p1 ∧ p2 ∧ p3 ∧ p0) → □(p1 ∧ ¬p0 ∧ p3 ↔ p2 ∧ p3 ∧ ¬p1 ↔ p2 ↔ p2 ∧ p2 ↔ p3 ∧ p3 ∧ p3 ∧ p1))))",
     "setting": {
-      "num_props": 4,
-      "conj_size": 5,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 5,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -15324,22 +15424,24 @@
   {
     "formula": "p7 ∧ ◇p6 ∧ p6 ∧ ◇(◇≥3(p9 ∧ p7 ∧ ◇(p9 ∧ p4 ∧ p9 ∧ ¬p6) ∨ p4 ∧ ◇(p8 ∧ p2 ∨ p0) ∧ ◇(p6 ∧ ¬p4 ∧ ¬p2) ∧ p5)) ∧ p2 ↔ ◇(◇(p0 ∧ ◇p8 ∧ ◇p8 ∧ p0 ∧ p7 ∨ ¬p5) ∨ ◇≤2 ¬p5 ∧ ◇≥3 p7 ∧ □(p6 ∨ □(p0 ∨ p8 ∧ p5 ∧ ¬p1 ∧ ¬p6) ∧ ◇≤2 p8 ∧ ◇(p4 ∧ ¬p9) ∧ ◇p1 ∧ ◇(p2 ∧ p7 ∧ p9 ∧ ¬p3)) ∧ □(p7 ∧ ¬p1 ∧ □¬p8)) ∧ ◇≤4(p8 ∧ p7 ∨ ◇(□p1 ∧ ¬p9 ∨ □p8 ∧ p2 ∧ ◇(p0 ∧ p3 ∧ ¬p9 ∧ p9 ∨ p3) ∧ □(p8 ∧ p9 ∨ p0 ∧ p4 ∧ p1)) ∧ □(□(p7) ∧ □(p5 ∧ p8 ∧ p7 ∧ p1 ∧ p3 ↔ ¬p2 ∧ p3 ∧ p8 ∧ ¬p2 ∧ ¬p7) ∧ ◇(p1 ∧ p6 ∧ p2 ∧ p8) ∧ ¬p2 ∧ p1) ∧ ◇(¬p7 ∧ □p7 ∧ □p8 ∧ p2 ∧ ¬p6) ∧ □p4 ∧ ¬p3) ∧ ¬p8 ∧ ◇(□(◇≥4(p3 ∧ p5 ∧ p0 ∧ p3) ∧ □(p0 ∧ p1 ∧ p1) ∧ □p0 ∨ ◇(p0 ∧ ¬p5 ∧ p2)) → p5 ∧ ◇≥2 p7 ∧ ◇≤4(p1 ∨ p2 ∧ □(¬p9 ∧ p2 ∨ p5 ∧ p7 ∧ p0 ∧ ¬p5 ∧ p8) ∧ ◇≥2(p9 ∨ p0 ∧ p0 ∧ p3 ∧ ¬p8) ∧ ¬p7 ∧ ¬p7) ∧ □(◇≥5(p2 ∧ p4 ∧ p5 ∧ p3 → p1 ∧ ¬p6 ∧ p0) ∧ ◇(p0 ∧ p5 ∧ p4 ∧ p4 ↔ ¬p3 ∧ p1 ∧ p8 ∧ p1 ∧ p4) ∨ ◇≤3(p5 ∧ ¬p7 ∧ p6 ∧ p4 ∧ ¬p1 ∨ ¬p6 ∧ ¬p9) ∧ ◇(¬p5 ∧ p7 ∨ p8 ∧ p6 ∧ ¬p2 ∧ p9)) ∧ ◇(¬p5 ∧ ◇≤2 ¬p4 ∧ p6 ∧ ◇(¬p6 ∧ p4 ∧ ¬p4 ∧ p2 ∧ p2 ∨ p9 ∧ ¬p3 ∧ p4 ∧ p6) ∨ □¬p5 ∧ p3 ∧ ◇p0 ∧ ◇(¬p1 ∨ p3) ∧ p8)) ∧ ◇(p5 ∧ p9 ∧ ◇(p8 ∧ □(p3 ∧ p7) ∧ ¬p8 ∧ p8) ∧ ◇≥2 p6 ∧ ¬p9)",
     "setting": {
-      "num_props": 10,
-      "conj_size": 5,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 5,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 5,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 5,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -15542,22 +15644,24 @@
   {
     "formula": "¬(p7 ∧ ◇p6 ∧ p6 ∧ ◇(◇≥3(p9 ∧ p7 ∧ ◇(p9 ∧ p4 ∧ p9 ∧ ¬p6) ∨ p4 ∧ ◇(p8 ∧ p2 ∨ p0) ∧ ◇(p6 ∧ ¬p4 ∧ ¬p2) ∧ p5)) ∧ p2 ↔ ◇(◇(p0 ∧ ◇p8 ∧ ◇p8 ∧ p0 ∧ p7 ∨ ¬p5) ∨ ◇≤2 ¬p5 ∧ ◇≥3 p7 ∧ □(p6 ∨ □(p0 ∨ p8 ∧ p5 ∧ ¬p1 ∧ ¬p6) ∧ ◇≤2 p8 ∧ ◇(p4 ∧ ¬p9) ∧ ◇p1 ∧ ◇(p2 ∧ p7 ∧ p9 ∧ ¬p3)) ∧ □(p7 ∧ ¬p1 ∧ □¬p8)) ∧ ◇≤4(p8 ∧ p7 ∨ ◇(□p1 ∧ ¬p9 ∨ □p8 ∧ p2 ∧ ◇(p0 ∧ p3 ∧ ¬p9 ∧ p9 ∨ p3) ∧ □(p8 ∧ p9 ∨ p0 ∧ p4 ∧ p1)) ∧ □(□(p7) ∧ □(p5 ∧ p8 ∧ p7 ∧ p1 ∧ p3 ↔ ¬p2 ∧ p3 ∧ p8 ∧ ¬p2 ∧ ¬p7) ∧ ◇(p1 ∧ p6 ∧ p2 ∧ p8) ∧ ¬p2 ∧ p1) ∧ ◇(¬p7 ∧ □p7 ∧ □p8 ∧ p2 ∧ ¬p6) ∧ □p4 ∧ ¬p3) ∧ ¬p8 ∧ ◇(□(◇≥4(p3 ∧ p5 ∧ p0 ∧ p3) ∧ □(p0 ∧ p1 ∧ p1) ∧ □p0 ∨ ◇(p0 ∧ ¬p5 ∧ p2)) → p5 ∧ ◇≥2 p7 ∧ ◇≤4(p1 ∨ p2 ∧ □(¬p9 ∧ p2 ∨ p5 ∧ p7 ∧ p0 ∧ ¬p5 ∧ p8) ∧ ◇≥2(p9 ∨ p0 ∧ p0 ∧ p3 ∧ ¬p8) ∧ ¬p7 ∧ ¬p7) ∧ □(◇≥5(p2 ∧ p4 ∧ p5 ∧ p3 → p1 ∧ ¬p6 ∧ p0) ∧ ◇(p0 ∧ p5 ∧ p4 ∧ p4 ↔ ¬p3 ∧ p1 ∧ p8 ∧ p1 ∧ p4) ∨ ◇≤3(p5 ∧ ¬p7 ∧ p6 ∧ p4 ∧ ¬p1 ∨ ¬p6 ∧ ¬p9) ∧ ◇(¬p5 ∧ p7 ∨ p8 ∧ p6 ∧ ¬p2 ∧ p9)) ∧ ◇(¬p5 ∧ ◇≤2 ¬p4 ∧ p6 ∧ ◇(¬p6 ∧ p4 ∧ ¬p4 ∧ p2 ∧ p2 ∨ p9 ∧ ¬p3 ∧ p4 ∧ p6) ∨ □¬p5 ∧ p3 ∧ ◇p0 ∧ ◇(¬p1 ∨ p3) ∧ p8)) ∧ ◇(p5 ∧ p9 ∧ ◇(p8 ∧ □(p3 ∧ p7) ∧ ¬p8 ∧ p8) ∧ ◇≥2 p6 ∧ ¬p9))",
     "setting": {
-      "num_props": 10,
-      "conj_size": 5,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 5,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 5,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 5,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -15760,22 +15864,24 @@
   {
     "formula": "¬p1 ∧ ◇≤5(¬p0 ∧ p2 ↔ p2 ∧ p2) ∨ ◇≥2(¬p0 ∧ ¬p2)",
     "setting": {
-      "num_props": 3,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 10,
-      "w_modal": [
-        1,
-        1,
-        4,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 3,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 10,
+        "w_modal": [
+          1,
+          1,
+          4,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -15978,22 +16084,24 @@
   {
     "formula": "¬(¬p1 ∧ ◇≤5(¬p0 ∧ p2 ↔ p2 ∧ p2) ∨ ◇≥2(¬p0 ∧ ¬p2))",
     "setting": {
-      "num_props": 3,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 10,
-      "w_modal": [
-        1,
-        1,
-        4,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 3,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 10,
+        "w_modal": [
+          1,
+          1,
+          4,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -16196,22 +16304,24 @@
   {
     "formula": "p0 ∧ p0 ∨ ¬p1 ∧ p0 ∨ ¬p0 ∨ p1 ∨ p1",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -16414,22 +16524,24 @@
   {
     "formula": "¬(p0 ∧ p0 ∨ ¬p1 ∧ p0 ∨ ¬p0 ∨ p1 ∨ p1)",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -16632,22 +16744,24 @@
   {
     "formula": "□p7 ∧ □(¬p2 ∧ p6) → □(p6 ∧ p4 ∨ p3 ∨ ¬p5) ∧ □p8 → ◇(p4 ∨ p9 ∧ p0) ∧ p1",
     "setting": {
-      "num_props": 10,
-      "conj_size": 2,
-      "disj_size": 3,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 5,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 2,
+        "disj_size": 3,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 5,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -16850,22 +16964,24 @@
   {
     "formula": "¬(□p7 ∧ □(¬p2 ∧ p6) → □(p6 ∧ p4 ∨ p3 ∨ ¬p5) ∧ □p8 → ◇(p4 ∨ p9 ∧ p0) ∧ p1)",
     "setting": {
-      "num_props": 10,
-      "conj_size": 2,
-      "disj_size": 3,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 5,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 2,
+        "disj_size": 3,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 5,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -17068,22 +17184,24 @@
   {
     "formula": "p0 ∧ p2 ∧ p4 ∧ p3 ∧ p0 ∨ p1 ∧ p3 ∧ p0 ∧ p3 ∧ ¬p0 ∨ p2 ∧ p1 ∨ p1 ∨ p0 ∧ p2 ∧ p3 ∧ p0 ∧ p3",
     "setting": {
-      "num_props": 5,
-      "conj_size": 5,
-      "disj_size": 5,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 5,
+        "disj_size": 5,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -17286,22 +17404,24 @@
   {
     "formula": "¬(p0 ∧ p2 ∧ p4 ∧ p3 ∧ p0 ∨ p1 ∧ p3 ∧ p0 ∧ p3 ∧ ¬p0 ∨ p2 ∧ p1 ∨ p1 ∨ p0 ∧ p2 ∧ p3 ∧ p0 ∧ p3)",
     "setting": {
-      "num_props": 5,
-      "conj_size": 5,
-      "disj_size": 5,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 5,
+        "disj_size": 5,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -17504,22 +17624,24 @@
   {
     "formula": "◇p0 ∧ ◇≥4 p2 ∧ ◇(◇≥2 p2) ∧ p1 ∧ ◇≤3(p0 ∧ ◇≥3(◇≥2(p0) ∧ p0) ∧ ◇p1 ∧ ◇≤3 p2) ∨ ◇≤3(□p0 ∧ ◇≥5(◇≥4(p2 ↔ p1 ∧ p2 ∧ ¬p1) ∧ ◇p2 ∧ ◇≥2(p1 ∧ p2 ∨ p0 ∧ p2 ∧ p0 ∧ p1) ∨ ◇≥2(p0 ∧ ¬p1 ∧ ¬p1 ∧ p2 ↔ p1 ∧ p2 ∧ p1 ∧ p0 ∧ p0) ∧ p2 ∧ p2) ∧ p2 → p1 ∧ ◇≤5(◇≥5 ¬p2 ∧ ◇(p1 ∧ ¬p0 ∧ p1 ∧ p0 ∧ p0 ∨ p1 ∧ ¬p2 ∧ p0 ∧ ¬p0) ∧ p0 ∧ ◇(p2 ∧ ¬p2) ∨ ◇≤2(p0 ∨ p1 ∧ p0 ∧ p0)))",
     "setting": {
-      "num_props": 3,
-      "conj_size": 5,
-      "disj_size": 2,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 3,
+        "conj_size": 5,
+        "disj_size": 2,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -17722,22 +17844,24 @@
   {
     "formula": "¬(◇p0 ∧ ◇≥4 p2 ∧ ◇(◇≥2 p2) ∧ p1 ∧ ◇≤3(p0 ∧ ◇≥3(◇≥2(p0) ∧ p0) ∧ ◇p1 ∧ ◇≤3 p2) ∨ ◇≤3(□p0 ∧ ◇≥5(◇≥4(p2 ↔ p1 ∧ p2 ∧ ¬p1) ∧ ◇p2 ∧ ◇≥2(p1 ∧ p2 ∨ p0 ∧ p2 ∧ p0 ∧ p1) ∨ ◇≥2(p0 ∧ ¬p1 ∧ ¬p1 ∧ p2 ↔ p1 ∧ p2 ∧ p1 ∧ p0 ∧ p0) ∧ p2 ∧ p2) ∧ p2 → p1 ∧ ◇≤5(◇≥5 ¬p2 ∧ ◇(p1 ∧ ¬p0 ∧ p1 ∧ p0 ∧ p0 ∨ p1 ∧ ¬p2 ∧ p0 ∧ ¬p0) ∧ p0 ∧ ◇(p2 ∧ ¬p2) ∨ ◇≤2(p0 ∨ p1 ∧ p0 ∧ p0))))",
     "setting": {
-      "num_props": 3,
-      "conj_size": 5,
-      "disj_size": 2,
-      "w_nest": [
-        1,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        4,
-        4,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 3,
+        "conj_size": 5,
+        "disj_size": 2,
+        "w_nest": [
+          1,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          4,
+          4,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -17940,22 +18064,24 @@
   {
     "formula": "p0 ∧ □(□(p2 ∧ ¬p2 ∧ p0 ∨ ¬p2 ∧ p2) ∨ p0 ∧ ◇≤2(p0 ∨ p3 ∧ p3) ∧ p4 ∨ p4 ∧ □(p0 ∧ p4 ∧ p3 ∨ p3 ∧ p1 ∨ p4 ∧ p3 ∧ p1 ∨ p3) ∧ p3) ∨ p3 ∧ p4 ∧ ◇(◇≤3(p0 ∨ p3 ∧ p1 ∧ p0 ∨ p2 ∧ p0 ∧ p4 ∨ p1 ∧ p0)) ∨ p1 ∧ ◇≤4(◇≤2(p1 ∨ p2 ∧ p3 ∨ p2 ∧ p4 ∨ p1 ∧ p4 ∧ p2 ∨ p4) ∨ p3 ∧ □(p0 ∧ p4 ∧ p2 ↔ p4 ∧ p4 ↔ p0 ↔ p0 ∧ p3 ∧ p0) ∧ p1 ∨ p3 ∧ ◇≤3(p2) ∧ p4) ∧ ◇≤4 p4 ∨ □(p0 ∧ p4 ∧ □(p2 ∧ p3 ∧ p0 ∨ p1 ∧ p0 ∧ p0 ∨ p1 ∧ p3 ∧ p4 ∨ p3) ∨ ◇(¬p0 ∧ p2) ∧ p3 ∧ ◇≥4(p1 ∧ p1 ∧ p4 ∨ p0 ∧ p4 ∧ p4 ∨ p2 ∨ ¬p2 ∧ p4 ∧ p2) ∨ p4 ∧ ◇≤5(p4 ∨ p3) ∧ p1 ∨ ◇≥3(p0 ∨ p4 ∧ p0 ∨ ¬p2 ∧ p3) ∧ p3) ∧ ◇(p4 ∧ p3 ∨ p0 ∧ ◇p3 ∧ □(p4 ∧ p3) ∨ p1 ∧ p1 ∧ p2) ∨ ¬p1 ∧ ◇≤4(◇≤3(p4 → p2) ∧ □(p0 ∧ p2 ∧ ¬p3) ∨ ◇≤2 p0 ∧ ◇(p1 ∧ p2) ∨ p1 ∧ □(p3 ∨ ¬p4 ∨ p1 ∧ p3 ∧ p4 ∨ p4 ∧ p4 ∧ p3 ∨ p1 ∧ p3) ∧ ◇≥4(p1 ∧ p2 ∨ p1 ∨ p1 ∧ p0 ∨ p4 ∧ p2) ∨ ◇≤3(p0 ∧ p0 ∧ p3 → p0 → p1 ∧ p2 → p1 ∧ p4 → p2 ∧ p3) ∧ p3 ∧ □(p3 ∧ p0 ∨ p1 ∧ p1) ∨ □(p1 ∧ ⊥ ∨ ⊤ ∨ p3 ∧ p2 ∨ p0 ∧ p3 ∧ p3) ∧ ◇(p3 ∧ p3 ∨ p4 ∨ p2 ∨ p2) ∧ □p3)",
     "setting": {
-      "num_props": 5,
-      "conj_size": 3,
-      "disj_size": 5,
-      "w_nest": [
-        6,
-        1,
-        2
-      ],
-      "depth": 2,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 3,
+        "disj_size": 5,
+        "w_nest": [
+          6,
+          1,
+          2
+        ],
+        "depth": 2,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -18158,22 +18284,24 @@
   {
     "formula": "¬(p0 ∧ □(□(p2 ∧ ¬p2 ∧ p0 ∨ ¬p2 ∧ p2) ∨ p0 ∧ ◇≤2(p0 ∨ p3 ∧ p3) ∧ p4 ∨ p4 ∧ □(p0 ∧ p4 ∧ p3 ∨ p3 ∧ p1 ∨ p4 ∧ p3 ∧ p1 ∨ p3) ∧ p3) ∨ p3 ∧ p4 ∧ ◇(◇≤3(p0 ∨ p3 ∧ p1 ∧ p0 ∨ p2 ∧ p0 ∧ p4 ∨ p1 ∧ p0)) ∨ p1 ∧ ◇≤4(◇≤2(p1 ∨ p2 ∧ p3 ∨ p2 ∧ p4 ∨ p1 ∧ p4 ∧ p2 ∨ p4) ∨ p3 ∧ □(p0 ∧ p4 ∧ p2 ↔ p4 ∧ p4 ↔ p0 ↔ p0 ∧ p3 ∧ p0) ∧ p1 ∨ p3 ∧ ◇≤3(p2) ∧ p4) ∧ ◇≤4 p4 ∨ □(p0 ∧ p4 ∧ □(p2 ∧ p3 ∧ p0 ∨ p1 ∧ p0 ∧ p0 ∨ p1 ∧ p3 ∧ p4 ∨ p3) ∨ ◇(¬p0 ∧ p2) ∧ p3 ∧ ◇≥4(p1 ∧ p1 ∧ p4 ∨ p0 ∧ p4 ∧ p4 ∨ p2 ∨ ¬p2 ∧ p4 ∧ p2) ∨ p4 ∧ ◇≤5(p4 ∨ p3) ∧ p1 ∨ ◇≥3(p0 ∨ p4 ∧ p0 ∨ ¬p2 ∧ p3) ∧ p3) ∧ ◇(p4 ∧ p3 ∨ p0 ∧ ◇p3 ∧ □(p4 ∧ p3) ∨ p1 ∧ p1 ∧ p2) ∨ ¬p1 ∧ ◇≤4(◇≤3(p4 → p2) ∧ □(p0 ∧ p2 ∧ ¬p3) ∨ ◇≤2 p0 ∧ ◇(p1 ∧ p2) ∨ p1 ∧ □(p3 ∨ ¬p4 ∨ p1 ∧ p3 ∧ p4 ∨ p4 ∧ p4 ∧ p3 ∨ p1 ∧ p3) ∧ ◇≥4(p1 ∧ p2 ∨ p1 ∨ p1 ∧ p0 ∨ p4 ∧ p2) ∨ ◇≤3(p0 ∧ p0 ∧ p3 → p0 → p1 ∧ p2 → p1 ∧ p4 → p2 ∧ p3) ∧ p3 ∧ □(p3 ∧ p0 ∨ p1 ∧ p1) ∨ □(p1 ∧ ⊥ ∨ ⊤ ∨ p3 ∧ p2 ∨ p0 ∧ p3 ∧ p3) ∧ ◇(p3 ∧ p3 ∨ p4 ∨ p2 ∨ p2) ∧ □p3))",
     "setting": {
-      "num_props": 5,
-      "conj_size": 3,
-      "disj_size": 5,
-      "w_nest": [
-        6,
-        1,
-        2
-      ],
-      "depth": 2,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 5,
+        "conj_size": 3,
+        "disj_size": 5,
+        "w_nest": [
+          6,
+          1,
+          2
+        ],
+        "depth": 2,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -18376,22 +18504,24 @@
   {
     "formula": "◇(◇(□(p0 ∧ p0 ↔ ⊤) ∧ □p0) ∨ ◇≥4(□p1 ∧ ◇(p0) ∨ □(¬p0 ↔ p0 ↔ p0 ∧ ¬p1 ↔ p0 ∧ p1 ∧ p0 ↔ p0 ∧ ¬p0 ∧ p1)) ∧ □(p1 ∧ p1 ∧ p1 ∨ p0 ∨ ¬p1 ∧ ◇≤2(p0 ∧ p1 ∨ p1 ∧ p0 ∨ p0 ∧ p0 ∧ p0 ∨ p0 ∧ p0 ∧ p1))) ∨ p1 ∧ ◇(◇(◇≥4(p0 ∧ p1 ∧ p1 ∨ p0 ∧ p0 ∨ p1 ∧ p1 ∧ p0 ∨ p1 ∧ p1 ∨ p0 ∧ p1) ∨ □(p0 ∧ p0 → ¬p0 ∧ p0) ∨ ◇(p0 → p1 ∧ p0 ∧ p0 → p1 ∧ p0 ∧ p0 → p0 ∧ p0) ∨ ◇≥3(p1 ∧ p0 → p1 → p0 ∧ p0 → p1 ∧ p0 → p1 ∧ p0) ∧ ◇≥4 p1 ∨ □(p1 ∧ p0 ∨ p0 ∨ p1 ∨ p0 ∧ p0 ∧ p0 ∨ p0) ∧ ◇p1) → □(p0 ∧ ◇p1 ∧ ◇(p1 ∧ p0 ∧ p0 ∨ ¬p1 ∧ p1 ∧ p0 ∨ p1 ∧ p0 ∧ p0 ∨ p0 ∧ p1 ∨ p1 ∧ p1 ∧ p0) → ◇(p1 ∧ p0 ∨ ⊥ ∧ p1 ∨ p0 ∧ p1 ∨ p1) → ◇(p1 ∧ p1 ∧ p0 ∨ p1 ∧ p0 ∨ p1 ∧ ¬p0 ∨ p1 ∧ p1 ∨ p1 ∧ p0 ∧ p1)) → □p1 ∧ □(□p0 ∧ p0 ∧ ◇(p0 ∧ p0 ↔ p0 ↔ p0)) → ◇≥4(□(p0 ∧ p0 ∨ p0 ∧ p1 ∧ p1) ∧ ◇(p1 ∨ p0 ∧ p1 ∧ p1 ∨ p0 ∨ p0 ∧ p0 ∨ p1) ∧ p0) ∧ ◇(◇(p0 ∨ p0 ∧ p1) ∧ □(p0 ∧ ¬p0) ∧ ◇≤5(p1 ∧ p0 ∨ p0 ∨ p1 ∨ p0 ∧ p1 ∧ p0 ∨ p0 ∧ p1) ∨ ◇≤5(p1 ∨ p0 ∧ p1 ∧ p1 ∨ p1 ∨ p0 ∧ p1))) ∨ p1 ∧ □(□(p0 ∧ ◇(p1 ∧ p0 ∨ p0 ∧ p1 ∨ p1 ∧ p0 ∨ p0 ∧ p1 ∨ p0 ∧ p1 ∧ p0) ∨ ◇(p0 ∨ p0 ∧ p1 ∧ p0 ∨ p0 ∧ p1 ∧ p1 ∨ p1) ∧ ◇≤3 p1 ∧ ◇¬p1 ∨ □(p0 ∧ ¬p1 ∨ p1 ∨ p1 ∧ ¬p0 ∧ p1 ∨ p0 ∨ p1 ∧ ¬p1 ∧ p0) ∨ ◇p1 ∧ □p1 ∧ ◇(p0 ∧ p1 ∧ p0) ∨ ◇≤5 p1 ∧ ◇≥2 p1 ∧ ◇(p1 ∧ p1 ∧ p0 ↔ p1 ∧ ¬p0 ∧ p0 ↔ p1 ∧ p1 ∧ p0 ↔ ¬p1)) ∧ p0) ∧ ◇(p0 ∨ □p1 ∧ p0 ∧ ◇p0 ∨ □p1 ∧ p0) ∨ ◇≤5(◇(p1 ∨ ⊥ ∧ ◇≤4 p1) ∧ □(p0 ∧ □(p1 ∨ p0 ∧ p0 ∨ p0 ∧ p1 ∧ p1 ∨ p1 ∧ p0 ∧ p1 ∨ p1 ∧ p1) ∧ ◇p1 ∨ p1 ∧ □(p0)) ∧ ◇(◇(p0 ∧ p1 ∧ ¬p1 ∨ ¬p0 ∧ p1 ∨ ¬p1 ∨ p0 ∧ p0 ∧ p0) ∨ ◇≥5(p1 → p1 → p1 ∧ p1 ∧ p0 → p0 ∧ p0 ∧ p1 → p0) ∧ □¬p0 ∧ □(p0 ∧ ¬p1 ∧ p0) ∨ □(p1 ↔ ¬p1 ∧ ¬p1 ∧ p0 ↔ ¬p0) ∨ □p0 ∧ p1 ∧ ◇≤5(p0 ∧ p0 ∨ p0 ∨ p0 ∧ p0 ∧ p0 ∨ p1 ∧ p0 ∧ ¬p1) ∨ p0 ∧ ◇(p1 ∧ p1 ∧ p1)) ∨ ◇(p0 ∧ □(p0 ∧ p0 ∧ p1 ∨ p0 ∨ p0 ∧ p1 ∨ p1 ∨ p1) ∧ ¬p0) ∧ ◇≥4 p1 ∨ □(◇p1 ∧ □(p0 ∧ p1 ∧ p0 ∨ p1 ∨ p1 ∨ p1 ∨ p1) ∧ ◇≥5(p0) ∨ ◇(p1) ∧ p0 ∨ □(p1 ∨ p1 ∧ p0 ∧ p1 ∨ ¬p0 ∧ p1 ∧ p0 ∨ p0) ∧ ¬p1 ∨ ◇(p1 ∧ p0 ∨ ¬p0 ∧ p1 ∧ p1 ∨ p1 ∨ p0 ∧ p1 ∨ p1 ∧ p1 ∧ p1) ∨ □(p0 ∧ p1 ∨ p0 ∧ p0 ∧ p1)) ∨ ◇(p1 ∧ □(¬p0 ∧ p0) ∧ ◇p1) ∧ □(p0 ∧ ◇≥5(p1 ∧ p0 ∧ ⊥ ∨ p1)) ∨ □(◇≤4 p1 ∧ p1 ∧ □(¬p1 ∧ p1 ∨ p0 ∨ p1) ∨ p1 ∧ ◇(p0 ∧ p0 ∧ p0 ∨ p1 ∧ p1 ∨ p1 ∧ p1 ∧ p0 ∨ p0 ∧ p0 ∧ p0) ∧ p1 ∨ ◇(p0 ∧ p1 ∨ p0 ∧ p0 ∨ p0 ∧ p1 ∧ p0 ∨ ¬p1 ∧ ¬p0 ∧ p1) ∨ ◇(p0 ∧ p1 ∨ p1))) ∨ ◇≥3(□(◇p0 ∧ □(p0 ∨ p1) ∨ ◇≥2(p0 ∧ p0) ∨ □p0 ∧ p1 ∧ □(p1 ∨ p0 ∧ p1 ∨ p1 ∧ p0 ∧ p1) ∨ ◇(p1 ∧ p0 ∧ p0 ∨ p1 ∧ p0 ∧ p0 ∨ p0) ∧ ◇≤4(p0 → p0 → p1 ∧ p1 ∧ p1 → ¬p1)) ∧ □p0 ∨ ◇(◇(¬p1 ∨ p0 ∧ p1 ∧ p1 ∨ p1 ∧ p1 ∧ p1 ∨ p1 ∧ p0) ∨ □(¬p0 ∧ p0 ∨ p0 ∧ p1 ∧ p1 ∨ p0 ∧ p0 ∧ p1 ∨ p0) ∧ ◇(p1 ∨ p0 ∨ p1 ∧ p1 ∧ p1)) ∧ p1 ∧ ◇(p0 ∧ ¬p1) ∨ □(□(p0 ∧ p1 ∧ p1 → p1 ∧ ¬p1 → p1 → p1) ∧ ◇(p0 ∧ p1 → p0 → p1 ∧ p0 → p1 ∧ p1 ∧ p0) ∧ ◇≥5 p1))",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -18594,22 +18724,24 @@
   {
     "formula": "¬(◇(◇(□(p0 ∧ p0 ↔ ⊤) ∧ □p0) ∨ ◇≥4(□p1 ∧ ◇(p0) ∨ □(¬p0 ↔ p0 ↔ p0 ∧ ¬p1 ↔ p0 ∧ p1 ∧ p0 ↔ p0 ∧ ¬p0 ∧ p1)) ∧ □(p1 ∧ p1 ∧ p1 ∨ p0 ∨ ¬p1 ∧ ◇≤2(p0 ∧ p1 ∨ p1 ∧ p0 ∨ p0 ∧ p0 ∧ p0 ∨ p0 ∧ p0 ∧ p1))) ∨ p1 ∧ ◇(◇(◇≥4(p0 ∧ p1 ∧ p1 ∨ p0 ∧ p0 ∨ p1 ∧ p1 ∧ p0 ∨ p1 ∧ p1 ∨ p0 ∧ p1) ∨ □(p0 ∧ p0 → ¬p0 ∧ p0) ∨ ◇(p0 → p1 ∧ p0 ∧ p0 → p1 ∧ p0 ∧ p0 → p0 ∧ p0) ∨ ◇≥3(p1 ∧ p0 → p1 → p0 ∧ p0 → p1 ∧ p0 → p1 ∧ p0) ∧ ◇≥4 p1 ∨ □(p1 ∧ p0 ∨ p0 ∨ p1 ∨ p0 ∧ p0 ∧ p0 ∨ p0) ∧ ◇p1) → □(p0 ∧ ◇p1 ∧ ◇(p1 ∧ p0 ∧ p0 ∨ ¬p1 ∧ p1 ∧ p0 ∨ p1 ∧ p0 ∧ p0 ∨ p0 ∧ p1 ∨ p1 ∧ p1 ∧ p0) → ◇(p1 ∧ p0 ∨ ⊥ ∧ p1 ∨ p0 ∧ p1 ∨ p1) → ◇(p1 ∧ p1 ∧ p0 ∨ p1 ∧ p0 ∨ p1 ∧ ¬p0 ∨ p1 ∧ p1 ∨ p1 ∧ p0 ∧ p1)) → □p1 ∧ □(□p0 ∧ p0 ∧ ◇(p0 ∧ p0 ↔ p0 ↔ p0)) → ◇≥4(□(p0 ∧ p0 ∨ p0 ∧ p1 ∧ p1) ∧ ◇(p1 ∨ p0 ∧ p1 ∧ p1 ∨ p0 ∨ p0 ∧ p0 ∨ p1) ∧ p0) ∧ ◇(◇(p0 ∨ p0 ∧ p1) ∧ □(p0 ∧ ¬p0) ∧ ◇≤5(p1 ∧ p0 ∨ p0 ∨ p1 ∨ p0 ∧ p1 ∧ p0 ∨ p0 ∧ p1) ∨ ◇≤5(p1 ∨ p0 ∧ p1 ∧ p1 ∨ p1 ∨ p0 ∧ p1))) ∨ p1 ∧ □(□(p0 ∧ ◇(p1 ∧ p0 ∨ p0 ∧ p1 ∨ p1 ∧ p0 ∨ p0 ∧ p1 ∨ p0 ∧ p1 ∧ p0) ∨ ◇(p0 ∨ p0 ∧ p1 ∧ p0 ∨ p0 ∧ p1 ∧ p1 ∨ p1) ∧ ◇≤3 p1 ∧ ◇¬p1 ∨ □(p0 ∧ ¬p1 ∨ p1 ∨ p1 ∧ ¬p0 ∧ p1 ∨ p0 ∨ p1 ∧ ¬p1 ∧ p0) ∨ ◇p1 ∧ □p1 ∧ ◇(p0 ∧ p1 ∧ p0) ∨ ◇≤5 p1 ∧ ◇≥2 p1 ∧ ◇(p1 ∧ p1 ∧ p0 ↔ p1 ∧ ¬p0 ∧ p0 ↔ p1 ∧ p1 ∧ p0 ↔ ¬p1)) ∧ p0) ∧ ◇(p0 ∨ □p1 ∧ p0 ∧ ◇p0 ∨ □p1 ∧ p0) ∨ ◇≤5(◇(p1 ∨ ⊥ ∧ ◇≤4 p1) ∧ □(p0 ∧ □(p1 ∨ p0 ∧ p0 ∨ p0 ∧ p1 ∧ p1 ∨ p1 ∧ p0 ∧ p1 ∨ p1 ∧ p1) ∧ ◇p1 ∨ p1 ∧ □(p0)) ∧ ◇(◇(p0 ∧ p1 ∧ ¬p1 ∨ ¬p0 ∧ p1 ∨ ¬p1 ∨ p0 ∧ p0 ∧ p0) ∨ ◇≥5(p1 → p1 → p1 ∧ p1 ∧ p0 → p0 ∧ p0 ∧ p1 → p0) ∧ □¬p0 ∧ □(p0 ∧ ¬p1 ∧ p0) ∨ □(p1 ↔ ¬p1 ∧ ¬p1 ∧ p0 ↔ ¬p0) ∨ □p0 ∧ p1 ∧ ◇≤5(p0 ∧ p0 ∨ p0 ∨ p0 ∧ p0 ∧ p0 ∨ p1 ∧ p0 ∧ ¬p1) ∨ p0 ∧ ◇(p1 ∧ p1 ∧ p1)) ∨ ◇(p0 ∧ □(p0 ∧ p0 ∧ p1 ∨ p0 ∨ p0 ∧ p1 ∨ p1 ∨ p1) ∧ ¬p0) ∧ ◇≥4 p1 ∨ □(◇p1 ∧ □(p0 ∧ p1 ∧ p0 ∨ p1 ∨ p1 ∨ p1 ∨ p1) ∧ ◇≥5(p0) ∨ ◇(p1) ∧ p0 ∨ □(p1 ∨ p1 ∧ p0 ∧ p1 ∨ ¬p0 ∧ p1 ∧ p0 ∨ p0) ∧ ¬p1 ∨ ◇(p1 ∧ p0 ∨ ¬p0 ∧ p1 ∧ p1 ∨ p1 ∨ p0 ∧ p1 ∨ p1 ∧ p1 ∧ p1) ∨ □(p0 ∧ p1 ∨ p0 ∧ p0 ∧ p1)) ∨ ◇(p1 ∧ □(¬p0 ∧ p0) ∧ ◇p1) ∧ □(p0 ∧ ◇≥5(p1 ∧ p0 ∧ ⊥ ∨ p1)) ∨ □(◇≤4 p1 ∧ p1 ∧ □(¬p1 ∧ p1 ∨ p0 ∨ p1) ∨ p1 ∧ ◇(p0 ∧ p0 ∧ p0 ∨ p1 ∧ p1 ∨ p1 ∧ p1 ∧ p0 ∨ p0 ∧ p0 ∧ p0) ∧ p1 ∨ ◇(p0 ∧ p1 ∨ p0 ∧ p0 ∨ p0 ∧ p1 ∧ p0 ∨ ¬p1 ∧ ¬p0 ∧ p1) ∨ ◇(p0 ∧ p1 ∨ p1))) ∨ ◇≥3(□(◇p0 ∧ □(p0 ∨ p1) ∨ ◇≥2(p0 ∧ p0) ∨ □p0 ∧ p1 ∧ □(p1 ∨ p0 ∧ p1 ∨ p1 ∧ p0 ∧ p1) ∨ ◇(p1 ∧ p0 ∧ p0 ∨ p1 ∧ p0 ∧ p0 ∨ p0) ∧ ◇≤4(p0 → p0 → p1 ∧ p1 ∧ p1 → ¬p1)) ∧ □p0 ∨ ◇(◇(¬p1 ∨ p0 ∧ p1 ∧ p1 ∨ p1 ∧ p1 ∧ p1 ∨ p1 ∧ p0) ∨ □(¬p0 ∧ p0 ∨ p0 ∧ p1 ∧ p1 ∨ p0 ∧ p0 ∧ p1 ∨ p0) ∧ ◇(p1 ∨ p0 ∨ p1 ∧ p1 ∧ p1)) ∧ p1 ∧ ◇(p0 ∧ ¬p1) ∨ □(□(p0 ∧ p1 ∧ p1 → p1 ∧ ¬p1 → p1 → p1) ∧ ◇(p0 ∧ p1 → p0 → p1 ∧ p0 → p1 ∧ p1 ∧ p0) ∧ ◇≥5 p1)))",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -18812,22 +18944,24 @@
   {
     "formula": "p1 ∧ p0 ∨ ¬p0 ∧ p1 ∧ p1 ∨ p1 ∧ p0 ∧ p1",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 3,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        1,
-        4,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 3,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          1,
+          4,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -19030,22 +19164,24 @@
   {
     "formula": "¬(p1 ∧ p0 ∨ ¬p0 ∧ p1 ∧ p1 ∨ p1 ∧ p0 ∧ p1)",
     "setting": {
-      "num_props": 2,
-      "conj_size": 3,
-      "disj_size": 3,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        1,
-        4,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 3,
+        "disj_size": 3,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          1,
+          4,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -19248,22 +19384,24 @@
   {
     "formula": "¬p0 ∧ p2 ∧ ◇(p5 ∨ p4 ∧ p7 ∨ ¬p3 ∧ p7 ∨ ¬p3 ∧ p0 ∧ ¬p4 ∨ p2) ↔ ◇≤4 p7 ∧ ◇≥2(p6 ∨ p1 ∧ p0 ∧ p7 ∨ p4 ∧ p1 ∧ p3) ↔ ◇≤3 p4 ∧ ◇≥5 p2 ∧ ◇≤2(p2) ↔ □(p7 ∨ p1 ∧ p9 ∧ p7 ∨ p7 ∧ p8 ∧ p6 ∨ p7 ∨ p1) ↔ ◇≥2(p0 ∨ p6 ∧ p4 ∧ p5 ∨ p0 ∧ p9 ∧ p8 ∨ p2 ∨ p2 ∧ p3 ∧ p4) ∧ ◇≥4(p7 ∧ p0 ∧ p2 ∨ p5 ∨ p6)",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        1,
-        4,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          1,
+          4,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -19466,22 +19604,24 @@
   {
     "formula": "¬(¬p0 ∧ p2 ∧ ◇(p5 ∨ p4 ∧ p7 ∨ ¬p3 ∧ p7 ∨ ¬p3 ∧ p0 ∧ ¬p4 ∨ p2) ↔ ◇≤4 p7 ∧ ◇≥2(p6 ∨ p1 ∧ p0 ∧ p7 ∨ p4 ∧ p1 ∧ p3) ↔ ◇≤3 p4 ∧ ◇≥5 p2 ∧ ◇≤2(p2) ↔ □(p7 ∨ p1 ∧ p9 ∧ p7 ∨ p7 ∧ p8 ∧ p6 ∨ p7 ∨ p1) ↔ ◇≥2(p0 ∨ p6 ∧ p4 ∧ p5 ∨ p0 ∧ p9 ∧ p8 ∨ p2 ∨ p2 ∧ p3 ∧ p4) ∧ ◇≥4(p7 ∧ p0 ∧ p2 ∨ p5 ∨ p6))",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 5,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 1,
-      "numer_neg": 2,
-      "w_modal": [
-        1,
-        1,
-        4,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 5,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 1,
+        "numer_neg": 2,
+        "w_modal": [
+          1,
+          1,
+          4,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -19684,22 +19824,24 @@
   {
     "formula": "p5 ∧ p0 ∧ ¬p1 ∨ p2 ∧ p3 ∨ p4",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 3,
-      "w_nest": [
-        6,
-        1,
-        2
-      ],
-      "depth": 0,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 3,
+        "w_nest": [
+          6,
+          1,
+          2
+        ],
+        "depth": 0,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -19902,22 +20044,24 @@
   {
     "formula": "¬(p5 ∧ p0 ∧ ¬p1 ∨ p2 ∧ p3 ∨ p4)",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 3,
-      "w_nest": [
-        6,
-        1,
-        2
-      ],
-      "depth": 0,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 3,
+        "w_nest": [
+          6,
+          1,
+          2
+        ],
+        "depth": 0,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -20120,22 +20264,24 @@
   {
     "formula": "p2 ∧ p3 ∧ p0 ∨ p1 ∧ p3 ∧ ¬p3",
     "setting": {
-      "num_props": 4,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -20338,22 +20484,24 @@
   {
     "formula": "¬(p2 ∧ p3 ∧ p0 ∨ p1 ∧ p3 ∧ ¬p3)",
     "setting": {
-      "num_props": 4,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        2,
-        1,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        4,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 4,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          2,
+          1,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          4,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -20556,22 +20704,24 @@
   {
     "formula": "p3 ∧ p4 ∨ p2 ∧ ¬p0 ∧ ¬p1",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -20774,22 +20924,24 @@
   {
     "formula": "¬(p3 ∧ p4 ∨ p2 ∧ ¬p0 ∧ ¬p1)",
     "setting": {
-      "num_props": 10,
-      "conj_size": 3,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 0,
-      "numer_neg": 5,
-      "w_modal": [
-        1,
-        1,
-        1,
-        1
-      ]
+      "RandDNF": {
+        "num_props": 10,
+        "conj_size": 3,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 0,
+        "numer_neg": 5,
+        "w_modal": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
     },
     "tests": [
       {
@@ -20992,22 +21144,24 @@
   {
     "formula": "□(◇≤5 p0 ∧ p1) ∧ □(◇≤4(p0 ∧ □(p0 ∧ p0)) → ◇≤4(◇≤4(p1 → p0) ∧ ¬p1 ∨ □(p0 ∨ p1 ∧ p1) ∧ p1)) ↔ □(◇≤5(p1 ∧ □(p0 ∧ p1 ∨ ¬p1 ∧ p1)) ↔ □(◇≤4(p1 ∧ p1) ∧ p0 ∨ ◇≤5(¬p1 ∧ p0 ∨ p0) ∧ p0))",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
@@ -21210,22 +21364,24 @@
   {
     "formula": "¬(□(◇≤5 p0 ∧ p1) ∧ □(◇≤4(p0 ∧ □(p0 ∧ p0)) → ◇≤4(◇≤4(p1 → p0) ∧ ¬p1 ∨ □(p0 ∨ p1 ∧ p1) ∧ p1)) ↔ □(◇≤5(p1 ∧ □(p0 ∧ p1 ∨ ¬p1 ∧ p1)) ↔ □(◇≤4(p1 ∧ p1) ∧ p0 ∨ ◇≤5(¬p1 ∧ p0 ∨ p0) ∧ p0)))",
     "setting": {
-      "num_props": 2,
-      "conj_size": 2,
-      "disj_size": 2,
-      "w_nest": [
-        6,
-        2,
-        1
-      ],
-      "depth": 3,
-      "numer_neg": 2,
-      "w_modal": [
-        4,
-        1,
-        1,
-        4
-      ]
+      "RandDNF": {
+        "num_props": 2,
+        "conj_size": 2,
+        "disj_size": 2,
+        "w_nest": [
+          6,
+          2,
+          1
+        ],
+        "depth": 3,
+        "numer_neg": 2,
+        "w_modal": [
+          4,
+          1,
+          1,
+          4
+        ]
+      }
     },
     "tests": [
       {
