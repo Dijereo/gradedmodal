@@ -61,10 +61,11 @@ pub(crate) enum EvalSetting {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum EvalStatus {
     Pending,
-    Failed,
-    Timedout,
     Theorem,
     CounterSatisfiable,
+    Skip,
+    Timedout,
+    Failed,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -451,9 +452,9 @@ where
                 }
             }
         }
-        if status == EvalStatus::Timedout {
-            thread::sleep(Duration::from_secs(3));
-        }
+        // if status == EvalStatus::Timedout {
+        //     thread::sleep(Duration::from_secs(3));
+        // }
     }
     Ok(())
 }

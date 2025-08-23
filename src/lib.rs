@@ -71,19 +71,5 @@ pub fn init_router() -> Router {
 }
 
 pub fn run_cli() {
-    // cli::run();
-    let n = 200;
-    let mut datapoints: Vec<DataPoint<String, &str, &'static str>> = Vec::with_capacity(n);
-    const INIT_KEYS: [&'static str; 2] = ["vampire", "prover"];
-    let mut rng = StdRng::seed_from_u64(43);
-    for i in 0..n {
-        let (formula, frames) = randthm::rand_thm(&mut rng);
-        let mut buffer = String::new();
-        write!(&mut buffer, "{}", formula);
-        datapoints.push(DataPoint::new(buffer,
-            EvalSetting::Thm(frames),
-            INIT_KEYS.into_iter(),
-        ));
-    }
-    save_results(&datapoints, "eval/results/results1000.json");
+    cli::run();
 }
