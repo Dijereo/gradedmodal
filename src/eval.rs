@@ -53,8 +53,8 @@ pub(crate) struct DataPoint<F, T, K: Eq + Hash> {
 
 #[derive(Serialize, Deserialize)]
 pub(crate) enum EvalSetting {
-    DNF(Setting),
-    Thm(FrameCondition),
+    RandDNF(Setting),
+    RandTheorem(FrameCondition),
     Crafted,
 }
 

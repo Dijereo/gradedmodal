@@ -77,12 +77,12 @@ pub(crate) fn gen_formulae(
         subbuffer.next_back();
         datapoints.push(DataPoint::new(
             Cow::Borrowed(subbuffer.as_str()),
-            EvalSetting::DNF(setting.clone()),
+            EvalSetting::RandDNF(setting.clone()),
             INIT_KEYS.into_iter(),
         ));
         datapoints.push(DataPoint::new(
             Cow::Borrowed(buffer.as_str()),
-            EvalSetting::DNF(setting.clone()),
+            EvalSetting::RandDNF(setting.clone()),
             INIT_KEYS.into_iter(),
         ));
     }
