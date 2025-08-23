@@ -170,7 +170,11 @@ impl Calculus {
         }
     }
 
-    fn store_disjs<T: BaseTransit>(&mut self, tab: &mut TableauNode2<T>, forks: &mut VecDeque<Fork>) {
+    fn store_disjs<T: BaseTransit>(
+        &mut self,
+        tab: &mut TableauNode2<T>,
+        forks: &mut VecDeque<Fork>,
+    ) {
         for label in &mut tab.formulae {
             if label.lemma || label.expanded {
                 continue;

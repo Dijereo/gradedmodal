@@ -1,10 +1,93 @@
-use std::{fmt, fs, io, path::Path};
+use std::{fmt, fs, io, ops::Deref, path::Path, rc::Rc};
 
 pub(crate) enum Few<T> {
     None,
     One(T),
     Two(T, T),
     Three(T, T, T),
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum Rx<T> {
+    Box(Box<T>),
+    Rc(Rc<T>),
+}
+
+impl<T> AsRef<T> for Rx<T> {
+    fn as_ref(&self) -> &T {
+        match self {
+            Rx::Box(b) => b.as_ref(),
+            Rx::Rc(r) => r.as_ref(),
+        }
+    }
+}
+
+impl<T> Deref for Rx<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Rx::Box(b) => b.deref(),
+            Rx::Rc(r) => r.deref(),
+        }
+    }
+}
+
+impl<T> From<Box<T>> for Rx<T> {
+    fn from(b: Box<T>) -> Self {
+        Rx::Box(b)
+    }
+}
+
+impl<T> From<Rc<T>> for Rx<T> {
+    fn from(r: Rc<T>) -> Self {
+        Rx::Rc(r)
+    }
+}
+
+impl<T> Rx<T> {
+    pub(crate) fn rc(item: T) -> Self {
+        Rc::new(item).into()
+    }
+
+    pub(crate) fn bxx(item: T) -> Self {
+        Box::new(item).into()
+    }
+
+    pub(crate) fn try_deref_mut(&mut self) -> Option<&mut T> {
+        match self {
+            Rx::Box(b) => Some(b.as_mut()),
+            Rx::Rc(_) => None,
+        }
+    }
+
+    pub(crate) fn try_into_inner(self) -> Result<T, Rc<T>> {
+        match self {
+            Rx::Box(b) => Ok(*b),
+            Rx::Rc(r) => Err(r),
+        }
+    }
+
+    pub(crate) fn try_as_box(self) -> Result<Box<T>, Rc<T>> {
+        match self {
+            Rx::Box(b) => Ok(b),
+            Rx::Rc(r) => Err(r),
+        }
+    }
+
+    pub(crate) fn try_quick_clone(&self) -> Option<Self> {
+        match self {
+            Rx::Box(_) => None,
+            Rx::Rc(r) => Some(r.clone().into()),
+        }
+    }
+
+    pub(crate) fn into_rc(self) -> Self {
+        match self {
+            Rx::Box(b) => Self::Rc(Rc::new(*b)),
+            Rx::Rc(_) => self,
+        }
+    }
 }
 
 pub(crate) fn write_subscript(f: &mut fmt::Formatter, mut n: u8) -> fmt::Result {
@@ -69,7 +152,10 @@ where
             let path = entry?.path();
             if path.is_file() {
                 if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-                    if exts.iter().any(|wanted| wanted.as_ref().eq_ignore_ascii_case(ext)) {
+                    if exts
+                        .iter()
+                        .any(|wanted| wanted.as_ref().eq_ignore_ascii_case(ext))
+                    {
                         println!("{:?}", path);
                         f(&path);
                     }
@@ -79,7 +165,6 @@ where
     }
     Ok(())
 }
-
 
 #[macro_export]
 macro_rules! vecfor {

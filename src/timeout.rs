@@ -29,6 +29,7 @@ pub(crate) struct StopHandler {
 
 impl StopHandler {
     pub(crate) fn new(dur: Duration) -> (Self, thread::JoinHandle<()>) {
+
         let stop = Arc::new(AtomicBool::new(false));
         let stopclone = stop.clone();
         let thread = thread::spawn(move || {
@@ -56,8 +57,16 @@ impl TimeoutHandler for StopHandler {
 
 fn cancellable_sleep(dur: Duration, freq: u64, stop: Arc<AtomicBool>) {
     let total_ms = dur.as_millis() as u64 + 1;
+    let mut sys = sysinfo::System::new_all();
     for _ in 0..total_ms / freq {
         thread::sleep(Duration::from_millis(freq));
+        sys.refresh_memory();
+        if let Some(proc) = sys.process(sysinfo::get_current_pid().unwrap()) {
+            let mem_kb = proc.memory();
+            if mem_kb > 9 * 1024 * 1024 {
+                stop.store(true, Ordering::Relaxed);
+            }
+        }
         if stop.load(Ordering::Relaxed) {
             return;
         }
