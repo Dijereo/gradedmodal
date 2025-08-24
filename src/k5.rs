@@ -60,19 +60,26 @@ impl<T: BaseTransit> ParaClique<T> {
         calc: &mut Calculus,
         toh: &impl TimeoutHandler,
     ) -> MayTimeout<Self> {
-        let settings: Vec<_> = submodals
-            .zip(signs.iter())
-            .map(|(label, sign)| LabeledFormula {
-                formula: if *sign {
-                    label.formula.clone()
-                } else {
-                    label.formula.neg_modal()
-                },
-                conflictset: label.conflictset.clone(),
-                lemma: false,
-                expanded: false,
-            })
-            .collect();
+        let mut settings = vec![];
+        for (label, sign) in submodals.zip(signs.iter()) {
+            if *sign {
+                settings.push(LabeledFormula {
+                    formula: label.formula.clone(),
+                    conflictset: label.conflictset.clone(),
+                    lemma: false,
+                    expanded: false,
+                });
+            } else {
+                for sublabel in [label.formula.not(), label.formula.neg_modal()] {
+                    settings.push(LabeledFormula {
+                        formula: sublabel,
+                        conflictset: label.conflictset.clone(),
+                        lemma: false,
+                        expanded: false,
+                    });
+                }
+            }
+        }
         let cliquemodals = Modals::new(settings.iter(), false, false, toh)?;
         let mut spotformulae = settings;
         spotformulae.extend(cliquemodals.bx.iter().cloned());
@@ -244,6 +251,20 @@ impl DisplayTransit for Transit5 {
         writeln!(f)?;
         for (i, paracliq) in self.paracliques.iter().enumerate() {
             writeln!(f, "Clique {i}:")?;
+            writeln!(f, "Settings:")?;
+            for (i, (submodal, settingsign)) in self
+                .submodals
+                .iter()
+                .zip(paracliq.settings.iter())
+                .enumerate()
+            {
+                if *settingsign {
+                    writeln!(f, "ψ{i} := {}", &submodal.formula)?;
+                } else {
+                    writeln!(f, "¬ψ{i} := {}", &submodal.formula.neg_modal())?;
+                }
+            }
+            writeln!(f, "")?;
             TableauNode2::display_root(&paracliq.spotws.tab, f, curri, roots)?;
             writeln!(f)?;
             TableauNode2::display_root(&paracliq.cliquews.tab, f, curri, roots)?;

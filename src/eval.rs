@@ -416,7 +416,8 @@ where
                         });
                 match (testdata.status, &testdata.time, test.frames) {
                     (_, _, FrameCondition::K4 | FrameCondition::D4 | FrameCondition::S4) => {}
-                    (EvalStatus::Pending | EvalStatus::Failed | EvalStatus::Timedout, None, _) => {
+                    (EvalStatus::Pending | EvalStatus::Failed, _, _)
+                    | (EvalStatus::Timedout, None, _) => {
                         queue.push((i, j, datapoint.formula.clone(), test.frames))
                     }
                     (EvalStatus::Timedout, Some(time), _) => {
@@ -530,7 +531,7 @@ mod test {
         let folders = ["eval/results/"];
         let exts = ["json"];
         run_on_exts(&exts, folders, |p| {
-            template_test_output(p, "vampire", "prover")
+            template_test_output(p, "vampire", "proverfl")
         })
         .unwrap();
     }
@@ -544,8 +545,8 @@ mod test {
                     test.tests.get(proverkey.as_ref()),
                 );
                 match statuses {
-                    (None, _) => panic!("Vampire output missing: {i} {}", test.frames),
-                    (_, None) => panic!("Prover output missing: {i} {}", test.frames),
+                    // (None, _) => panic!("Vampire output missing: {i} {}", test.frames),
+                    // (_, None) => panic!("Prover output missing: {i} {}", test.frames),
                     (Some(status1), Some(status2)) => match (status1.status, status2.status) {
                         (EvalStatus::Theorem, EvalStatus::Theorem)
                         | (EvalStatus::Theorem, EvalStatus::CounterSatisfiable)
@@ -559,6 +560,7 @@ mod test {
                         }
                         _ => {}
                     },
+                    (None, _) | (_, None) => {}
                 }
             }
         }

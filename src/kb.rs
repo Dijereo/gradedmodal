@@ -11,14 +11,14 @@ use crate::{
     formula::Formula,
     model::{Edge, IntoModelGraph, Node},
     rules3::{Calculus, Feasibility},
-    tableau2::{TabChildren, TableauNode2},
+    tableau2::{DisplayTableau, LabeledFormula, TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},
     transit::{
         self, BaseTransit, Constraints, DisplayTransit, Modals, ParallelWorlds, SolveTransit,
     },
 };
 
-pub(crate) struct TransitB {
+pub(crate) struct TransitB<const R: bool> {
     pub(crate) feasibility: Feasibility,
     pub(crate) backworld: Weak<RefCell<TableauNode2<Self>>>,
     pub(crate) reflexworld: Weak<RefCell<TableauNode2<Self>>>,
@@ -33,7 +33,7 @@ pub(crate) enum TransitResult<T> {
     Transit(T),
 }
 
-impl BaseTransit for TransitB {
+impl<const R: bool> BaseTransit for TransitB<R> {
     fn feasibility(&self) -> Feasibility {
         self.feasibility
     }
@@ -47,7 +47,7 @@ impl BaseTransit for TransitB {
     }
 }
 
-impl SolveTransit for TransitB {
+impl<const R: bool> SolveTransit for TransitB<R> {
     fn recurse(&mut self, calc: &mut Calculus, toh: &impl TimeoutHandler) -> MayTimeout<()> {
         if self.is_closed() {
             return Ok(());
@@ -58,7 +58,18 @@ impl SolveTransit for TransitB {
             match Self::full_transit(calc, &flower, self.reflexworld.clone(), toh)? {
                 TransitResult::None => {}
                 TransitResult::BackContra(x, y) => {
-                    flower.borrow_mut().feasibility = Feasibility::Contradiction
+                    flower.borrow_mut().formulae.push(LabeledFormula {
+                        formula: y.box_(),
+                        conflictset: vec![],
+                        lemma: false,
+                        expanded: true,
+                    });
+                    flower.borrow_mut().add_check_dup_contra(LabeledFormula {
+                        formula: Formula::bottom(),
+                        conflictset: vec![],
+                        lemma: false,
+                        expanded: true,
+                    });
                 }
                 TransitResult::Transit(transit) => {
                     flower.borrow_mut().feasibility = transit.feasibility();
@@ -96,15 +107,19 @@ impl SolveTransit for TransitB {
             let newmodals = Modals::new(subforms.iter(), false, false, toh)?;
             metamodals.push(newmodals);
         }
-        let mut constraints = Constraints {
+        let constraints = Constraints {
             gradings: vec![],
             boxsubforms: vec![],
         };
         let mut forkids = vec![];
-        for modal in metamodals.into_iter().skip(1).step_by(2) {
+        for modal in metamodals
+            .into_iter()
+            .skip(if R { 0 } else { 1 })
+            .step_by(if R { 1 } else { 2 })
+        {
             let (fkids, cns, _) = modal.to_box_forks_constraints(&mut calc.forks);
             forkids.extend(fkids);
-            constraints.gradings.extend(cns.gradings);
+            // constraints.gradings.extend(cns.gradings);
         }
         let paraws = ParallelWorlds::from_forks(formulae, forkids, Some(leaf), calc, toh)?;
         let feasibility = paraws.tab.borrow().feasibility;
@@ -119,40 +134,40 @@ impl SolveTransit for TransitB {
     }
 }
 
-impl TransitB {
+impl<const R: bool> TransitB<R> {
     fn full_transit(
         calc: &mut Calculus,
         fruit: &Rc<RefCell<TableauNode2<Self>>>,
         back_fruit: Weak<RefCell<TableauNode2<Self>>>,
         toh: &impl TimeoutHandler,
-    ) -> MayTimeout<TransitResult<TransitB>> {
+    ) -> MayTimeout<TransitResult<Self>> {
         let mut formulae = vec![];
         fruit.borrow().traverse_anc_formulae(&mut |formula| {
             formulae.push(formula.clone());
             true
         });
-        let modals = Modals::new(formulae.iter(), false, false, toh)?;
-        {
+        let modals = Modals::new(formulae.iter(), back_fruit.upgrade().is_none(), false, toh)?;
+        if let Some(backfruit) = back_fruit.upgrade() {
             let mut backcontra = None;
-            if let Some(back_fruit) = back_fruit.upgrade() {
-                back_fruit
-                    .borrow()
-                    .traverse_anc_formulae(&mut |backformula| {
-                        let mut keeptrying = true;
-                        for formula in modals.bx.iter() {
-                            if backformula.formula.directly_contradicts(&formula.formula) {
-                                backcontra =
-                                    Some((backformula.formula.clone(), formula.formula.clone()));
-                                keeptrying = false;
-                                break;
-                            } else if backformula.formula.directly_equivalent(&formula.formula) {
-                                keeptrying = false;
-                                break;
-                            }
+            // for formula in modals.bx.iter() {
+            //     println!("F: {}", formula.formula);
+            // }
+            backfruit
+                .borrow()
+                .traverse_anc_formulae(&mut |backformula| {
+                    // println!("B: {}", backformula.formula);
+                    let mut keeptrying = true;
+                    for formula in modals.bx.iter() {
+                        if backformula.formula.directly_contradicts(&formula.formula) {
+                            backcontra =
+                                Some((backformula.formula.clone(), formula.formula.clone()));
+                            keeptrying = false;
+                            break;
                         }
-                        keeptrying
-                    });
-            }
+                    }
+                    keeptrying
+                });
+            // println!();
             if let Some((f1, f2)) = backcontra {
                 return Ok(TransitResult::BackContra(f1, f2));
             }
@@ -193,10 +208,12 @@ impl TransitB {
             .expect("Vec starts with one element")
             .to_forks_constraints(&mut calc.forks);
         let mut forkids: Vec<_> = forkids.into_iter().collect();
-        for modal in metamodals.skip(1).step_by(2) {
+        for modal in metamodals
+            .skip(if R { 0 } else { 1 })
+            .step_by(if R { 1 } else { 2 })
+        {
             let (fkids, cns, _) = modal.to_box_forks_constraints(&mut calc.forks);
             forkids.extend(fkids);
-            constraints.gradings.extend(cns.gradings);
         }
         let paraws = ParallelWorlds::from_forks(
             constraints.boxsubforms.clone(),
@@ -224,7 +241,6 @@ impl TransitB {
             exprs.insert(c.forkid, (c.sense, c.value, vec![]));
         }
         let vars = problem.add_vector(variable().integer().min(0), self.paraws.choices.len());
-        let backvar = problem.add_vector(variable().integer().min(1).max(1).initial(1), 1)[0];
         for (world, var) in self.paraws.choices.iter().zip(vars.iter()) {
             for (forkid, branchid) in world {
                 if *branchid == 1 {
@@ -235,15 +251,13 @@ impl TransitB {
                             .2
                             .push(var);
                     } else {
-                        println!(
-                            "F: {:?}",
-                            self.paraws.tab.borrow().formulae
-                        );
-                        panic!();
+                        // println!("P: {}", DisplayTableau(self.paraws.tab.clone()));
+                        // panic!();
                     }
                 }
             }
         }
+        let backvar = problem.add_vector(variable().integer().min(1).max(1).initial(1), 1)[0];
         if let Some(backworld) = self.backworld.upgrade() {
             for c in &self.constraints.gradings {
                 backworld
@@ -262,6 +276,30 @@ impl TransitB {
                         }
                         keeptrying
                     });
+            }
+        }
+        let reflexvar;
+        if R {
+            reflexvar = problem.add_vector(variable().integer().min(1).max(1).initial(1), 1)[0];
+            if let Some(reflexworld) = self.reflexworld.upgrade() {
+                for c in &self.constraints.gradings {
+                    reflexworld
+                        .borrow()
+                        .traverse_anc_formulae(&mut |reflexformula| {
+                            let mut keeptrying = true;
+                            if reflexformula.formula.directly_contradicts(&c.formula) {
+                                keeptrying = false;
+                            } else if reflexformula.formula.directly_equivalent(&c.formula) {
+                                keeptrying = false;
+                                exprs
+                                    .get_mut(&c.forkid)
+                                    .expect("Forkid should have been entered into hashmap")
+                                    .2
+                                    .push(&reflexvar);
+                            }
+                            keeptrying
+                        });
+                }
             }
         }
         let mut model = solvers::scip::scip(problem.minimise(vars.iter().sum::<Expression>()));
@@ -286,7 +324,7 @@ impl TransitB {
     }
 }
 
-impl DisplayTransit for TransitB {
+impl<const R: bool> DisplayTransit for TransitB<R> {
     fn display_transit(
         &self,
         f: &mut fmt::Formatter<'_>,
@@ -332,7 +370,7 @@ impl DisplayTransit for TransitB {
     }
 }
 
-impl IntoModelGraph for TransitB {
+impl<const R: bool> IntoModelGraph for TransitB<R> {
     fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>) {
         if false {
             let selfi = nodes.len();
