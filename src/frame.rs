@@ -8,15 +8,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    api::{ServerError, ServerResult},
-    b5::TransitB5,
-    formula::Formula,
-    k5::Transit5,
-    k45::TransitKOr45,
-    rules3::Calculus,
-    tableau2::DisplayTableau,
-    timeout::{MayTimeout, NoopHandler, TimeoutHandler},
-    tt::TransitT,
+    api::{ServerError, ServerResult}, b5::TransitB5, formula::Formula, k45::TransitKOr45, k5::Transit5, kb::TransitB, rules3::Calculus, tableau2::DisplayTableau, timeout::{MayTimeout, NoopHandler, TimeoutHandler}, tt::TransitT
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
@@ -86,7 +78,7 @@ macro_rules! sat_and {
                 time_sat!($clsr, Calculus::sat::<TransitKOr45>, $frame, $formula, $toh)
             }
             FrameCondition::T => time_sat!($clsr, Calculus::sat::<TransitT>, $frame, $formula, $toh),
-            FrameCondition::KB | FrameCondition::DB => $default("[KD]B"), //$clsr($f::<Transit>($frame, $formula)),
+            FrameCondition::KB | FrameCondition::DB => time_sat!($clsr, Calculus::sat::<TransitB>, $frame, $formula, $toh),
             FrameCondition::TB => $default("TB"), //time_sat!($clsr, Calculus::sat::<TransitTB>, $frame, $formula),
             FrameCondition::K4 | FrameCondition::D4 => $default("[KD]4"), //$clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
             FrameCondition::S4 => $default("S4"), // $clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),

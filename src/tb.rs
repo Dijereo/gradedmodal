@@ -101,7 +101,7 @@ impl SolveTransit for TransitTB {
     }
 }
 
-enum TransitResult {
+pub(crate) enum TransitResult {
     None,
     BackContra,
     Transit(TransitTB),
