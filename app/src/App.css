@@ -9,6 +9,7 @@
   justify-content: flex-start;
   align-items: center;
   padding: 1rem;
+  gap: 0.5rem;
 }
 
 .formula-query {
@@ -16,7 +17,6 @@
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  padding: 1rem;
   gap: 1rem;
 }
 
@@ -46,7 +46,7 @@
 
 .middle-column {
   flex: 0;
-  background: #eeffff;
+  background: #eff;
   border: 1px solid #000;
 }
 
@@ -54,7 +54,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #eeffff;
+  background: #eff;
   font-size: 0.9rem;
   font-family: 'Courier New', Courier, monospace;
   line-height: 1;
@@ -64,7 +64,7 @@
 }
 
 textarea {
-  background-color: #eeffff;
+  background-color: #eff;
   font-size: 1.2em;
 }
 

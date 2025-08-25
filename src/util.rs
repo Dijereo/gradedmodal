@@ -156,7 +156,6 @@ where
                         .iter()
                         .any(|wanted| wanted.as_ref().eq_ignore_ascii_case(ext))
                     {
-                        println!("{:?}", path);
                         f(&path);
                     }
                 }

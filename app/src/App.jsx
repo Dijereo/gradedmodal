@@ -1,37 +1,7 @@
 import React, { useState } from "react";
 import './App.css'
-import CytoscapeComponent from 'react-cytoscapejs';
-
-
-function ModelGraph({ elements, symmetric }) {
-  return (
-    <CytoscapeComponent
-      elements={CytoscapeComponent.normalizeElements(elements)}
-      layout={{ name: "breadthfirst" }}
-      style={{ width: '300px', height: '400px' }}
-      stylesheet={[
-        {
-          selector: 'node',
-          style: {
-            'background-color': 'data(bg)'
-          }
-        },
-        {
-          selector: 'edge',
-          style: {
-            'width': 3,
-            'line-color': '#000',
-            'target-arrow-color': '#000',
-            'target-arrow-shape': 'triangle',
-            'source-arrow-color': '#000',
-            'source-arrow-shape': symmetric ? 'triangle' : 'none',
-            'curve-style': 'bezier',
-          }
-        }
-      ]}
-    />
-  );
-}
+import TabButtons from "./Tabs";
+import TabDisplay from "./Display";
 
 function DisplayFormula({ formula }) {
   return <span className="tableau-formula">{formula}</span>;
@@ -55,16 +25,6 @@ function FormulaList2({ formulae }) {
   );
 }
 
-function FormulaList({ formulae }) {
-  return (
-    <>
-      <textarea
-        value={formulae}
-        rows="22" cols="100" readOnly wrap="off"></textarea>
-    </>
-  );
-}
-
 function SearchBar({ setResponseData, searchFormula, setSearchFormula }) {
   const [submissionType, setSubmissionType] = useState("sat");
   const [frameClass, setFrameClass] = useState("K");
@@ -80,7 +40,7 @@ function SearchBar({ setResponseData, searchFormula, setSearchFormula }) {
     };
 
     try {
-      const res = await fetch("http://localhost:3000/api", {
+      const res = await fetch("/api", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -119,9 +79,9 @@ function SearchBar({ setResponseData, searchFormula, setSearchFormula }) {
         <label><input type="radio" name="frames" value="KB" checked={frameClass === "KB"} onChange={() => setFrameClass("KB")} />KB</label>
         <label><input type="radio" name="frames" value="DB" checked={frameClass === "DB"} onChange={() => setFrameClass("DB")} />DB</label>
         <label><input type="radio" name="frames" value="TB" checked={frameClass === "TB"} onChange={() => setFrameClass("TB")} />TB</label>
-        <label><input type="radio" name="frames" value="K4" checked={frameClass === "K4"} onChange={() => setFrameClass("K4")} />K4</label>
-        <label><input type="radio" name="frames" value="D4" checked={frameClass === "D4"} onChange={() => setFrameClass("D4")} />D4</label>
-        <label><input type="radio" name="frames" value="S4" checked={frameClass === "S4"} onChange={() => setFrameClass("S4")} />S4</label>
+        <label hidden><input hidden type="radio" name="frames" value="K4" checked={frameClass === "K4"} onChange={() => setFrameClass("K4")} />K4</label>
+        <label hidden><input hidden type="radio" name="frames" value="D4" checked={frameClass === "D4"} onChange={() => setFrameClass("D4")} />D4</label>
+        <label hidden><input hidden type="radio" name="frames" value="S4" checked={frameClass === "S4"} onChange={() => setFrameClass("S4")} />S4</label>
         <label><input type="radio" name="frames" value="K5" checked={frameClass === "K5"} onChange={() => setFrameClass("K5")} />K5</label>
         <label><input type="radio" name="frames" value="D5" checked={frameClass === "D5"} onChange={() => setFrameClass("D5")} />D5</label>
         <label><input type="radio" name="frames" value="K45" checked={frameClass === "K45"} onChange={() => setFrameClass("K45")} />K45</label>
@@ -130,21 +90,6 @@ function SearchBar({ setResponseData, searchFormula, setSearchFormula }) {
         <label><input type="radio" name="frames" value="S5" checked={frameClass === "S5"} onChange={() => setFrameClass("S5")} />S5</label>
       </div>
     </form>
-  );
-}
-
-function Times({ computeTime }) {
-  return (
-    <>
-      <div className="times">
-        <span>Solve Time: {computeTime.solveTime}</span>
-        <span>Server Time: {computeTime.serverTime}</span>
-        <span>End-To-End Time: {computeTime.end2EndTime}</span>
-        <span>Parse Time: {computeTime.parseTime}</span>
-        <span>Tableau Write Time: {computeTime.tabWrTime}</span>
-        <span>Model Time: {computeTime.modelTime}</span>
-      </div>
-    </>
   );
 }
 
@@ -158,9 +103,9 @@ function App() {
     modelTime: "N/A"
   };
   const [searchFormula, setSearchFormula] = useState("_|_");
-  const [computeTime, setComputeTime] = useState(defaultTimes);
+  const [computeTimes, setComputeTimes] = useState(defaultTimes);
   const [formulaList, setFormulaList] = useState(["Placeholder ∅⨉✓⊥⊤¬□≥◇≤∧∨→↔"]);
-  const [symmetric, setSymmetric] =  useState(true);
+  const [symmetric, setSymmetric] = useState(true);
   const [graphData, setGraphData] = useState(
     {
       nodes: [
@@ -186,9 +131,9 @@ function App() {
         tabWrTime: compute_times.tabwrite_time !== undefined ? compute_times.tabwrite_time : "N/A",
         modelTime: compute_times.graph_time !== undefined ? compute_times.graph_time : "N/A",
       };
-      setComputeTime(computeTimes);
+      setComputeTimes(computeTimes);
     } else {
-      setComputeTime(defaultTimes);
+      setComputeTimes(defaultTimes);
     }
     if (responseJsonData.graph !== undefined) {
       setGraphData(responseJsonData.graph);
@@ -208,15 +153,7 @@ function App() {
     <>
       <div className="page">
         <SearchBar searchFormula={searchFormula} setSearchFormula={setSearchFormula} setResponseData={setResponseData} className="formula-query" />
-        <div className="main-grid">
-          <div className="middle-column">
-            <ModelGraph elements={graphData} symmetric={symmetric} />
-          </div>
-          <div className="right-column">
-            <FormulaList formulae={formulaList} />
-          </div>
-        </div>
-        <Times computeTime={computeTime} />
+        <TabDisplay proofdata={{ model: graphData, tableau: formulaList, symmetric: symmetric, computeTimes: computeTimes }}></TabDisplay>
       </div>
     </>
   );

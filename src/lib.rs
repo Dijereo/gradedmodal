@@ -1,14 +1,14 @@
-use std::{borrow::Cow, fmt::Write as _};
+use std::{mem, path::Path};
 
 use axum::{
     Router,
     http::{Method, header},
     routing::post,
 };
-use rand::{rngs::StdRng, SeedableRng};
-use tower_http::cors::{self, CorsLayer};
-
-use crate::eval::{save_results, DataPoint, EvalSetting};
+use tower_http::{
+    cors::{self, CorsLayer},
+    services::ServeFile,
+};
 
 mod api;
 mod b5;
@@ -46,28 +46,23 @@ pub fn init_router() -> Router {
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
         .allow_headers([header::CONTENT_TYPE]);
 
-    Router::new()
-        // .route("/", get(hello_world))
-        .route("/api", post(api::solve_endpt))
-        // .route_service("/", ServeFile::new("dist/index.html"))
-        // .route_service(
-        //     "/assets/index-BrQhOZ60.js",
-        //     ServeFile::new("dist/assets/index-BrQhOZ60.js"),
-        // )
-        // .route_service(
-        //     "/assets/index-C5BzwU7B.js",
-        //     ServeFile::new("dist/assets/index-C5BzwU7B.js"),
-        // )
-        // .route_service(
-        //     "/assets/index-D8b4DHJx.css",
-        //     ServeFile::new("dist/assets/index-D8b4DHJx.css"),
-        // )
-        // .route_service(
-        //     "/assets/react-CHdo91hT.svg",
-        //     ServeFile::new("dist/assets/react-CHdo91hT.svg"),
-        // )
-        // .route_service("/vite.svg", ServeFile::new("dist/vite.svg"))
-        .layer(cors)
+    let mut router = Some(
+        Router::new()
+            .route("/api", post(api::solve_endpt))
+            .route_service("/", ServeFile::new("dist/index.html")),
+    );
+    util::run_on_exts(
+        &["css", "js", "svg", "html"],
+        ["dist/assets"],
+        &mut |path: &Path| {
+            router = Some(mem::take(&mut router).unwrap().route_service(
+                &format!("/assets/{}", path.file_name().unwrap().to_str().unwrap()),
+                ServeFile::new(path),
+            ));
+        },
+    )
+    .unwrap();
+    router.map(|r| r.layer(cors)).unwrap()
 }
 
 pub fn run_cli() {
