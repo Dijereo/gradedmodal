@@ -10,7 +10,7 @@ use good_lp::{Expression, ProblemVariables, Solution, SolverModel, Variable, sol
 
 use crate::{
     formula::Formula,
-    model::{Edge, IntoModelGraph, Node},
+    model::{EdgeView, IntoModelGraph, NodeView},
     rules3::{Calculus, Feasibility, ForkType},
     tableau2::{TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},
@@ -305,7 +305,7 @@ impl DisplayTransit for TransitTB {
 }
 
 impl IntoModelGraph for TransitTB {
-    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>) {
+    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<NodeView>, edges: &mut Vec<EdgeView>) {
         todo!()
     }
 }

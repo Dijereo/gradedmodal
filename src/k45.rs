@@ -8,7 +8,7 @@ use std::{
 use good_lp::{Expression, ProblemVariables, Solution, SolverModel, solvers, variable};
 
 use crate::{
-    model::{Edge, IntoModelGraph, Node},
+    model::{EdgeView, IntoModelGraph, NodeView},
     rules3::{Calculus, Feasibility},
     tableau2::TableauNode2,
     timeout::{MayTimeout, TimeoutHandler},
@@ -141,15 +141,15 @@ impl DisplayTransit for TransitKOr45 {
 }
 
 impl IntoModelGraph for TransitKOr45 {
-    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>) {
+    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<NodeView>, edges: &mut Vec<EdgeView>) {
         let selfi = nodes.len();
         let selfid = selfi.to_string();
-        nodes.push(Node {
+        nodes.push(NodeView {
             id: selfid.clone(),
             label: format!("#{selfi}"),
             extra: String::new(),
         });
-        edges.push(Edge {
+        edges.push(EdgeView {
             source: parenti.to_string(),
             target: selfid,
             label: String::new(),

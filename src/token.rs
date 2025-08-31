@@ -197,7 +197,7 @@ pub(crate) fn tokenize(input: &str) -> Result<Vec<Token>, (usize, char)> {
                 tokens.push(Token::TOP);
                 chars.next();
             }
-            '⊥' => {
+            '⊥' | 'F' => {
                 tokens.push(Token::BOTTOM);
                 chars.next();
             }

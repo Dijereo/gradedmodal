@@ -105,17 +105,17 @@ function App() {
   const [searchFormula, setSearchFormula] = useState("_|_");
   const [computeTimes, setComputeTimes] = useState(defaultTimes);
   const [formulaList, setFormulaList] = useState(["Placeholder ∅⨉✓⊥⊤¬□≥◇≤∧∨→↔"]);
-  const [symmetric, setSymmetric] = useState(true);
   const [graphData, setGraphData] = useState(
     {
       nodes: [
-        { data: { id: '1', label: 'Node 1', bg: 'red' }, position: { x: 100, y: 100 } },
-        { data: { id: '2', label: 'Node 2', bg: 'blue' }, position: { x: 200, y: 100 } },
-        { data: { id: '3', label: 'Node 3', bg: 'green' }, position: { x: 300, y: 100 } },
+        { data: { id: '1', label: 'x1', bg: 'red', formulae: 'p' }, position: { x: 100, y: 100 } },
+        { data: { id: '2', label: 'x2', bg: 'blue', formulae: 'q' }, position: { x: 200, y: 100 } },
+        { data: { id: '3', label: 'x3', bg: 'green', formulae: 'p∧q' }, position: { x: 300, y: 100 } },
       ],
       edges: [
-        { data: { source: '1', target: '2', label: 'Edge from Node1 to Node2' } },
-        { data: { source: '2', target: '3', label: 'Edge from Node2 to Node3' } }
+        { data: { source: '1', target: '2', label: 'Edge from Node1 to Node2', sym: 'triangle' } },
+        { data: { source: '2', target: '3', label: 'Edge from Node2 to Node3', sym: 'none' } },
+        { data: { source: '3', target: '3', label: 'Edge from Node3 to itself', sym: 'none' } },
       ],
     }
   );
@@ -144,16 +144,13 @@ function App() {
     if (responseJsonData.formula !== undefined) {
       setSearchFormula(responseJsonData.formula)
     }
-    if (responseJsonData.symmetric !== undefined) {
-      setSymmetric(responseJsonData.symmetric)
-    }
   }
 
   return (
     <>
       <div className="page">
         <SearchBar searchFormula={searchFormula} setSearchFormula={setSearchFormula} setResponseData={setResponseData} className="formula-query" />
-        <TabDisplay proofdata={{ model: graphData, tableau: formulaList, symmetric: symmetric, computeTimes: computeTimes }}></TabDisplay>
+        <TabDisplay proofdata={{ model: graphData, tableau: formulaList, computeTimes: computeTimes }}></TabDisplay>
       </div>
     </>
   );

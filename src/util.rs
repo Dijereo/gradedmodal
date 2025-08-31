@@ -134,15 +134,14 @@ impl<O, I, T, U> Iterator for EnqueueProdIter<O, I, T, U> {
     }
 }
 
-pub fn run_on_exts<E, D, F>(
+pub fn run_on_exts<E, D>(
     exts: &[E],
-    folders: impl IntoIterator<Item = D>,
-    mut f: F,
+    folders: impl Iterator<Item = D>,
+    mut f: impl FnMut(&Path),
 ) -> io::Result<()>
 where
     E: AsRef<str>,
     D: AsRef<Path>,
-    F: FnMut(&Path),
 {
     for folder in folders {
         if !folder.as_ref().exists() {

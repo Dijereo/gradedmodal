@@ -530,7 +530,7 @@ mod test {
     fn test_output() {
         let folders = ["eval/results/"];
         let exts = ["json"];
-        run_on_exts(&exts, folders, |p| {
+        run_on_exts(&exts, folders.iter(), |p| {
             template_test_output(p, "vampire", "proverfl")
         })
         .unwrap();

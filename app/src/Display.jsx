@@ -14,17 +14,26 @@ function Times({ computeTimes }) {
     );
 }
 
-function ModelGraph({ elements, symmetric }) {
+function ModelGraph({ elements, setNodeFormulae }) {
     return (
         <CytoscapeComponent
+            cy={(cy) => {
+                cy.on('click', 'node', function (evt) {
+                    var node = evt.target;
+                    setNodeFormulae(cy.getElementById(node.id()).data().formulae);
+                });
+            }}
             elements={CytoscapeComponent.normalizeElements(elements)}
             layout={{ name: "breadthfirst" }}
-            style={{ width: '1200px', height: '400px' }}
+            style={{ width: '1000px', height: '400px' }}
             stylesheet={[
                 {
                     selector: 'node',
                     style: {
-                        'background-color': 'data(bg)'
+                        'background-color': 'data(bg)',
+                        'label': 'data(label)',
+                        'text-valign': 'center',
+                        'text-halign': 'right',
                     }
                 },
                 {
@@ -35,7 +44,7 @@ function ModelGraph({ elements, symmetric }) {
                         'target-arrow-color': '#000',
                         'target-arrow-shape': 'triangle',
                         'source-arrow-color': '#000',
-                        'source-arrow-shape': symmetric ? 'triangle' : 'none',
+                        'source-arrow-shape': 'data(sym)',
                         'curve-style': 'bezier',
                     }
                 }
@@ -44,12 +53,13 @@ function ModelGraph({ elements, symmetric }) {
     );
 }
 
-function FormulaList({ formulae }) {
+function FormulaList({ formulae, rows, cols, placeholder }) {
     return (
         <>
             <textarea
                 value={formulae}
-                rows="22" cols="120" readOnly wrap="off"></textarea>
+                rows={rows} cols={cols} readOnly wrap="off"
+                placeholder={placeholder}></textarea>
         </>
     );
 }
@@ -57,6 +67,7 @@ function FormulaList({ formulae }) {
 
 export default function TabDisplay({ proofdata }) {
     const [tab, setTab] = useState("instructions");
+    const [nodeFormulae, setNodeFormulae] = useState([""]);
     const buttonStates = [
         tab === "instructions" ? "active" : "inactive",
         "model" in proofdata ? (tab === "model" ? "active" : "inactive") : "hidden",
@@ -81,14 +92,17 @@ export default function TabDisplay({ proofdata }) {
                 }
                 {
                     tab === "model" &&
-                    <div className="middle-column">
-                        <ModelGraph elements={proofdata.model} symmetric={proofdata.symmetric} />
+                    <div className="upper-middle-column">
+                        <div className="middle-column">
+                            <ModelGraph elements={proofdata.model} setNodeFormulae={setNodeFormulae} />
+                        </div>
+                        <FormulaList formulae={nodeFormulae} rows={"22"} cols={"20"} placeholder={"Click on a node!"} />
                     </div>
                 }
                 {
                     tab === "tableau" &&
                     <div className="right-column">
-                        <FormulaList formulae={proofdata.tableau} />
+                        <FormulaList formulae={proofdata.tableau} rows={"22"} cols={"120"} placeholder={"No tableaux to display!"} />
                     </div>
                 }
             </div>

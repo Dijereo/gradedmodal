@@ -44,6 +44,12 @@
   gap: 1rem;
 }
 
+.upper-middle-column {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+}
+
 .middle-column {
   flex: 0;
   background: #eff;

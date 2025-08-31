@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     formula::full_parser,
     frame::FrameCondition,
-    model::Graph,
+    model::GraphView,
     timeout::{NoopHandler, Timedout, TimeoutHandler},
     token::tokenize,
 };
@@ -46,7 +46,7 @@ pub(crate) enum ServerError {
 pub(crate) struct ServerOutput {
     pub(crate) formula: String,
     pub(crate) times: ServerTimes,
-    pub(crate) graph: Graph,
+    pub(crate) graph: GraphView,
     pub(crate) tableau: String,
     pub(crate) symmetric: bool,
     pub(crate) satisfiable: bool,

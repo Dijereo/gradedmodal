@@ -24,6 +24,7 @@ mod k45;
 mod k5;
 mod kb;
 mod model;
+mod modelinner;
 mod parser;
 mod randgen;
 mod randthm;
@@ -53,7 +54,7 @@ pub fn init_router() -> Router {
     );
     util::run_on_exts(
         &["css", "js", "svg", "html"],
-        ["dist/assets"],
+        ["dist/static", "dist/assets"].iter(),
         &mut |path: &Path| {
             router = Some(mem::take(&mut router).unwrap().route_service(
                 &format!("/assets/{}", path.file_name().unwrap().to_str().unwrap()),

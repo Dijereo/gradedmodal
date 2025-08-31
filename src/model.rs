@@ -1,54 +1,80 @@
-use std::{fmt::Write, time::Instant};
+use std::{fmt::Write, time::Instant, vec};
 
 use serde::Serialize;
 
 use crate::{
     api::{ServerError, ServerOutput, ServerResult, ServerTimes},
+    modelinner::GraphInner,
     tableau2::{DisplayTableau, TabChildren, TableauNode2},
-    timeout::TimeoutHandler,
     transit::{BaseTransit, DisplayTransit},
 };
 
 #[derive(Serialize)]
-pub(crate) struct Graph {
-    nodes: Vec<NodeData>,
-    edges: Vec<EdgeData>,
+pub(crate) struct GraphView {
+    nodes: Vec<NodeViewData>,
+    edges: Vec<EdgeViewData>,
 }
 
 #[derive(Serialize)]
-struct NodeData {
-    data: Node,
+struct NodeViewData {
+    data: NodeView,
     position: NodePosition,
 }
 
 #[derive(Serialize)]
-pub(crate) struct Node {
+pub(crate) struct NodeView {
     pub(crate) id: String,
     pub(crate) label: String,
     pub(crate) extra: String,
 }
 
 #[derive(Serialize)]
-struct NodePosition {
-    x: usize,
-    y: usize,
+pub(crate) struct NodePosition {
+    pub(crate) x: usize,
+    pub(crate) y: usize,
 }
 
 #[derive(Serialize)]
-struct EdgeData {
-    data: Edge,
+struct EdgeViewData {
+    data: EdgeView,
 }
 
 #[derive(Serialize)]
-pub(crate) struct Edge {
+pub(crate) struct EdgeView {
     pub(crate) source: String,
     pub(crate) target: String,
     pub(crate) label: String,
     pub(crate) extra: String,
 }
 
+impl From<GraphInner> for GraphView {
+    fn from(value: GraphInner) -> Self {
+        let mut nodes = vec![];
+        let mut edges = vec![];
+        for (i, (node, adjlist)) in value.adjlist.into_iter().enumerate() {
+            let mut extra = String::new();
+            for f in node.formulae {
+                writeln!(&mut extra, "{}", f.formula);
+            }
+            nodes.push(NodeViewData {
+                data: NodeView {
+                    id: i.to_string(),
+                    label: if node.count == 1 {
+                        String::new()
+                    } else {
+                        format!("x{}", node.count)
+                    },
+                    extra,
+                },
+                position: node.position,
+            });
+        }
+        Self { nodes, edges }
+    }
+}
+
 pub(crate) trait IntoModelGraph: BaseTransit + DisplayTransit {
-    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>);
+    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<NodeView>, edges: &mut Vec<EdgeView>);
 }
 
 impl<T: IntoModelGraph> DisplayTableau<T> {
@@ -68,18 +94,18 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
         }
         let tabwrite_time = format!("{:.3?}", tabw_start.elapsed());
         let graph_start = Instant::now();
-        let mut nodes = vec![Node {
+        let mut nodes = vec![NodeView {
             id: "0".to_string(),
             label: "#0".to_string(),
             extra: String::new(),
         }];
         let mut edges = vec![];
         self.0.borrow().model_graph(0, &mut nodes, &mut edges);
-        let graph = Graph {
+        let graph = GraphView {
             nodes: nodes
                 .into_iter()
                 .enumerate()
-                .map(|(i, n)| NodeData {
+                .map(|(i, n)| NodeViewData {
                     data: n,
                     position: NodePosition {
                         x: 50 * (i % 5),
@@ -87,7 +113,10 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
                     },
                 })
                 .collect(),
-            edges: edges.into_iter().map(|e| EdgeData { data: e }).collect(),
+            edges: edges
+                .into_iter()
+                .map(|e| EdgeViewData { data: e })
+                .collect(),
         };
         let graph_time = format!("{:.3?}", graph_start.elapsed());
         Ok(ServerOutput {
@@ -108,7 +137,12 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
 }
 
 impl<T: IntoModelGraph> TableauNode2<T> {
-    pub(crate) fn model_graph(&self, selfi: usize, nodes: &mut Vec<Node>, edges: &mut Vec<Edge>) {
+    pub(crate) fn model_graph(
+        &self,
+        selfi: usize,
+        nodes: &mut Vec<NodeView>,
+        edges: &mut Vec<EdgeView>,
+    ) {
         match &self.children {
             TabChildren::Leaf => {}
             TabChildren::Fork { branches, .. } => {
@@ -123,20 +157,20 @@ impl<T: IntoModelGraph> TableauNode2<T> {
     }
 }
 
-pub(crate) fn mock_graph(extra: String) -> (Graph, String) {
+pub(crate) fn mock_graph(extra: String) -> (GraphView, String) {
     (
-        Graph {
+        GraphView {
             nodes: vec![
-                NodeData {
-                    data: Node {
+                NodeViewData {
+                    data: NodeView {
                         id: "0".to_string(),
                         label: "#0".to_string(),
                         extra: String::new(),
                     },
                     position: NodePosition { x: 100, y: 100 },
                 },
-                NodeData {
-                    data: Node {
+                NodeViewData {
+                    data: NodeView {
                         id: "3".to_string(),
                         label: "#3".to_string(),
                         extra: String::new(),
@@ -144,8 +178,8 @@ pub(crate) fn mock_graph(extra: String) -> (Graph, String) {
                     position: NodePosition { x: 200, y: 100 },
                 },
             ],
-            edges: vec![EdgeData {
-                data: Edge {
+            edges: vec![EdgeViewData {
+                data: EdgeView {
                     source: "0".to_string(),
                     target: "3".to_string(),
                     label: "Edge 03".to_string(),

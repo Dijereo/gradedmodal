@@ -41,7 +41,7 @@ fn rand_true(
                 let c2 = rng.random_range(1..=c);
                 rand_any(symbols, rng)
                     .dmge(c)
-                    .and(&nec(&phi, symbols, rng, frames, deeper))
+                    .and(&nec(&phi, symbols, rng, frames, deeper).box_())
                     .imply(&suff(&phi, symbols, rng, frames, deeper).dmge(c2))
             }
             4 => {
@@ -59,7 +59,7 @@ fn rand_true(
                 rng,
                 frames,
                 deeper,
-            )),
+            ).diamond()),
             6 if frames.symmetric() => {
                 let c = rng.random_range(GRADE) as u32;
                 let c2 = rng.random_range(1..=c);
@@ -82,7 +82,7 @@ fn rand_true(
             6 if frames.transitive() => {
                 let c1 = rng.random_range(GRADE) as u32;
                 let c2 = rng.random_range(GRADE) as u32;
-                let c3 = rng.random_range(1..=max(c1, c2));
+                let c3 = rng.random_range(1..=c1);
                 nec(&phi.dmge(c1).dmge(c2), symbols, rng, frames, deeper).imply(&suff(
                     &phi.dmge(c3),
                     symbols,
@@ -109,7 +109,6 @@ fn rand_true(
         match rng.random_range(0..=5) {
             0 => thm.box_(),
             1 => thm.not().dmle(rng.random_range(GRADE) as u32 - 1),
-            2 if frames.serial() => thm.box_(),
             2 => thm.not().not(),
             3 => thm.not().imply(&rand_any(symbols, rng)),
             4 => rand_any(symbols, rng).or(&thm),
@@ -130,7 +129,7 @@ fn nec(
         return formula.clone();
     }
     let deeper = deeper.saturating_sub(1);
-    match rand_choice_weighted(&[0, 1, 2, 3], &[2, 6, 1, 1], rng) {
+    match rand_choice_weighted(&[0, 1, 2], &[2, 6, 2], rng) {
         0 => rand_any(symbols, rng).and(&nec(formula, symbols, rng, frames, deeper)),
         1 => match formula.as_ref() {
             Formula::Top => rand_any(symbols, rng),
@@ -160,29 +159,8 @@ fn nec(
             Formula::Imply(phi1, phi2) => suff(phi1, symbols, rng, frames, deeper)
                 .imply(&nec(phi2, symbols, rng, frames, deeper)),
         },
-        i @ (2 | 3) => match formula.as_ref() {
-            Formula::Box(phi) if *i == 2 && frames.serial() => {
-                suff(&phi.diamond(), symbols, rng, frames, deeper)
-            }
-            Formula::Box(phi) if *i == 2 && frames.reflexive() => {
-                suff(&phi, symbols, rng, frames, deeper)
-            }
-            Formula::Box(phi) if *i == 3 && frames.symmetric() => suff(
-                &phi.diamond().diamond().box_(),
-                symbols,
-                rng,
-                frames,
-                deeper,
-            ),
-            Formula::Box(phi) if *i == 3 && frames.euclidean() => {
-                suff(&phi.diamond().box_().box_(), symbols, rng, frames, deeper)
-            }
-            Formula::Box(_) if *i == 3 && frames.symmetric() => {
-                suff(&formula.box_(), symbols, rng, frames, deeper)
-            }
-            _ => formula.clone(),
-        },
-        _ => unreachable!("Only values in 0..=3 should occur."),
+        2 => formula.clone(),
+        _ => unreachable!("Only values in 0..=2 should occur."),
     }
 }
 
@@ -197,7 +175,7 @@ fn suff(
         return formula.clone();
     }
     let deeper = deeper.saturating_sub(1);
-    match rand_choice_weighted(&[0, 1, 2, 3], &[1, 1, 6, 2], rng) {
+    match rand_choice_weighted(&[0, 1, 2, 3, 4], &[1, 1, 6, 1, 1], rng) {
         0 => rand_any(symbols, rng).or(&suff(formula, symbols, rng, frames, deeper)),
         1 => rand_any(symbols, rng).imply(&suff(formula, symbols, rng, frames, deeper)),
         2 => match formula.as_ref() {
@@ -223,8 +201,29 @@ fn suff(
             Formula::Imply(phi1, phi2) => nec(phi1, symbols, rng, frames, deeper)
                 .imply(&suff(phi2, symbols, rng, frames, deeper)),
         },
-        3 => formula.clone(),
-        _ => unreachable!("Only values in 0..=3 should occur."),
+        i @ (3 | 4) => match formula.as_ref() {
+            Formula::Box(phi) if *i == 2 && frames.serial() => {
+                suff(&phi.diamond(), symbols, rng, frames, deeper)
+            }
+            Formula::Box(phi) if *i == 2 && frames.reflexive() => {
+                suff(&phi, symbols, rng, frames, deeper)
+            }
+            Formula::Box(phi) if *i == 3 && frames.symmetric() => suff(
+                &phi.diamond().diamond().box_(),
+                symbols,
+                rng,
+                frames,
+                deeper,
+            ),
+            Formula::Box(phi) if *i == 3 && frames.euclidean() => {
+                suff(&phi.diamond().box_().box_(), symbols, rng, frames, deeper)
+            }
+            Formula::Box(_) if *i == 3 && frames.transitive() => {
+                suff(&formula.box_(), symbols, rng, frames, deeper)
+            }
+            _ => formula.clone(),
+        },
+        _ => unreachable!("Only values in 0..=4 should occur."),
     }
 }
 
