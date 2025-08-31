@@ -88,7 +88,40 @@ export default function TabDisplay({ proofdata }) {
             <div className="main-grid">
                 {
                     tab === "instructions" &&
-                    <div>Here are the instructions...</div>
+                    <div>
+                        <h3>Welcome to Golem!</h3>
+                        <p>
+                            Golem is a tableau-based automated theorem prover for graded modal logic.
+                            To use Golem, enter a formula in the input bar at the top of the page
+                            and click satisfy to find and display a satisfying model,
+                            or prove to prove its validity by tableau refutation.
+                            If it is unsatisfiable, the refuting tableau will be shown.
+                            If it is not valid, the counter-satisfying model will be shown.
+                        </p>
+                        <h3>Syntax Reference</h3>
+                        <dl>
+                            <dt>Propositional Letters</dt>
+                            <dd><code>p</code> or <code>pn</code> where p is any lowercase letter, and n is an unsigned integer</dd>
+                            <dt>Negation (not)</dt>
+                            <dd><code>~</code> or <code>¬</code></dd>
+                            <dt>Conjunction (and)</dt>
+                            <dd><code>&amp;</code> or <code>∧</code></dd>
+                            <dt>Disjunction (or)</dt>
+                            <dd><code>|</code> or <code>∨</code></dd>
+                            <dt>Implication (if, then)</dt>
+                            <dd><code>-&gt;</code> or <code>→</code></dd>
+                            <dt>Biconditional (iff)</dt>
+                            <dd><code>&lt;-&gt;</code> or <code>↔</code></dd>
+                            <dt>Parentheses</dt>
+                            <dd><code>(  )</code></dd>
+                            <dt>Possibility</dt>
+                            <dd><code>&lt;&gt;</code> or <code>◇</code></dd>
+                            <dt>Necessity</dt>
+                            <dd><code>[]</code> or <code>□</code></dd>
+                            <dt>Graded Modalities</dt>
+                            <dd><code>&lt;&gt;&gt;=c</code> or <code>◇≥c</code> or <code>&lt;&gt;&lt;=c</code> or <code>◇≤c</code> where c is an unsigned integer</dd>
+                        </dl>
+                    </div>
                 }
                 {
                     tab === "model" &&

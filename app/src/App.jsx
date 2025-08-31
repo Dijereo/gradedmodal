@@ -70,7 +70,7 @@ function SearchBar({ setResponseData, searchFormula, setSearchFormula }) {
           value={searchFormula}
           onChange={(e) => setSearchFormula(e.target.value)} rows="3" cols="100" placeholder="Enter formula here..."></textarea>
         <button type="submit" onClick={() => setSubmissionType("sat")}>Satisfy</button>
-        <button type="submit" onClick={() => setSubmissionType("val")}>Validate</button>
+        <button type="submit" onClick={() => setSubmissionType("val")}>Prove</button>
       </div>
       <div className="frame-options">
         <label><input type="radio" name="frames" value="K" checked={frameClass === "K"} onChange={() => setFrameClass("K")} />K</label>
@@ -102,9 +102,9 @@ function App() {
     tabWrTime: "N/A",
     modelTime: "N/A"
   };
-  const [searchFormula, setSearchFormula] = useState("_|_");
+  const [searchFormula, setSearchFormula] = useState("⊥");
   const [computeTimes, setComputeTimes] = useState(defaultTimes);
-  const [formulaList, setFormulaList] = useState(["Placeholder ∅⨉✓⊥⊤¬□≥◇≤∧∨→↔"]);
+  const [formulaList, setFormulaList] = useState([""]);
   const [graphData, setGraphData] = useState(
     {
       nodes: [
