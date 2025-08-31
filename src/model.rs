@@ -25,7 +25,7 @@ struct NodeViewData {
 pub(crate) struct NodeView {
     pub(crate) id: String,
     pub(crate) label: String,
-    pub(crate) extra: String,
+    pub(crate) formulae: String,
 }
 
 #[derive(Serialize)]
@@ -43,8 +43,7 @@ struct EdgeViewData {
 pub(crate) struct EdgeView {
     pub(crate) source: String,
     pub(crate) target: String,
-    pub(crate) label: String,
-    pub(crate) extra: String,
+    pub(crate) sym: String,
 }
 
 impl From<GraphInner> for GraphView {
@@ -54,7 +53,7 @@ impl From<GraphInner> for GraphView {
         for (i, (node, adjlist)) in value.adjlist.into_iter().enumerate() {
             let mut extra = String::new();
             for f in node.formulae {
-                writeln!(&mut extra, "{}", f.formula);
+                writeln!(&mut extra, "{}", f.formula).unwrap();
             }
             nodes.push(NodeViewData {
                 data: NodeView {
@@ -64,7 +63,7 @@ impl From<GraphInner> for GraphView {
                     } else {
                         format!("x{}", node.count)
                     },
-                    extra,
+                    formulae: extra,
                 },
                 position: node.position,
             });
@@ -97,7 +96,7 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
         let mut nodes = vec![NodeView {
             id: "0".to_string(),
             label: "#0".to_string(),
-            extra: String::new(),
+            formulae: String::new(),
         }];
         let mut edges = vec![];
         self.0.borrow().model_graph(0, &mut nodes, &mut edges);
@@ -165,7 +164,7 @@ pub(crate) fn mock_graph(extra: String) -> (GraphView, String) {
                     data: NodeView {
                         id: "0".to_string(),
                         label: "#0".to_string(),
-                        extra: String::new(),
+                        formulae: String::new(),
                     },
                     position: NodePosition { x: 100, y: 100 },
                 },
@@ -173,7 +172,7 @@ pub(crate) fn mock_graph(extra: String) -> (GraphView, String) {
                     data: NodeView {
                         id: "3".to_string(),
                         label: "#3".to_string(),
-                        extra: String::new(),
+                        formulae: String::new(),
                     },
                     position: NodePosition { x: 200, y: 100 },
                 },
@@ -182,8 +181,7 @@ pub(crate) fn mock_graph(extra: String) -> (GraphView, String) {
                 data: EdgeView {
                     source: "0".to_string(),
                     target: "3".to_string(),
-                    label: "Edge 03".to_string(),
-                    extra: String::new(),
+                    sym: String::new(),
                 },
             }],
         },

@@ -4,7 +4,7 @@ export default function TabButtons({
     states,
     onClicks,
 }) {
-    const labels = ["Instructions", "Model", "Tableaux"];
+    const labels = ["Instructions", "Model", "Tableau"];
     return (
         <div style={{ display: "flex", gap: "8px" }}>
             {states.map((state, i) => {

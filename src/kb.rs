@@ -378,13 +378,12 @@ impl<const R: bool> IntoModelGraph for TransitB<R> {
             nodes.push(NodeView {
                 id: selfid.clone(),
                 label: format!("#{selfi}"),
-                extra: String::new(),
+                formulae: String::new(),
             });
             edges.push(EdgeView {
                 source: parenti.to_string(),
                 target: selfid,
-                label: String::new(),
-                extra: String::new(),
+                sym: String::new(),
             });
             self.paraws.tab.borrow().model_graph(selfi, nodes, edges);
         } else {

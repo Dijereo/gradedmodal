@@ -64,7 +64,6 @@ function FormulaList({ formulae, rows, cols, placeholder }) {
     );
 }
 
-
 export default function TabDisplay({ proofdata }) {
     const [tab, setTab] = useState("instructions");
     const [nodeFormulae, setNodeFormulae] = useState([""]);
@@ -92,16 +91,29 @@ export default function TabDisplay({ proofdata }) {
                         <h3>Welcome to Golem!</h3>
                         <p>
                             Golem is a tableau-based automated theorem prover for graded modal logic.
-                            To use Golem, enter a formula in the input bar at the top of the page
+                            To use Golem, enter a formula in the input bar at the top of the page,
+                            select a logic corresponding to the class of frames you want to work with,
                             and click satisfy to find and display a satisfying model,
                             or prove to prove its validity by tableau refutation.
                             If it is unsatisfiable, the refuting tableau will be shown.
                             If it is not valid, the counter-satisfying model will be shown.
                         </p>
+                        <h3>Models</h3>
+                        <p>
+                            When a model is shown, click on a world to see the formulae that are true at that world.
+                            A multiplier label on a world indicates that that number of copies of this world exist.
+                            For Euclidean frames, to avoid clutter, not all of the transitions in the clique are shown; they are left implied.
+                        </p>
                         <h3>Syntax Reference</h3>
                         <dl>
                             <dt>Propositional Letters</dt>
-                            <dd><code>p</code> or <code>pn</code> where p is any lowercase letter, and n is an unsigned integer</dd>
+                            <dd><code>p</code> or <code>pi</code> where p is any lowercase letter, and i is an unsigned integer</dd>
+                            <dt>Negation (not)</dt>
+                            <dd><code>~</code> or <code>¬</code></dd>
+                            <dt>Bottom (constant false)</dt>
+                            <dd><code>_|_</code> or <code>⊥</code></dd>
+                            <dt>Top (constant true)</dt>
+                            <dd><code>T</code> or <code>⊤</code></dd>
                             <dt>Negation (not)</dt>
                             <dd><code>~</code> or <code>¬</code></dd>
                             <dt>Conjunction (and)</dt>

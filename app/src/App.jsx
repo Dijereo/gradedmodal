@@ -113,9 +113,9 @@ function App() {
         { data: { id: '3', label: 'x3', bg: 'green', formulae: 'p∧q' }, position: { x: 300, y: 100 } },
       ],
       edges: [
-        { data: { source: '1', target: '2', label: 'Edge from Node1 to Node2', sym: 'triangle' } },
-        { data: { source: '2', target: '3', label: 'Edge from Node2 to Node3', sym: 'none' } },
-        { data: { source: '3', target: '3', label: 'Edge from Node3 to itself', sym: 'none' } },
+        { data: { source: '1', target: '2', sym: 'triangle' } },
+        { data: { source: '2', target: '3', sym: 'none' } },
+        { data: { source: '3', target: '3', sym: 'none' } },
       ],
     }
   );
