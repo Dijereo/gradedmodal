@@ -46,10 +46,9 @@ pub(crate) enum ServerError {
 pub(crate) struct ServerOutput {
     pub(crate) formula: String,
     pub(crate) times: ServerTimes,
-    pub(crate) graph: GraphView,
+    pub(crate) graph: Option<GraphView>,
     pub(crate) tableau: String,
-    pub(crate) symmetric: bool,
-    pub(crate) satisfiable: bool,
+    pub(crate) success: bool,
 }
 
 impl IntoResponse for ServerOutput {

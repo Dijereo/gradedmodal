@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import './App.css'
-import TabButtons from "./Tabs";
 import TabDisplay from "./Display";
 
 function DisplayFormula({ formula }) {
@@ -40,7 +39,7 @@ function SearchBar({ setResponseData, searchFormula, setSearchFormula }) {
     };
 
     try {
-      const res = await fetch("/api", {
+      const res = await fetch("http://localhost:3000/api", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -68,6 +67,7 @@ function SearchBar({ setResponseData, searchFormula, setSearchFormula }) {
       <div className="formula-input">
         <textarea
           value={searchFormula}
+          spellCheck='false'
           onChange={(e) => setSearchFormula(e.target.value)} rows="3" cols="100" placeholder="Enter formula here..."></textarea>
         <button type="submit" onClick={() => setSubmissionType("sat")}>Satisfy</button>
         <button type="submit" onClick={() => setSubmissionType("val")}>Prove</button>
@@ -104,21 +104,11 @@ function App() {
   };
   const [searchFormula, setSearchFormula] = useState("⊥");
   const [computeTimes, setComputeTimes] = useState(defaultTimes);
-  const [formulaList, setFormulaList] = useState([""]);
-  const [graphData, setGraphData] = useState(
-    {
-      nodes: [
-        { data: { id: '1', label: 'x1', bg: 'red', formulae: 'p' }, position: { x: 100, y: 100 } },
-        { data: { id: '2', label: 'x2', bg: 'blue', formulae: 'q' }, position: { x: 200, y: 100 } },
-        { data: { id: '3', label: 'x3', bg: 'green', formulae: 'p∧q' }, position: { x: 300, y: 100 } },
-      ],
-      edges: [
-        { data: { source: '1', target: '2', sym: 'triangle' } },
-        { data: { source: '2', target: '3', sym: 'none' } },
-        { data: { source: '3', target: '3', sym: 'none' } },
-      ],
-    }
-  );
+  const [formulaList, setFormulaList] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [graphData, setGraphData] = useState(null);
+  const [tab, setTab] = useState("instructions");
+  const [nodeFormulae, setNodeFormulae] = useState([""]);
 
   function setResponseData(responseJsonData, end2EndTime) {
     if (responseJsonData.times !== undefined) {
@@ -142,15 +132,24 @@ function App() {
       setFormulaList(responseJsonData.tableau);
     }
     if (responseJsonData.formula !== undefined) {
-      setSearchFormula(responseJsonData.formula)
+      setSearchFormula(responseJsonData.formula);
     }
+    if (responseJsonData.success !== undefined) {
+      setSuccess(responseJsonData.success);
+    }
+    if (responseJsonData.graph === null) {
+      setTab("tableau");
+    } else {
+      setTab("model");
+    }
+    setNodeFormulae([""]);
   }
 
   return (
     <>
       <div className="page">
         <SearchBar searchFormula={searchFormula} setSearchFormula={setSearchFormula} setResponseData={setResponseData} className="formula-query" />
-        <TabDisplay proofdata={{ model: graphData, tableau: formulaList, computeTimes: computeTimes }}></TabDisplay>
+        <TabDisplay proofdata={{ model: graphData, tableau: formulaList, computeTimes: computeTimes }} success={success} tab={tab} setTab={setTab} nodeFormulae={nodeFormulae} setNodeFormulae={setNodeFormulae}></TabDisplay>
       </div>
     </>
   );

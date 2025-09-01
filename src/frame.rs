@@ -97,6 +97,75 @@ macro_rules! sat_and {
     }};
 }
 
+macro_rules! model_and {
+    ($frame:expr, $formula:expr, $val:expr, $formulae_str:expr, $parse_time:expr, $default:expr, $toh:expr) => {{
+        match $frame {
+            FrameCondition::K | FrameCondition::D | FrameCondition::K45 | FrameCondition::D45 => {
+                let clsr = |tab, solve_time| DisplayTableau::<TransitKOr45>::model(DisplayTableau(tab),
+                    $formulae_str,
+                    solve_time,
+                    $parse_time,
+                    $frame,
+                    $val,
+                );
+                time_sat!(clsr, Calculus::sat::<TransitKOr45>, $frame, $formula, $toh)
+            }
+            FrameCondition::T => {
+                let clsr = |tab, solve_time| DisplayTableau::<TransitT>::model(DisplayTableau(tab),
+                    $formulae_str,
+                    solve_time,
+                    $parse_time,
+                    $frame,
+                    $val,
+                );
+                time_sat!(clsr, Calculus::sat::<TransitT>, $frame, $formula, $toh)
+            }
+            FrameCondition::KB | FrameCondition::DB => {
+                let clsr = |tab, solve_time| DisplayTableau::<TransitB<false>>::model(DisplayTableau(tab),
+                    $formulae_str,
+                    solve_time,
+                    $parse_time,
+                    $frame,
+                    $val,
+                );
+                time_sat!(clsr, Calculus::sat::<TransitB<false>>, $frame, $formula, $toh)
+            }
+            FrameCondition::TB => {
+                let clsr = |tab, solve_time| DisplayTableau::<TransitB<true>>::model(DisplayTableau(tab),
+                    $formulae_str,
+                    solve_time,
+                    $parse_time,
+                    $frame,
+                    $val,
+                );
+                time_sat!(clsr, Calculus::sat::<TransitB<true>>, $frame, $formula, $toh)
+            }
+            FrameCondition::K4 | FrameCondition::D4 => $default("[KD]4"), //$clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
+            FrameCondition::S4 => $default("S4"), // $clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
+            FrameCondition::K5 | FrameCondition::D5 => {
+                let clsr = |tab, solve_time| DisplayTableau::<Transit5>::model(DisplayTableau(tab),
+                    $formulae_str,
+                    solve_time,
+                    $parse_time,
+                    $frame,
+                    $val,
+                );
+                time_sat!(clsr, Calculus::sat::<Transit5>, $frame, $formula, $toh)
+            }
+            FrameCondition::KB5 | FrameCondition::S5 => {
+                let clsr = |tab, solve_time| DisplayTableau::<TransitB5>::model(DisplayTableau(tab),
+                    $formulae_str,
+                    solve_time,
+                    $parse_time,
+                    $frame,
+                    $val,
+                );
+                time_sat!(clsr, Calculus::sat::<TransitB5>, $frame, $formula, $toh)
+            }
+        }
+    }};
+}
+
 impl FrameCondition {
     pub(crate) fn print_sat(&self, formula: Rc<Formula>) -> MayTimeout<()> {
         sat_and!(
@@ -131,15 +200,12 @@ impl FrameCondition {
         if validate {
             formula = formula.not();
         }
-        sat_and!(
+        model_and!(
             *self,
             formula,
-            |tab, solve_time| DisplayTableau(tab).model(
-                formulae_str,
-                solve_time,
-                parse_time,
-                self.symmetric(),
-            ),
+            validate,
+            formulae_str,
+            parse_time,
             |frames| { Err(ServerError::NotImplemented(frames)) },
             &toh
         )
@@ -235,13 +301,13 @@ impl FrameCondition {
             | FrameCondition::S4
             | FrameCondition::K5
             | FrameCondition::K45
-            | FrameCondition::KB5 => false,
+            | FrameCondition::KB5
+            | FrameCondition::S5 => false,
             FrameCondition::D
             | FrameCondition::DB
             | FrameCondition::D4
             | FrameCondition::D5
-            | FrameCondition::D45
-            | FrameCondition::S5 => true,
+            | FrameCondition::D45 => true,
         }
     }
 

@@ -228,7 +228,7 @@ where
             .add_thread(handle);
         match api::solve(formula.as_ref(), frames.as_str(), true, stop) {
             Ok(output) => (
-                if output.satisfiable {
+                if !output.success {
                     EvalStatus::CounterSatisfiable
                 } else {
                     EvalStatus::Theorem

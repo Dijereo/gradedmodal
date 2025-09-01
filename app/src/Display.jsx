@@ -14,7 +14,7 @@ function Times({ computeTimes }) {
     );
 }
 
-function ModelGraph({ elements, setNodeFormulae }) {
+function ModelGraph({ elements, setNodeFormulae, success }) {
     return (
         <CytoscapeComponent
             cy={(cy) => {
@@ -24,16 +24,16 @@ function ModelGraph({ elements, setNodeFormulae }) {
                 });
             }}
             elements={CytoscapeComponent.normalizeElements(elements)}
-            layout={{ name: "breadthfirst" }}
-            style={{ width: '1000px', height: '400px' }}
+            // layout={{ name: "breadthfirst" }}
+            style={{ width: '1000px', height: '400px', backgroundColor: success ? '#efe' : '#fee' }}
             stylesheet={[
                 {
                     selector: 'node',
                     style: {
-                        'background-color': 'data(bg)',
+                        'background-color': success ? '#2c2' : '#f22',
                         'label': 'data(label)',
                         'text-valign': 'center',
-                        'text-halign': 'right',
+                        'text-halign': 'center',
                     }
                 },
                 {
@@ -53,24 +53,25 @@ function ModelGraph({ elements, setNodeFormulae }) {
     );
 }
 
-function FormulaList({ formulae, rows, cols, placeholder }) {
+function FormulaList({ formulae, rows, cols, placeholder, success }) {
     return (
         <>
             <textarea
                 value={formulae}
                 rows={rows} cols={cols} readOnly wrap="off"
+                style={{
+                    'background-color': success ? '#efe' : '#fee',
+                }}
                 placeholder={placeholder}></textarea>
         </>
     );
 }
 
-export default function TabDisplay({ proofdata }) {
-    const [tab, setTab] = useState("instructions");
-    const [nodeFormulae, setNodeFormulae] = useState([""]);
+export default function TabDisplay({ proofdata, success, tab, setTab, nodeFormulae, setNodeFormulae }) {
     const buttonStates = [
         tab === "instructions" ? "active" : "inactive",
-        "model" in proofdata ? (tab === "model" ? "active" : "inactive") : "hidden",
-        "tableau" in proofdata ? (tab === "tableau" ? "active" : "inactive") : "hidden",
+        "model" in proofdata && proofdata.model !== null && proofdata.model !== undefined ? (tab === "model" ? "active" : "inactive") : "hidden",
+        "tableau" in proofdata && proofdata.tableau !== null && proofdata.tableau !== undefined ? (tab === "tableau" ? "active" : "inactive") : "hidden",
     ];
     const buttonClicks = [
         () => setTab("instructions"),
@@ -103,6 +104,21 @@ export default function TabDisplay({ proofdata }) {
                             When a model is shown, click on a world to see the formulae that are true at that world.
                             A multiplier label on a world indicates that that number of copies of this world exist.
                             For Euclidean frames, to avoid clutter, not all of the transitions in the clique are shown; they are left implied.
+                        </p>
+                        <h3>Tableaux</h3>
+                        <p>
+
+                            Each transition is displayed as a separate tableau sub-tree in order to make the display easier to understand.
+                            These smaller tableaux are numbered, and the point of transition is labeled with an arrow and that number.
+                            When a transition occurs to multiple accessible worlds,
+                            all the new worlds of this transition are shown in one tableau as separate branches.
+                            The ⊥ character indicates a branch closed due to a direct contradiction,
+                            or a closed tableau where all branches have a direct contradiction,
+                            or a transition to such a tableau.
+                            The ∅ character indicates that a tableau closed
+                            because there is no solution to its ILP problem,
+                            or it labels a transition to such a tableau.
+                            A ✓ indicates an open tableau, or a transition to such a tableau.
                         </p>
                         <h3>Syntax Reference</h3>
                         <dl>
@@ -138,16 +154,16 @@ export default function TabDisplay({ proofdata }) {
                 {
                     tab === "model" &&
                     <div className="upper-middle-column">
-                        <div className="middle-column">
-                            <ModelGraph elements={proofdata.model} setNodeFormulae={setNodeFormulae} />
+                        <div className="middle-column" backgroundColor={success ? '#efe' : '#fee'}>
+                            <ModelGraph elements={proofdata.model} setNodeFormulae={setNodeFormulae} success={success} />
                         </div>
-                        <FormulaList formulae={nodeFormulae} rows={"22"} cols={"20"} placeholder={"Click on a node!"} />
+                        <FormulaList formulae={nodeFormulae} rows={"22"} cols={"20"} placeholder={"Click on a node!"} success={success} />
                     </div>
                 }
                 {
                     tab === "tableau" &&
                     <div className="right-column">
-                        <FormulaList formulae={proofdata.tableau} rows={"22"} cols={"120"} placeholder={"No tableaux to display!"} />
+                        <FormulaList formulae={proofdata.tableau} rows={"22"} cols={"120"} placeholder={"No tableaux to display!"} success={success} />
                     </div>
                 }
             </div>

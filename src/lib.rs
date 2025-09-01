@@ -54,7 +54,7 @@ pub fn init_router() -> Router {
     );
     util::run_on_exts(
         &["css", "js", "svg", "html"],
-        ["dist/static", "dist/assets"].iter(),
+        ["dist/assets"].iter(),
         &mut |path: &Path| {
             router = Some(mem::take(&mut router).unwrap().route_service(
                 &format!("/assets/{}", path.file_name().unwrap().to_str().unwrap()),

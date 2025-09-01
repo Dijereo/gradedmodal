@@ -5,8 +5,8 @@ cd app
 npm run build
 cd ..
 
-mkdir -p dist/static
-cp app/dist/index.html dist/static/
-cp -r app/dist/assets dist/static/
+mkdir -p dist/assets
+cp app/dist/index.html dist/
+cp -r app/dist/assets dist/
 
 RUSTFLAGS="-Awarnings" cargo run --release --bin server

@@ -4,9 +4,15 @@ use serde::Serialize;
 
 use crate::{
     api::{ServerError, ServerOutput, ServerResult, ServerTimes},
-    modelinner::GraphInner,
+    b5::TransitB5,
+    frame::FrameCondition,
+    k5::Transit5,
+    k45::TransitKOr45,
+    kb::TransitB,
+    modelinner::{GraphInner, k45_to_graph},
     tableau2::{DisplayTableau, TabChildren, TableauNode2},
     transit::{BaseTransit, DisplayTransit},
+    tt::TransitT,
 };
 
 #[derive(Serialize)]
@@ -67,6 +73,19 @@ impl From<GraphInner> for GraphView {
                 },
                 position: node.position,
             });
+            for edge in adjlist {
+                edges.push(EdgeViewData {
+                    data: EdgeView {
+                        source: i.to_string(),
+                        target: edge.target.to_string(),
+                        sym: if edge.sym {
+                            "triangle".to_string()
+                        } else {
+                            "none".to_string()
+                        },
+                    },
+                });
+            }
         }
         Self { nodes, edges }
     }
@@ -76,16 +95,76 @@ pub(crate) trait IntoModelGraph: BaseTransit + DisplayTransit {
     fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<NodeView>, edges: &mut Vec<EdgeView>);
 }
 
-impl<T: IntoModelGraph> DisplayTableau<T> {
+impl DisplayTableau<TransitT> {
     pub(crate) fn model(
         self,
         formula_str: String,
         solve_time: String,
         parse_time: String,
-        symmetric: bool,
+        framecond: FrameCondition,
+        validate: bool,
     ) -> ServerResult {
+        self.base_model(formula_str, solve_time, parse_time, framecond, validate)
+    }
+}
+
+impl DisplayTableau<Transit5> {
+    pub(crate) fn model(
+        self,
+        formula_str: String,
+        solve_time: String,
+        parse_time: String,
+        framecond: FrameCondition,
+        validate: bool,
+    ) -> ServerResult {
+        self.base_model(formula_str, solve_time, parse_time, framecond, validate)
+    }
+}
+
+impl DisplayTableau<TransitB5> {
+    pub(crate) fn model(
+        self,
+        formula_str: String,
+        solve_time: String,
+        parse_time: String,
+        framecond: FrameCondition,
+        validate: bool,
+    ) -> ServerResult {
+        self.base_model(formula_str, solve_time, parse_time, framecond, validate)
+    }
+}
+
+impl<const R: bool> DisplayTableau<TransitB<R>> {
+    pub(crate) fn model(
+        self,
+        formula_str: String,
+        solve_time: String,
+        parse_time: String,
+        framecond: FrameCondition,
+        validate: bool,
+    ) -> ServerResult {
+        self.base_model(formula_str, solve_time, parse_time, framecond, validate)
+    }
+}
+
+impl<T: BaseTransit + DisplayTransit + IntoModelGraph> DisplayTableau<T> {
+    pub(crate) fn base_model(
+        self,
+        formula_str: String,
+        solve_time: String,
+        parse_time: String,
+        framecond: FrameCondition,
+        validate: bool,
+    ) -> ServerResult {
+        let satisfiable = !self.0.borrow().is_closed();
         let tabw_start = Instant::now();
         let mut tableau = String::new();
+        let res = match (validate, satisfiable) {
+            (true, true) => writeln!(&mut tableau, "CounterSatisfiable\n"),
+            (true, false) => writeln!(&mut tableau, "Theorem\n"),
+            (false, true) => writeln!(&mut tableau, "Satisfiable\n"),
+            (false, false) => writeln!(&mut tableau, "Unsatisfiable\n"),
+        };
         if let Err(e) = write!(&mut tableau, "{}", self) {
             eprintln!("Error writing tableau.");
             eprintln!("{e}");
@@ -95,27 +174,31 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
         let graph_start = Instant::now();
         let mut nodes = vec![NodeView {
             id: "0".to_string(),
-            label: "#0".to_string(),
+            label: "1".to_string(),
             formulae: String::new(),
         }];
         let mut edges = vec![];
         self.0.borrow().model_graph(0, &mut nodes, &mut edges);
-        let graph = GraphView {
-            nodes: nodes
-                .into_iter()
-                .enumerate()
-                .map(|(i, n)| NodeViewData {
-                    data: n,
-                    position: NodePosition {
-                        x: 50 * (i % 5),
-                        y: 50 * (i / 5),
-                    },
-                })
-                .collect(),
-            edges: edges
-                .into_iter()
-                .map(|e| EdgeViewData { data: e })
-                .collect(),
+        let graph = if satisfiable {
+            Some(GraphView {
+                nodes: nodes
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, n)| NodeViewData {
+                        data: n,
+                        position: NodePosition {
+                            x: 50 * (i % 5),
+                            y: 50 * (i / 5),
+                        },
+                    })
+                    .collect(),
+                edges: edges
+                    .into_iter()
+                    .map(|e| EdgeViewData { data: e })
+                    .collect(),
+            })
+        } else {
+            None
         };
         let graph_time = format!("{:.3?}", graph_start.elapsed());
         Ok(ServerOutput {
@@ -129,8 +212,57 @@ impl<T: IntoModelGraph> DisplayTableau<T> {
             },
             graph,
             tableau,
-            symmetric,
-            satisfiable: !self.0.borrow().is_closed(),
+            success: satisfiable != validate,
+        })
+    }
+}
+
+impl DisplayTableau<TransitKOr45> {
+    pub(crate) fn model(
+        self,
+        formula_str: String,
+        solve_time: String,
+        parse_time: String,
+        framecond: FrameCondition,
+        validate: bool,
+    ) -> ServerResult {
+        let tabw_start = Instant::now();
+        let mut tableau = String::new();
+        let satisfiable = !self.0.borrow().is_closed();
+        let res = match (validate, satisfiable) {
+            (true, true) => writeln!(&mut tableau, "CounterSatisfiable\n"),
+            (true, false) => writeln!(&mut tableau, "Theorem\n"),
+            (false, true) => writeln!(&mut tableau, "Satisfiable\n"),
+            (false, false) => writeln!(&mut tableau, "Unsatisfiable\n"),
+        };
+        if let Err(e) = res.and(write!(&mut tableau, "{}", self)) {
+            eprintln!("Error writing tableau.");
+            eprintln!("{e}");
+            return Err(ServerError::ServerErr);
+        }
+        let tabwrite_time = format!("{:.3?}", tabw_start.elapsed());
+        let graph_start = Instant::now();
+        let graph = if satisfiable {
+            let mut graph = k45_to_graph(self);
+            graph.set_pos();
+            graph.set_frame_conds(framecond);
+            Some(graph.into())
+        } else {
+            None
+        };
+        let graph_time = format!("{:.3?}", graph_start.elapsed());
+        Ok(ServerOutput {
+            formula: formula_str,
+            times: ServerTimes {
+                server_time: String::new(),
+                parse_time,
+                solve_time,
+                tabwrite_time,
+                graph_time,
+            },
+            graph,
+            tableau,
+            success: satisfiable != validate,
         })
     }
 }
@@ -154,37 +286,4 @@ impl<T: IntoModelGraph> TableauNode2<T> {
             }
         }
     }
-}
-
-pub(crate) fn mock_graph(extra: String) -> (GraphView, String) {
-    (
-        GraphView {
-            nodes: vec![
-                NodeViewData {
-                    data: NodeView {
-                        id: "0".to_string(),
-                        label: "#0".to_string(),
-                        formulae: String::new(),
-                    },
-                    position: NodePosition { x: 100, y: 100 },
-                },
-                NodeViewData {
-                    data: NodeView {
-                        id: "3".to_string(),
-                        label: "#3".to_string(),
-                        formulae: String::new(),
-                    },
-                    position: NodePosition { x: 200, y: 100 },
-                },
-            ],
-            edges: vec![EdgeViewData {
-                data: EdgeView {
-                    source: "0".to_string(),
-                    target: "3".to_string(),
-                    sym: String::new(),
-                },
-            }],
-        },
-        extra,
-    )
 }
