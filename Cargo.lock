@@ -455,18 +455,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
-name = "good_lp"
-version = "1.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d976304a59dd741fa234623e96473cf399e10f3f91f0487215fc561f6131d362"
-dependencies = [
- "fnv",
- "russcip",
-]
-
-[[package]]
-name = "gradedmodal"
-version = "0.1.0"
+name = "golem"
+version = "0.2.0"
 dependencies = [
  "axum",
  "good_lp",
@@ -477,6 +467,16 @@ dependencies = [
  "sysinfo",
  "tokio",
  "tower-http",
+]
+
+[[package]]
+name = "good_lp"
+version = "1.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d976304a59dd741fa234623e96473cf399e10f3f91f0487215fc561f6131d362"
+dependencies = [
+ "fnv",
+ "russcip",
 ]
 
 [[package]]

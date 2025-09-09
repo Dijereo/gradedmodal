@@ -1,4 +1,4 @@
-use gradedmodal::run_cli;
+use golem::run_cli;
 
 fn main() {
     run_cli();
