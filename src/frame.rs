@@ -101,7 +101,7 @@ macro_rules! model_and {
     ($frame:expr, $formula:expr, $val:expr, $formulae_str:expr, $parse_time:expr, $default:expr, $toh:expr) => {{
         match $frame {
             FrameCondition::K | FrameCondition::D | FrameCondition::K45 | FrameCondition::D45 => {
-                let clsr = |tab, solve_time| DisplayTableau::<TransitKOr45>::model(DisplayTableau(tab),
+                let clsr = |tab, solve_time| DisplayTableau::<TransitKOr45>::serve(DisplayTableau(tab),
                     $formulae_str,
                     solve_time,
                     $parse_time,
@@ -111,7 +111,7 @@ macro_rules! model_and {
                 time_sat!(clsr, Calculus::sat::<TransitKOr45>, $frame, $formula, $toh)
             }
             FrameCondition::T => {
-                let clsr = |tab, solve_time| DisplayTableau::<TransitT>::model(DisplayTableau(tab),
+                let clsr = |tab, solve_time| DisplayTableau::<TransitT>::serve(DisplayTableau(tab),
                     $formulae_str,
                     solve_time,
                     $parse_time,
@@ -121,7 +121,7 @@ macro_rules! model_and {
                 time_sat!(clsr, Calculus::sat::<TransitT>, $frame, $formula, $toh)
             }
             FrameCondition::KB | FrameCondition::DB => {
-                let clsr = |tab, solve_time| DisplayTableau::<TransitB<false>>::model(DisplayTableau(tab),
+                let clsr = |tab, solve_time| DisplayTableau::<TransitB<false>>::serve(DisplayTableau(tab),
                     $formulae_str,
                     solve_time,
                     $parse_time,
@@ -131,7 +131,7 @@ macro_rules! model_and {
                 time_sat!(clsr, Calculus::sat::<TransitB<false>>, $frame, $formula, $toh)
             }
             FrameCondition::TB => {
-                let clsr = |tab, solve_time| DisplayTableau::<TransitB<true>>::model(DisplayTableau(tab),
+                let clsr = |tab, solve_time| DisplayTableau::<TransitB<true>>::serve(DisplayTableau(tab),
                     $formulae_str,
                     solve_time,
                     $parse_time,
@@ -143,7 +143,7 @@ macro_rules! model_and {
             FrameCondition::K4 | FrameCondition::D4 => $default("[KD]4"), //$clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
             FrameCondition::S4 => $default("S4"), // $clsr(GradedKCalc::sat::<Transit4>($frame, $formula)),
             FrameCondition::K5 | FrameCondition::D5 => {
-                let clsr = |tab, solve_time| DisplayTableau::<Transit5>::model(DisplayTableau(tab),
+                let clsr = |tab, solve_time| DisplayTableau::<Transit5>::serve(DisplayTableau(tab),
                     $formulae_str,
                     solve_time,
                     $parse_time,
@@ -153,7 +153,7 @@ macro_rules! model_and {
                 time_sat!(clsr, Calculus::sat::<Transit5>, $frame, $formula, $toh)
             }
             FrameCondition::KB5 | FrameCondition::S5 => {
-                let clsr = |tab, solve_time| DisplayTableau::<TransitB5>::model(DisplayTableau(tab),
+                let clsr = |tab, solve_time| DisplayTableau::<TransitB5>::serve(DisplayTableau(tab),
                     $formulae_str,
                     solve_time,
                     $parse_time,

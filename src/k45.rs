@@ -8,12 +8,14 @@ use std::{
 use good_lp::{Expression, ProblemVariables, Solution, SolverModel, solvers, variable};
 
 use crate::{
-    model::{EdgeView, IntoModelGraph, NodeView},
+    formula::Formula,
+    model::{EdgeInner, EdgeView, GraphInner, IntoModelGraph, NodeInner, NodePosition, NodeView},
     rules3::{Calculus, Feasibility},
-    tableau2::TableauNode2,
+    tableau2::{DisplayTableau, TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},
     transit::{
-        self, BaseTransit, Constraints, DisplayTransit, Modals, ParallelWorlds, SolveTransit,
+        self, BaseTransit, Constraints, DisplayTransit, Modals, ModelTransit, ParallelWorlds,
+        SolveTransit,
     },
 };
 
@@ -140,20 +142,96 @@ impl DisplayTransit for TransitKOr45 {
     }
 }
 
-impl IntoModelGraph for TransitKOr45 {
-    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<NodeView>, edges: &mut Vec<EdgeView>) {
-        let selfi = nodes.len();
-        let selfid = selfi.to_string();
-        nodes.push(NodeView {
-            id: selfid.clone(),
-            label: format!("#{selfi}"),
-            formulae: String::new(),
-        });
-        edges.push(EdgeView {
-            source: parenti.to_string(),
-            target: selfid,
-            sym: String::new(),
-        });
-        self.paraws.tab.borrow().model_graph(selfi, nodes, edges);
+impl ModelTransit for TransitKOr45 {
+    fn to_graph_inner(this: DisplayTableau<Self>) -> GraphInner {
+        let mut fruits = vec![];
+        TableauNode2::get_fruits(&this.0, &mut fruits);
+        let mut graph = GraphInner { adjlist: vec![] };
+        for fruit in fruits {
+            if fruit.borrow().is_closed() {
+                continue;
+            }
+            let mut formulae = vec![];
+            fruit.borrow().traverse_anc_formulae(&mut |f| {
+                match f.formula.as_ref() {
+                    Formula::PropVar(_, _)
+                    | Formula::Box(_)
+                    | Formula::Diamond(_)
+                    | Formula::DiamondGe(_, _)
+                    | Formula::DiamondLe(_, _) => formulae.push(f.clone()),
+                    Formula::Not(formula) => match formula.as_ref() {
+                        Formula::PropVar(_, _) => formulae.push(f.clone()),
+                        _ => {}
+                    },
+                    _ => {}
+                };
+                true
+            });
+            let node = NodeInner {
+                count: 1,
+                formulae,
+                position: NodePosition { x: 0, y: 0 },
+            };
+            graph.adjlist.push((node, vec![]));
+            match &fruit.borrow().children {
+                TabChildren::Leaf | TabChildren::Fork { .. } => {}
+                TabChildren::Transition(transit) => transit.to_graph_rec(0, &mut graph),
+            }
+            break;
+        }
+        graph
+    }
+}
+
+impl TransitKOr45 {
+    pub(crate) fn to_graph_rec(&self, parent_id: usize, graph: &mut GraphInner) {
+        let mut fruits = vec![];
+        TableauNode2::get_fruits(&self.paraws.tab, &mut fruits);
+        for (c, choices) in self.solution.iter().zip(self.paraws.choices.iter()) {
+            if *c == 0 {
+                continue;
+            }
+            for fruit in fruits.iter() {
+                let mut fruitchoices = vec![];
+                fruit
+                    .borrow()
+                    .get_choices(&mut fruitchoices, &self.paraws.forkids);
+                if &fruitchoices != choices {
+                    continue;
+                }
+                let target = graph.adjlist.len();
+                graph.adjlist[parent_id]
+                    .1
+                    .push(EdgeInner { target, sym: false });
+                let mut formulae = vec![];
+                fruit.borrow().traverse_anc_formulae(&mut |f| {
+                    match f.formula.as_ref() {
+                        Formula::PropVar(_, _)
+                        | Formula::Box(_)
+                        | Formula::Diamond(_)
+                        | Formula::DiamondGe(_, _)
+                        | Formula::DiamondLe(_, _) => formulae.push(f.clone()),
+                        Formula::Not(formula) => match formula.as_ref() {
+                            Formula::PropVar(_, _) => formulae.push(f.clone()),
+                            _ => {}
+                        },
+                        _ => {}
+                    };
+                    true
+                });
+                let node = NodeInner {
+                    count: *c as usize,
+                    formulae,
+                    position: NodePosition { x: 0, y: 0 },
+                };
+                let currid = graph.adjlist.len();
+                graph.adjlist.push((node, vec![]));
+                match &fruit.borrow().children {
+                    TabChildren::Leaf | TabChildren::Fork { .. } => {}
+                    TabChildren::Transition(nexttransit) => nexttransit.to_graph_rec(currid, graph),
+                }
+                break;
+            }
+        }
     }
 }

@@ -1,4 +1,4 @@
-use std::{fmt::Write, time::Instant, vec};
+use std::{collections::HashMap, fmt::Write, time::Instant, vec};
 
 use serde::Serialize;
 
@@ -9,9 +9,8 @@ use crate::{
     k5::Transit5,
     k45::TransitKOr45,
     kb::TransitB,
-    modelinner::{GraphInner, k45_to_graph},
-    tableau2::{DisplayTableau, TabChildren, TableauNode2},
-    transit::{BaseTransit, DisplayTransit},
+    tableau2::{DisplayTableau, LabeledFormula, TabChildren, TableauNode2},
+    transit::{BaseTransit, DisplayTransit, ModelTransit},
     tt::TransitT,
 };
 
@@ -50,6 +49,89 @@ pub(crate) struct EdgeView {
     pub(crate) source: String,
     pub(crate) target: String,
     pub(crate) sym: String,
+}
+
+pub(crate) struct GraphInner {
+    pub(crate) adjlist: Vec<(NodeInner, Vec<EdgeInner>)>,
+}
+
+pub(crate) struct NodeInner {
+    pub(crate) count: usize,
+    pub(crate) formulae: Vec<LabeledFormula>,
+    pub(crate) position: NodePosition,
+}
+
+pub(crate) struct EdgeInner {
+    pub(crate) target: usize,
+    pub(crate) sym: bool,
+}
+
+impl GraphInner {
+    pub(crate) fn set_pos(&mut self) {
+        let miny = 0;
+        let maxy = 400;
+        let n = self.adjlist.len();
+        let mut depth = vec![0; n];
+        for i in 0..n {
+            let d = depth[i];
+            for child in &self.adjlist[i].1 {
+                depth[child.target] = d + 1;
+            }
+        }
+        let mut levels: HashMap<usize, Vec<usize>> = HashMap::new();
+        for (i, &d) in depth.iter().enumerate() {
+            levels.entry(d).or_default().push(i);
+        }
+        for (d, nodes) in levels {
+            let count = nodes.len();
+            for (j, &idx) in nodes.iter().enumerate() {
+                self.adjlist[idx].0.position.x = 100 * (d + 1);
+                self.adjlist[idx].0.position.y = miny + (maxy - miny) * (j + 1) / (count + 1);
+            }
+        }
+    }
+
+    pub(crate) fn set_frame_conds(&mut self, framecond: FrameCondition) {
+        let n = self.adjlist.len();
+        if framecond.symmetric() {
+            for (node, edges) in self.adjlist.iter_mut() {
+                for edge in edges.iter_mut() {
+                    edge.sym = true;
+                }
+            }
+        }
+        if framecond.ray() {
+            for (i, (node, edges)) in self.adjlist.iter_mut().enumerate() {
+                if edges.is_empty() {
+                    edges.push(EdgeInner {
+                        target: i,
+                        sym: false,
+                    });
+                }
+            }
+        } else if framecond.reflexive() {
+            for (i, (node, edges)) in self.adjlist.iter_mut().enumerate() {
+                edges.push(EdgeInner {
+                    target: i,
+                    sym: false,
+                });
+            }
+        }
+        if framecond.euclidean() {
+            for i in 1..n {
+                if i < n - 1 {
+                    self.adjlist[i].1.push(EdgeInner {
+                        target: i + 1,
+                        sym: true,
+                    });
+                }
+                self.adjlist[i].1.push(EdgeInner {
+                    target: i,
+                    sym: false,
+                });
+            }
+        }
+    }
 }
 
 impl From<GraphInner> for GraphView {
@@ -96,7 +178,7 @@ pub(crate) trait IntoModelGraph: BaseTransit + DisplayTransit {
 }
 
 impl DisplayTableau<TransitT> {
-    pub(crate) fn model(
+    pub(crate) fn serve(
         self,
         formula_str: String,
         solve_time: String,
@@ -109,7 +191,7 @@ impl DisplayTableau<TransitT> {
 }
 
 impl DisplayTableau<Transit5> {
-    pub(crate) fn model(
+    pub(crate) fn serve(
         self,
         formula_str: String,
         solve_time: String,
@@ -122,7 +204,7 @@ impl DisplayTableau<Transit5> {
 }
 
 impl DisplayTableau<TransitB5> {
-    pub(crate) fn model(
+    pub(crate) fn serve(
         self,
         formula_str: String,
         solve_time: String,
@@ -135,7 +217,7 @@ impl DisplayTableau<TransitB5> {
 }
 
 impl<const R: bool> DisplayTableau<TransitB<R>> {
-    pub(crate) fn model(
+    pub(crate) fn serve(
         self,
         formula_str: String,
         solve_time: String,
@@ -218,7 +300,7 @@ impl<T: BaseTransit + DisplayTransit + IntoModelGraph> DisplayTableau<T> {
 }
 
 impl DisplayTableau<TransitKOr45> {
-    pub(crate) fn model(
+    pub(crate) fn serve(
         self,
         formula_str: String,
         solve_time: String,
@@ -243,7 +325,7 @@ impl DisplayTableau<TransitKOr45> {
         let tabwrite_time = format!("{:.3?}", tabw_start.elapsed());
         let graph_start = Instant::now();
         let graph = if satisfiable {
-            let mut graph = k45_to_graph(self);
+            let mut graph = TransitKOr45::to_graph_inner(self);
             graph.set_pos();
             graph.set_frame_conds(framecond);
             Some(graph.into())

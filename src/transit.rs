@@ -1,11 +1,7 @@
 use std::{cell::RefCell, collections::VecDeque, fmt, mem, ops::RangeInclusive, rc::Rc};
 
 use crate::{
-    flatformula::FlatFormula,
-    formula::Formula,
-    rules3::{Calculus, Feasibility, ForkStore, ForkType},
-    tableau2::{LabeledFormula, TableauNode2},
-    timeout::{MayTimeout, TimeoutHandler},
+    flatformula::FlatFormula, formula::Formula, model::GraphInner, rules3::{Calculus, Feasibility, ForkStore, ForkType}, tableau2::{DisplayTableau, LabeledFormula, TableauNode2}, timeout::{MayTimeout, TimeoutHandler}
 };
 
 #[derive(Debug)]
@@ -70,6 +66,10 @@ pub(crate) trait DisplayTransit: Sized {
         curri: &mut usize,
         roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
     ) -> fmt::Result;
+}
+
+pub(crate) trait ModelTransit: Sized {
+    fn to_graph_inner(this: DisplayTableau<Self>) -> GraphInner;
 }
 
 pub(crate) fn general_transit<T: BaseTransit + SolveTransit>(
