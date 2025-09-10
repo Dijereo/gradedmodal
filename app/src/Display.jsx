@@ -25,7 +25,7 @@ function ModelGraph({ elements, setNodeFormulae, success }) {
             }}
             elements={CytoscapeComponent.normalizeElements(elements)}
             // layout={{ name: "breadthfirst" }}
-            style={{ width: '1000px', height: '400px', backgroundColor: success ? '#efe' : '#fee' }}
+            style={{ width: '1000px', height: '400px', backgroundColor: success ? 'var(--success-color)' : 'var(--failure-color)' }}
             stylesheet={[
                 {
                     selector: 'node',
@@ -40,10 +40,10 @@ function ModelGraph({ elements, setNodeFormulae, success }) {
                     selector: 'edge',
                     style: {
                         'width': 3,
-                        'line-color': '#000',
-                        'target-arrow-color': '#000',
+                        'line-color': 'var(--border-color)',
+                        'target-arrow-color': 'var(--border-color)',
                         'target-arrow-shape': 'triangle',
-                        'source-arrow-color': '#000',
+                        'source-arrow-color': 'var(--border-color)',
                         'source-arrow-shape': 'data(sym)',
                         'curve-style': 'bezier',
                     }
@@ -60,7 +60,7 @@ function FormulaList({ formulae, rows, cols, placeholder, success }) {
                 value={formulae}
                 rows={rows} cols={cols} readOnly wrap="off"
                 style={{
-                    'background-color': success ? '#efe' : '#fee',
+                    'background-color': success ? 'var(--success-color)' : 'var(--failure-color)',
                 }}
                 placeholder={placeholder}></textarea>
         </>
@@ -154,7 +154,7 @@ export default function TabDisplay({ proofdata, success, tab, setTab, nodeFormul
                 {
                     tab === "model" &&
                     <div className="upper-middle-column">
-                        <div className="middle-column" backgroundColor={success ? '#efe' : '#fee'}>
+                        <div className="middle-column" backgroundColor={success ? 'var(--success-color)' : 'var(--failure-color)'}>
                             <ModelGraph elements={proofdata.model} setNodeFormulae={setNodeFormulae} success={success} />
                         </div>
                         <FormulaList formulae={nodeFormulae} rows={"22"} cols={"20"} placeholder={"Click on a node!"} success={success} />

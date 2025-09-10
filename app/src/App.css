@@ -1,3 +1,23 @@
+:root {
+  --neutral-color: #eff;
+  --success-color: #efe;
+  --failure-color: #fee;
+  --inactive-color: #fff;
+  --text-color: #000;
+  --border-color: #000;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --neutral-color: #024;
+    --success-color: #040;
+    --failure-color: #400;
+    --inactive-color: #000;
+    --text-color: #fff;
+    --border-color: #fff;
+  }
+}
+
 #root {
   width: 100vw;
   height: 100vh;
@@ -52,25 +72,25 @@
 
 .middle-column {
   flex: 0;
-  background: #eff;
-  border: 1px solid #000;
+  background: var(--neutral-color);
+  border: 1px solid var(--border-color);
 }
 
 .formulae-list {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #eff;
+  background: var(--neutral-color);
   font-size: 0.9rem;
   font-family: 'Courier New', Courier, monospace;
   line-height: 1;
   font-weight: bold;
-  color: #000;
-  border: 1px solid #000;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
 }
 
 textarea {
-  background-color: #eff;
+  background-color: var(--neutral-color);
   font-size: 1.2em;
 }
 

@@ -17,9 +17,9 @@ export default function TabButtons({
                         style={{
                             padding: "8px 16px",
                             cursor: "pointer",
-                            backgroundColor: state === "active" ? "#eff" : "#fff",
-                            color: "black",
-                            border: state === "active" ? "1px solid #000" : "1px solid #ccc",
+                            backgroundColor: state === "active" ? 'var(--neutral-color)' : 'var(--inactive-color)',
+                            color: "var(--text-color)",
+                            border: state === "active" ? "1px solid var(--border-color)" : "1px solid #999",
                             borderRadius: "4px",
                         }}
                     >
