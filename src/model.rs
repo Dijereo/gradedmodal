@@ -216,19 +216,6 @@ impl DisplayTableau<TransitB5> {
     }
 }
 
-impl<const R: bool> DisplayTableau<TransitB<R>> {
-    pub(crate) fn serve(
-        self,
-        formula_str: String,
-        solve_time: String,
-        parse_time: String,
-        framecond: FrameCondition,
-        validate: bool,
-    ) -> ServerResult {
-        self.base_model(formula_str, solve_time, parse_time, framecond, validate)
-    }
-}
-
 impl<T: BaseTransit + DisplayTransit + IntoModelGraph> DisplayTableau<T> {
     pub(crate) fn base_model(
         self,
@@ -299,7 +286,7 @@ impl<T: BaseTransit + DisplayTransit + IntoModelGraph> DisplayTableau<T> {
     }
 }
 
-impl DisplayTableau<TransitKOr45> {
+impl<T: ModelTransit + BaseTransit + DisplayTransit> DisplayTableau<T> {
     pub(crate) fn serve(
         self,
         formula_str: String,
@@ -325,7 +312,7 @@ impl DisplayTableau<TransitKOr45> {
         let tabwrite_time = format!("{:.3?}", tabw_start.elapsed());
         let graph_start = Instant::now();
         let graph = if satisfiable {
-            let mut graph = TransitKOr45::to_graph_inner(self);
+            let mut graph = T::to_graph_inner(self);
             graph.set_pos();
             graph.set_frame_conds(framecond);
             Some(graph.into())
