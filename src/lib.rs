@@ -1,133 +1,64 @@
-use std::{
-    io::{self, Write},
-    rc::Rc,
+use std::{mem, path::Path};
+
+use axum::{
+    Router,
+    http::{Method, header},
+    routing::post,
+};
+use tower_http::{
+    cors::{self, CorsLayer},
+    services::ServeFile,
 };
 
-use crate::{
-    formula::full_parser,
-    frame::{FrameCondition, Frames, Frames4, Frames5, FramesB5, FramesKOr45, FramesT},
-    tableau2::DisplayTableau,
-    token::tokenize,
-};
-
-mod dnf;
+mod api;
+mod b5;
+mod cli;
+mod eval;
 mod flatformula;
 mod formula;
 mod frame;
-mod ilp;
+mod k4;
+mod k45;
+mod k5;
+mod kb;
+mod model;
 mod parser;
+mod randgen;
+mod randthm;
 mod rules;
-mod rules3;
-mod signed;
 mod tableau;
-mod tableau2;
+mod timeout;
 mod token;
 mod transit;
+mod translate;
+mod tt;
 mod util;
 
-pub fn run() {
-    let mut framecond = FrameCondition::K;
-    loop {
-        print!("Choose Frame Class: ");
-        io::stdout().flush().unwrap();
-        let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() {
-            eprintln!("Failed to read input");
-            return;
-        }
-        framecond = match input.trim().to_uppercase().as_str() {
-            "K" => FrameCondition::K,
-            "D" => FrameCondition::D,
-            "T" => FrameCondition::T,
-            "K4" => FrameCondition::K4,
-            "D4" => FrameCondition::D4,
-            "K5" => FrameCondition::K5,
-            "D5" => FrameCondition::D5,
-            "K45" => FrameCondition::K45,
-            "D45" => FrameCondition::D45,
-            "KB5" => FrameCondition::KB5,
-            "S5" => FrameCondition::S5,
-            _ => framecond,
-        };
-        println!("Chosen Frame Class: {:?}", framecond);
+pub fn init_router() -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin(cors::Any)
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers([header::CONTENT_TYPE]);
 
-        print!("Enter a formula: ");
-        io::stdout().flush().unwrap();
-        let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() {
-            eprintln!("Failed to read input");
-            return;
-        }
+    let mut router = Some(
+        Router::new()
+            .route("/api", post(api::solve_endpt))
+            .route_service("/", ServeFile::new("dist/index.html")),
+    );
+    util::run_on_exts(
+        &["css", "js", "svg", "html"],
+        ["dist/assets"].iter(),
+        &mut |path: &Path| {
+            router = Some(mem::take(&mut router).unwrap().route_service(
+                &format!("/assets/{}", path.file_name().unwrap().to_str().unwrap()),
+                ServeFile::new(path),
+            ));
+        },
+    )
+    .unwrap();
+    router.map(|r| r.layer(cors)).unwrap()
+}
 
-        match tokenize(input.trim()) {
-            Ok(tokens) => {
-                for token in &tokens {
-                    print!("{:?} ", token);
-                }
-                println!();
-                println!();
-                let stream = tokens.into_iter().enumerate();
-                match full_parser(stream) {
-                    Ok(f) => {
-                        let f = Rc::new(f);
-                        // println!("{}", f);
-                        // let f = Rc::<Formula>::from(Depth1F::from(f));
-                        println!("{}", f);
-                        println!();
-                        // let tab = S4_CALCULUS.sat(vec![f]);
-                        // TODO: remove Frames trait
-                        match framecond {
-                            FrameCondition::K => println!(
-                                "{}",
-                                DisplayTableau(FramesKOr45::<false, false>.sat(vec![f]))
-                            ),
-                            FrameCondition::D => println!(
-                                "{}",
-                                DisplayTableau(FramesKOr45::<true, false>.sat(vec![f]))
-                            ),
-                            FrameCondition::T => {
-                                println!("{}", DisplayTableau(FramesT.sat(vec![f])))
-                            }
-                            FrameCondition::K4 => {
-                                println!("{}", DisplayTableau(Frames4::<false>.sat(vec![f])))
-                            }
-                            FrameCondition::D4 => {
-                                println!("{}", DisplayTableau(Frames4::<true>.sat(vec![f])))
-                            }
-                            FrameCondition::K5 => {
-                                println!("{}", DisplayTableau(Frames5::<false>.sat(vec![f])))
-                            }
-                            FrameCondition::D5 => {
-                                println!("{}", DisplayTableau(Frames5::<true>.sat(vec![f])))
-                            }
-                            FrameCondition::K45 => println!(
-                                "{}",
-                                DisplayTableau(FramesKOr45::<false, true>.sat(vec![f]))
-                            ),
-                            FrameCondition::D45 => println!(
-                                "{}",
-                                DisplayTableau(FramesKOr45::<true, true>.sat(vec![f]))
-                            ),
-                            FrameCondition::KB5 => {
-                                println!("{}", DisplayTableau(FramesB5::<false>.sat(vec![f])))
-                            }
-                            FrameCondition::S5 => {
-                                println!("{}", DisplayTableau(FramesB5::<true>.sat(vec![f])))
-                            }
-                        }
-                    }
-                    Err(Some((i, tok))) => {
-                        eprintln!("Error: bad token sequence '{:#?}' at index {}", tok, i)
-                    }
-                    Err(None) => eprintln!("Error: unterminated token sequence"),
-                }
-            }
-            Err((idx, ch)) => {
-                eprintln!(
-                    "Error: bad character sequence '{}' at byte index {}",
-                    ch, idx
-                );
-            }
-        }
-    }
+pub fn run_cli() {
+    cli::run();
 }

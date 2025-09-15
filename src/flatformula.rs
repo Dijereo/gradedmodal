@@ -1,6 +1,9 @@
 use std::{cmp::max, mem, rc::Rc};
 
-use crate::formula::Formula;
+use crate::{
+    formula::Formula,
+    timeout::{MayTimeout, TimeoutHandler},
+};
 
 #[derive(Clone, Debug)]
 pub(crate) enum FlatFormula {
@@ -15,14 +18,6 @@ pub(crate) enum FlatFormula {
     Le(usize, u32, Box<FlatFormula>),
 }
 
-impl From<Rc<Formula>> for FlatFormula {
-    fn from(value: Rc<Formula>) -> Self {
-        let mut d1f = value.init_flat();
-        d1f.flatten();
-        d1f
-    }
-}
-
 impl From<FlatFormula> for Rc<Formula> {
     fn from(value: FlatFormula) -> Self {
         match value {
@@ -30,8 +25,8 @@ impl From<FlatFormula> for Rc<Formula> {
             FlatFormula::Bool(true) => Formula::top(),
             FlatFormula::Var(true, p) => Rc::new(Formula::PropVar(p, None)),
             FlatFormula::Var(false, p) => Rc::new(Formula::PropVar(p, None)).not(),
-            FlatFormula::VarI(true, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))),
-            FlatFormula::VarI(false, p, i) => Rc::new(Formula::PropVar(p, Some(i as u32))).not(),
+            FlatFormula::VarI(true, p, i) => Rc::new(Formula::PropVar(p, Some(i))),
+            FlatFormula::VarI(false, p, i) => Rc::new(Formula::PropVar(p, Some(i))).not(),
             FlatFormula::Disj(_, phi0, phi1) => Rc::<Formula>::from(*phi0).or(&(*phi1).into()),
             FlatFormula::Conj(_, phi0, phi1) => Rc::<Formula>::from(*phi0).and(&(*phi1).into()),
             FlatFormula::Dm(_, phi) => Rc::<Formula>::from(*phi).diamond(),
@@ -43,6 +38,12 @@ impl From<FlatFormula> for Rc<Formula> {
 }
 
 impl FlatFormula {
+    pub(crate) fn from_rcf(formula: Rc<Formula>, toh: &impl TimeoutHandler) -> MayTimeout<Self> {
+        let mut d1f = formula.init_flat();
+        d1f.flatten(toh)?;
+        Ok(d1f)
+    }
+
     const fn depth(&self) -> usize {
         match self {
             FlatFormula::Var(..) | FlatFormula::VarI(..) | FlatFormula::Bool(_) => 0,
@@ -122,7 +123,7 @@ impl FlatFormula {
         FlatFormula::Le(self.depth() + 1, count, Box::new(self))
     }
 
-    fn flatten(&mut self) {
+    fn flatten(&mut self, toh: &impl TimeoutHandler) -> MayTimeout<()> {
         match self {
             FlatFormula::Var(..) | FlatFormula::VarI(..) | FlatFormula::Bool(_) => {}
             FlatFormula::Disj(d, ..)
@@ -133,122 +134,124 @@ impl FlatFormula {
             | FlatFormula::Le(d, ..)
                 if *d <= 1 => {}
             FlatFormula::Conj(d, phi0, phi1) | FlatFormula::Disj(d, phi0, phi1) => {
-                phi0.flatten();
-                phi1.flatten();
+                phi0.flatten(toh)?;
+                phi1.flatten(toh)?;
                 *d = 1;
             }
             FlatFormula::Bx(_, phi) => {
-                phi.flatten();
-                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_bx();
+                phi.flatten(toh)?;
+                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_bx(toh)?;
             }
             FlatFormula::Dm(_, phi) => {
-                phi.flatten();
-                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_dm();
+                phi.flatten(toh)?;
+                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_dm(toh)?;
             }
             FlatFormula::Ge(_, c, phi) => {
-                phi.flatten();
-                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_ge(*c);
+                phi.flatten(toh)?;
+                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_ge(*c, toh)?;
             }
             FlatFormula::Le(_, c, phi) => {
-                phi.flatten();
-                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_le(*c);
+                phi.flatten(toh)?;
+                *self = mem::replace(phi.as_mut(), FlatFormula::Bool(false)).flatten_le(*c, toh)?;
             }
         }
+        Ok(())
     }
 
-    fn flatten_bx(mut self) -> FlatFormula {
-        match self.flatten_rec() {
-            CutStatus::Neither => self,
+    fn flatten_bx(mut self, toh: &impl TimeoutHandler) -> MayTimeout<FlatFormula> {
+        match self.flatten_rec(toh)? {
+            CutStatus::Neither => Ok(self.disj(FlatFormula::Bool(false).bx())),
             CutStatus::Disj(nest) => {
                 let mut phi = self.bx();
-                phi.flatten();
-                nest.disj(phi)
+                phi.flatten(toh)?;
+                Ok(nest.disj(phi))
             }
             CutStatus::Conj(nest) => {
                 let mut phi = self.bx();
-                phi.flatten();
-                nest.conj(phi)
+                phi.flatten(toh)?;
+                Ok(nest.conj(phi).disj(FlatFormula::Bool(false).bx()))
             }
             CutStatus::Both(nest, disj) => {
                 let mut phi0 = self.bx();
-                phi0.flatten();
+                phi0.flatten(toh)?;
                 let mut phi1 = disj.bx();
-                phi1.flatten();
-                nest.conj(phi0).disj(phi1)
+                phi1.flatten(toh)?;
+                Ok(nest.conj(phi0).disj(phi1))
             }
         }
     }
 
-    fn flatten_dm(mut self) -> FlatFormula {
-        match self.flatten_rec() {
-            CutStatus::Neither => self.conj(FlatFormula::Bool(true).dm()),
+    fn flatten_dm(mut self, toh: &impl TimeoutHandler) -> MayTimeout<FlatFormula> {
+        match self.flatten_rec(toh)? {
+            CutStatus::Neither => Ok(self.conj(FlatFormula::Bool(true).dm())),
             CutStatus::Disj(nest) => {
                 let mut phi = self.dm();
-                phi.flatten();
-                nest.conj(FlatFormula::Bool(true).dm()).disj(phi)
+                phi.flatten(toh)?;
+                Ok(nest.conj(FlatFormula::Bool(true).dm()).disj(phi))
             }
             CutStatus::Conj(nest) => {
                 let mut phi = self.dm();
-                phi.flatten();
-                nest.conj(phi)
+                phi.flatten(toh)?;
+                Ok(nest.conj(phi))
             }
             CutStatus::Both(nest, disj) => {
                 let mut phi0 = self.dm();
-                phi0.flatten();
+                phi0.flatten(toh)?;
                 let mut phi1 = disj.dm();
-                phi1.flatten();
-                nest.conj(phi0).disj(phi1)
+                phi1.flatten(toh)?;
+                Ok(nest.conj(phi0).disj(phi1))
             }
         }
     }
 
-    fn flatten_ge(mut self, c: u32) -> FlatFormula {
-        match self.flatten_rec() {
-            CutStatus::Neither => self.conj(FlatFormula::Bool(true).ge(c)),
+    fn flatten_ge(mut self, c: u32, toh: &impl TimeoutHandler) -> MayTimeout<FlatFormula> {
+        match self.flatten_rec(toh)? {
+            CutStatus::Neither => Ok(self.conj(FlatFormula::Bool(true).ge(c))),
             CutStatus::Disj(nest) => {
                 let mut phi = self.ge(c);
-                phi.flatten();
-                nest.conj(FlatFormula::Bool(true).ge(c)).disj(phi)
+                phi.flatten(toh)?;
+                Ok(nest.conj(FlatFormula::Bool(true).ge(c)).disj(phi))
             }
             CutStatus::Conj(nest) => {
                 let mut phi = self.ge(c);
-                phi.flatten();
-                nest.conj(phi)
+                phi.flatten(toh)?;
+                Ok(nest.conj(phi))
             }
             CutStatus::Both(nest, disj) => {
                 let mut phi0 = self.ge(c);
-                phi0.flatten();
+                phi0.flatten(toh)?;
                 let mut phi1 = disj.ge(c);
-                phi1.flatten();
-                nest.conj(phi0).disj(phi1)
+                phi1.flatten(toh)?;
+                Ok(nest.conj(phi0).disj(phi1))
             }
         }
     }
 
-    fn flatten_le(mut self, c: u32) -> FlatFormula {
-        match self.flatten_rec() {
-            CutStatus::Neither => self.not().disj(FlatFormula::Bool(true).le(c)),
+    fn flatten_le(mut self, c: u32, toh: &impl TimeoutHandler) -> MayTimeout<FlatFormula> {
+        match self.flatten_rec(toh)? {
+            CutStatus::Neither => Ok(self.not().disj(FlatFormula::Bool(true).le(c))),
             CutStatus::Disj(nest) => {
                 let mut phi = self.le(c);
-                phi.flatten();
-                nest.not().conj(phi).disj(FlatFormula::Bool(true).le(c))
+                phi.flatten(toh)?;
+                Ok(nest.not().conj(phi).disj(FlatFormula::Bool(true).le(c)))
             }
             CutStatus::Conj(nest) => {
                 let mut phi = self.le(c);
-                phi.flatten();
-                nest.not().disj(phi)
+                phi.flatten(toh)?;
+                Ok(nest.not().disj(phi))
             }
             CutStatus::Both(nest, conj) => {
                 let mut phi0 = self.le(c);
-                phi0.flatten();
+                phi0.flatten(toh)?;
                 let mut phi1 = conj.le(c);
-                phi1.flatten();
-                nest.not().conj(phi1).disj(phi0)
+                phi1.flatten(toh)?;
+                Ok(nest.not().conj(phi1).disj(phi0))
             }
         }
     }
 
-    fn flatten_rec(&mut self) -> CutStatus {
+    fn flatten_rec(&mut self, toh: &impl TimeoutHandler) -> MayTimeout<CutStatus> {
+        toh.timedout()?;
         match self {
             FlatFormula::Var(_, _) | FlatFormula::VarI(_, _, _) | FlatFormula::Bool(_) => {
                 unreachable!("Function should only be called on nested modals")
@@ -256,30 +259,30 @@ impl FlatFormula {
             FlatFormula::Dm(..)
             | FlatFormula::Bx(..)
             | FlatFormula::Ge(..)
-            | FlatFormula::Le(..) => CutStatus::Neither,
+            | FlatFormula::Le(..) => Ok(CutStatus::Neither),
             FlatFormula::Disj(_, phi0, phi1) => {
                 if phi1.depth() == 0 {
                     mem::swap(phi0.as_mut(), phi1.as_mut());
                 }
-                match phi1.flatten_rec() {
+                match phi1.flatten_rec(toh)? {
                     CutStatus::Neither => {
                         let phi1 = mem::replace(phi1.as_mut(), FlatFormula::Bool(false));
                         *self = mem::replace(phi0.as_mut(), FlatFormula::Bool(false));
-                        CutStatus::Disj(phi1)
+                        Ok(CutStatus::Disj(phi1))
                     }
                     cutstatus @ CutStatus::Disj(..) => {
                         self.reset_depth();
-                        cutstatus
+                        Ok(cutstatus)
                     }
                     CutStatus::Both(nest, disj) => {
                         let disj = disj.disj(phi0.as_ref().clone());
                         self.reset_depth();
-                        CutStatus::Both(nest, disj)
+                        Ok(CutStatus::Both(nest, disj))
                     }
                     CutStatus::Conj(nest) => {
                         let disj = phi0.as_ref().clone();
                         self.reset_depth();
-                        CutStatus::Both(nest, disj)
+                        Ok(CutStatus::Both(nest, disj))
                     }
                 }
             }
@@ -287,26 +290,26 @@ impl FlatFormula {
                 if phi1.depth() == 0 {
                     mem::swap(phi0.as_mut(), phi1.as_mut());
                 }
-                match phi1.flatten_rec() {
+                match phi1.flatten_rec(toh)? {
                     CutStatus::Neither => {
                         let phi1 = mem::replace(phi1.as_mut(), FlatFormula::Bool(false));
                         *self = mem::replace(phi0.as_mut(), FlatFormula::Bool(false));
-                        CutStatus::Conj(phi1)
+                        Ok(CutStatus::Conj(phi1))
                     }
                     cutstatus @ CutStatus::Conj(..) => {
                         self.reset_depth();
-                        cutstatus
+                        Ok(cutstatus)
                     }
                     CutStatus::Both(nest, subdisj) => {
                         let disj = subdisj.conj(phi0.as_ref().clone());
                         self.reset_depth();
-                        CutStatus::Both(nest, disj)
+                        Ok(CutStatus::Both(nest, disj))
                     }
                     CutStatus::Disj(nest) => {
                         let mut disj = phi0.as_ref().clone();
                         self.reset_depth();
                         mem::swap(self, &mut disj);
-                        CutStatus::Both(nest, disj)
+                        Ok(CutStatus::Both(nest, disj))
                     }
                 }
             }

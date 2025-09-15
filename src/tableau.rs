@@ -1,102 +1,100 @@
 use std::{
     cell::RefCell,
     collections::VecDeque,
-    fmt,
+    fmt, mem,
+    ops::RangeInclusive,
     rc::{Rc, Weak},
 };
 
-use crate::formula::Formula;
+use crate::{
+    formula::Formula,
+    rules::{Feasibility, ForkStore, ForkType},
+    transit::{BaseTransit, DisplayTransit, Grading},
+};
 
-pub(crate) struct WorldTableau {
-    pub(crate) is_closed: bool,
-    pub(crate) root: Rc<RefCell<TableauNode>>,
-    pub(crate) transitions: Vec<WorldTableau>,
+pub(crate) enum TabChildren<T> {
+    Leaf,
+    Fork {
+        id: usize,
+        branches: Vec<TabBranch<T>>,
+    },
+    Transition(T),
 }
 
-pub(crate) struct TableauNode {
-    pub(crate) is_closed: bool,
-    pub(crate) formulae: Vec<Rc<Formula>>,
-    pub(crate) children: Vec<Rc<RefCell<TableauNode>>>,
-    pub(crate) parent: Option<Weak<RefCell<TableauNode>>>,
+pub(crate) struct TabBranch<T> {
+    pub(crate) id: usize,
+    pub(crate) node: Rc<RefCell<TableauNode2<T>>>,
 }
 
-impl WorldTableau {
-    pub(crate) fn from_formulae(formulae: Vec<Rc<Formula>>) -> Self {
-        let root = TableauNode::from_formulae(formulae, None);
-        Self {
-            is_closed: root.is_closed,
-            root: Rc::new(RefCell::new(root)),
-            transitions: vec![],
-        }
-    }
-
-    pub(crate) fn from_root(root: Rc<RefCell<TableauNode>>) -> Self {
-        let is_closed = root.borrow().is_closed;
-        Self {
-            is_closed,
-            root,
-            transitions: vec![],
-        }
-    }
-
-    fn display_rec(&self, f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
-        if self.is_closed {
-            writeln!(f, "{depth}: ⊥")?;
-        } else {
-            writeln!(f, "{depth}:")?;
-        }
-        writeln!(f, "{}", self.root.borrow())?;
-        for transition in &self.transitions {
-            transition.display_rec(f, depth + 1)?;
-        }
-        Ok(())
-    }
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct Conflict {
+    forkid: usize,
+    branchid: usize,
 }
 
-impl fmt::Display for WorldTableau {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.display_rec(f, 0)
-    }
+#[derive(Clone, Debug)]
+pub(crate) struct LabeledFormula {
+    pub(crate) formula: Rc<Formula>,
+    pub(crate) conflictset: Vec<Conflict>,
+    pub(crate) lemma: bool,
+    pub(crate) expanded: bool,
 }
 
-impl TableauNode {
+pub(crate) struct TableauNode2<T> {
+    pub(crate) feasibility: Feasibility,
+    pub(crate) formulae: Vec<LabeledFormula>,
+    pub(crate) choices: Vec<(usize, usize)>,
+    pub(crate) children: TabChildren<T>,
+    pub(crate) parent: Weak<RefCell<TableauNode2<T>>>,
+}
+
+impl<T> TableauNode2<T> {
     pub(crate) fn from_formulae(
-        formulae: Vec<Rc<Formula>>,
-        parent: Option<&Rc<RefCell<TableauNode>>>,
+        labels: Vec<LabeledFormula>,
+        parent: Option<&Rc<RefCell<Self>>>,
     ) -> Self {
         let mut tab = Self {
-            is_closed: false,
+            feasibility: Feasibility::Feasible,
             formulae: vec![],
-            children: vec![],
-            parent: parent.map(Rc::downgrade),
+            choices: vec![],
+            children: TabChildren::Leaf,
+            parent: parent.map_or(Weak::new(), Rc::downgrade),
         };
-        for new_formula in formulae {
-            tab.add_check_dup_contra(new_formula);
+        for label in labels {
+            tab.add_check_dup_contra(label);
         }
         if tab.formulae.is_empty() {
-            tab.formulae.push(Formula::top());
+            tab.formulae.push(LabeledFormula {
+                formula: Formula::top(),
+                conflictset: vec![],
+                lemma: false,
+                expanded: true,
+            });
         }
         tab
     }
 
-    pub(crate) fn traverse_anc_formulae(&self, map_while: &mut impl FnMut(&Rc<Formula>) -> bool) {
-        for formula in &self.formulae {
-            if !map_while(formula) {
+    pub(crate) fn traverse_anc_formulae(
+        &self,
+        map_while: &mut impl FnMut(&LabeledFormula) -> bool,
+    ) {
+        for label in &self.formulae {
+            if !map_while(label) {
                 return;
             }
         }
-        if let Some(parent) = &self.parent {
-            if let Some(parent) = parent.upgrade() {
+        if let Some(parent) = &self.parent.upgrade() {
+            if let TabChildren::Fork { .. } = parent.borrow().children {
                 parent.borrow().traverse_anc_formulae(map_while);
             }
         }
     }
 
-    fn check_dup(&self, new_formula: &Rc<Formula>) -> bool {
-        let mut dup = false;
-        self.traverse_anc_formulae(&mut |formula| {
-            if new_formula == formula {
-                dup = true;
+    fn check_dup(&self, new_formula: &Rc<Formula>) -> Option<Vec<Conflict>> {
+        let mut dup = None;
+        self.traverse_anc_formulae(&mut |label| {
+            if new_formula.directly_equivalent(&label.formula) {
+                dup = Some(label.conflictset.clone());
                 false
             } else {
                 true
@@ -105,88 +103,364 @@ impl TableauNode {
         dup
     }
 
-    fn check_contra(&self, new_formula: &Rc<Formula>) -> bool {
-        let mut contra = false;
-        self.traverse_anc_formulae(&mut |formula| {
-            if new_formula.is_negation(formula) {
-                contra = true;
+    fn check_contra(&self, new_formula: &Rc<Formula>) -> Option<Vec<Conflict>> {
+        let mut conflicts = None;
+        self.traverse_anc_formulae(&mut |label| {
+            // println!("Check contra: {new_formula} vs {}", label.formula);
+            if new_formula.directly_contradicts(&label.formula) {
+                conflicts = Some(label.conflictset.clone());
+                // println!("Contra");
                 false
             } else {
+                // println!("Ok");
                 true
             }
         });
-        contra
+        conflicts
     }
 
-    pub(crate) fn add_check_dup_contra(&mut self, new_formula: Rc<Formula>) {
-        if !self.check_dup(&new_formula) {
-            if new_formula.is_bottom() {
-                self.formulae.push(new_formula);
-                self.is_closed = true;
-            } else if self.check_contra(&new_formula) {
-                self.formulae.push(new_formula);
-                self.formulae.push(Formula::bottom());
-                self.is_closed = true;
-            } else {
-                self.formulae.push(new_formula);
+    pub(crate) fn check_dup_contra(&self, formula: &Rc<Formula>) -> DupContra {
+        if let Some(confs) = self.check_dup(formula) {
+            DupContra::Dup(confs)
+        } else if formula.is_bottom() {
+            DupContra::Bottom
+        } else if let Some(confs) = self.check_contra(formula) {
+            DupContra::Contra(confs)
+        } else {
+            DupContra::Ok
+        }
+    }
+
+    pub(crate) fn add_check_dup_contra(&mut self, new_label: LabeledFormula) -> DupContra {
+        // println!("New Formula: {}", new_label.formula);
+        if let Some(confs) = self.check_dup(&new_label.formula) {
+            // println!("Dup");
+            DupContra::Dup(confs)
+        } else if new_label.formula.is_bottom() {
+            self.formulae.push(new_label);
+            self.feasibility = Feasibility::Contradiction;
+            // println!("Bottom");
+            DupContra::Bottom
+        } else if let Some(confs) = self.check_contra(&new_label.formula) {
+            let mut confs2 = confs.clone();
+            confs2.extend(new_label.conflictset.clone());
+            self.formulae.push(new_label);
+            self.formulae.push(LabeledFormula {
+                formula: Formula::bottom(),
+                conflictset: confs2,
+                lemma: false,
+                expanded: true,
+            });
+            self.feasibility = Feasibility::Contradiction;
+            // println!("Contra");
+            DupContra::Contra(confs)
+        } else {
+            self.formulae.push(new_label);
+            // println!("Ok");
+            DupContra::Ok
+        }
+    }
+
+    pub(crate) const fn is_closed(&self) -> bool {
+        self.feasibility.is_bad()
+    }
+
+    pub(crate) fn get_flowers(this: &Rc<RefCell<Self>>, flowers: &mut Vec<Rc<RefCell<Self>>>) {
+        if this.borrow().is_closed() {
+            return;
+        }
+        match &this.borrow().children {
+            TabChildren::Leaf => {
+                flowers.push(this.clone());
             }
-        }
-    }
-
-    fn get_depths_rec(&self, out: &mut VecDeque<usize>, depth: usize) {
-        out.push_back(depth);
-        for child in &self.children {
-            child.borrow().get_depths_rec(out, depth + 1);
-        }
-    }
-
-    fn display_rec(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        depth: usize,
-        next_depths: &mut VecDeque<usize>,
-    ) -> fmt::Result {
-        let next_depth = next_depths.pop_front();
-        if depth > 1 {
-            write!(f, "{:indent$}|-+ ", "", indent = depth * 2 - 4)?
-        } else if depth == 1 {
-            write!(f, "+ ")?
-        }
-        if let Some(formula) = self.formulae.first() {
-            writeln!(f, "{formula}")?
-        }
-        for formula in &self.formulae[1..] {
-            if let Some(next_depth) = next_depth {
-                if next_depth > 1 {
-                    writeln!(
-                        f,
-                        "{:indent$}|{:width$}{formula}",
-                        "",
-                        "",
-                        indent = next_depth * 2 - 4,
-                        width = 2 * (depth + 1 - next_depth) + 1
-                    )?
-                } else if depth > 0 {
-                    writeln!(f, "|{:width$}{formula}", "", width = 2 * depth - 1)?
-                } else {
-                    writeln!(f, "{formula}")?
+            TabChildren::Fork { branches, .. } => {
+                for child in branches {
+                    Self::get_flowers(&child.node, flowers);
                 }
-            } else {
-                writeln!(f, "{:indent$}{formula}", "", indent = 2 * depth)?
+            }
+            TabChildren::Transition(..) => {}
+        }
+    }
+
+    pub(crate) fn get_fruits(this: &Rc<RefCell<Self>>, fruits: &mut Vec<Rc<RefCell<Self>>>)
+    where
+        T: BaseTransit,
+    {
+        if this.borrow().is_closed() {
+            return;
+        }
+        match &this.borrow().children {
+            TabChildren::Leaf => {
+                fruits.push(this.clone());
+            }
+            TabChildren::Fork { branches, .. } => {
+                for child in branches {
+                    Self::get_fruits(&child.node, fruits);
+                }
+            }
+            TabChildren::Transition(transit) => {
+                if !transit.is_closed() {
+                    fruits.push(this.clone());
+                }
             }
         }
-        for child in &self.children {
-            child.borrow().display_rec(f, depth + 1, next_depths)?
+    }
+
+    pub(crate) fn set_feasibility_rec(this: &Rc<RefCell<Self>>) -> Feasibility
+    where
+        T: BaseTransit,
+    {
+        let mut thismut = this.borrow_mut();
+        match thismut.feasibility {
+            Feasibility::Feasible => match &thismut.children {
+                TabChildren::Leaf => Feasibility::Feasible,
+                TabChildren::Fork { branches, .. } => {
+                    let mut feasibility = Feasibility::Contradiction;
+                    for branch in branches {
+                        feasibility = feasibility.better(&Self::set_feasibility_rec(&branch.node));
+                    }
+                    thismut.feasibility = feasibility;
+                    feasibility
+                }
+                TabChildren::Transition(transit) => {
+                    thismut.feasibility = transit.feasibility();
+                    thismut.feasibility
+                }
+            },
+            Feasibility::NoSolution | Feasibility::Contradiction => thismut.feasibility,
+        }
+    }
+
+    pub(crate) fn get_choices(
+        &self,
+        choices: &mut Vec<(usize, usize)>,
+        forkranges: &Vec<RangeInclusive<usize>>,
+    ) {
+        // OPT: bin search + remove
+        if let Some(parent) = self.parent.upgrade() {
+            if let TabChildren::Fork { .. } = parent.borrow().children {
+                parent.borrow().get_choices(choices, forkranges);
+            }
+        }
+        choices.extend(
+            self.choices
+                .iter()
+                .filter(|(fid, _)| forkranges.iter().any(|r| r.contains(fid))),
+        )
+    }
+
+    pub(crate) fn get_matching_choices(
+        &self,
+        choices: &mut Vec<(usize, usize)>,
+        src_gradings: &mut Vec<Grading>,
+        forkstore: &ForkStore,
+    ) {
+        // OPT: bin search + remove
+        if let Some(parent) = self.parent.upgrade() {
+            if let TabChildren::Fork { .. } = parent.borrow().children {
+                parent
+                    .borrow()
+                    .get_matching_choices(choices, src_gradings, forkstore);
+            }
+        }
+        'outer: for grading in mem::take(src_gradings) {
+            for (fid, bid) in &self.choices {
+                if forkstore.forks[*fid].fktype != ForkType::ParallelWorlds {
+                    continue;
+                }
+                let choice_formula = &forkstore.forks[*fid].branches[*bid].labels[0].formula;
+                if choice_formula.directly_equivalent(&grading.formula) {
+                    choices.push((grading.forkid, 1));
+                    continue 'outer;
+                } else if choice_formula.directly_contradicts(&grading.formula) {
+                    choices.push((grading.forkid, 0));
+                    continue 'outer;
+                }
+            }
+            src_gradings.push(grading);
+        }
+    }
+
+    pub(crate) fn get_depths(&self) -> VecDeque<Vec<usize>> {
+        let mut flat_depths = vec![];
+        self.get_depths_rec(&mut flat_depths, 0);
+        // println!("{:?}", flat_depths);
+        let mut nested_depths = VecDeque::new();
+        for (i, &curr_depth) in flat_depths.iter().enumerate() {
+            let mut future_depths = vec![];
+            let mut min_future = None;
+            for &future_depth in flat_depths[i + 1..].iter() {
+                if min_future.map_or(future_depth <= curr_depth, |m| future_depth < m) {
+                    future_depths.push(future_depth);
+                    min_future = Some(future_depth);
+                }
+            }
+            future_depths.reverse();
+            nested_depths.push_back(future_depths);
+        }
+        // println!("{:?}", nested_depths);
+        nested_depths
+    }
+
+    pub(crate) fn get_depths_rec(&self, out: &mut Vec<usize>, depth: usize) {
+        out.push(depth);
+        match &self.children {
+            TabChildren::Leaf => {}
+            TabChildren::Fork { branches, .. } => {
+                for branch in branches {
+                    branch.node.borrow().get_depths_rec(out, depth + 1);
+                }
+            }
+            TabChildren::Transition(..) => out.push(depth + 1),
+        }
+    }
+
+    pub(crate) fn display_root(
+        this: &Rc<RefCell<Self>>,
+        f: &mut fmt::Formatter<'_>,
+        curri: &mut usize,
+        roots: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
+    ) -> fmt::Result
+    where
+        T: BaseTransit,
+    {
+        let mut depths = this.borrow().get_depths();
+        Self::display_rec(this, f, 0, &mut depths, curri, roots)
+    }
+
+    pub(crate) fn display_rec(
+        this: &Rc<RefCell<Self>>,
+        f: &mut impl fmt::Write,
+        depth: usize,
+        depths_iter: &mut VecDeque<Vec<usize>>,
+        curri: &mut usize,
+        fruits: &mut VecDeque<(usize, Rc<RefCell<Self>>)>,
+    ) -> fmt::Result
+    where
+        T: BaseTransit,
+    {
+        let thisref = this.borrow();
+        let next_depths = depths_iter.pop_front().unwrap_or_default();
+        if let Some(label) = thisref.formulae.first() {
+            let mut js = next_depths.iter().cloned();
+            let mut i = 0;
+            let mut skip = false;
+            while let Some(j) = js.next() {
+                while i < j - 1 {
+                    write!(f, "  ")?;
+                    i += 1;
+                }
+                if j == depth {
+                    write!(f, "┣━")?;
+                    i += 1;
+                    skip = true;
+                    break;
+                } else {
+                    write!(f, "┃ ")?;
+                    i += 1;
+                }
+            }
+            if !skip && depth > 0 {
+                while i < depth - 1 {
+                    write!(f, "  ")?;
+                    i += 1;
+                }
+                write!(f, "┗━")?;
+            }
+            writeln!(f, "• {}", label.formula)?;
+        }
+        for label in &thisref.formulae[1..] {
+            let mut js = next_depths.iter().cloned();
+            let mut i = 0;
+            while let Some(j) = js.next() {
+                while i < j - 1 {
+                    write!(f, "  ")?;
+                    i += 1;
+                }
+                write!(f, "┃ ")?;
+                i += 1;
+            }
+            while i < depth {
+                write!(f, "  ")?;
+                i += 1;
+            }
+            writeln!(f, "• {}", label.formula)?;
+        }
+        match &thisref.children {
+            TabChildren::Leaf => {}
+            TabChildren::Fork { branches, .. } => {
+                for branch in branches {
+                    Self::display_rec(&branch.node, f, depth + 1, depths_iter, curri, fruits)?
+                }
+            }
+            TabChildren::Transition(transit) => {
+                Self::display_transition(f, transit.feasibility(), depth + 1, depths_iter, *curri)?;
+                fruits.push_back((*curri, this.clone()));
+                *curri += 1;
+            }
+        }
+        Ok(())
+    }
+
+    fn display_transition(
+        f: &mut impl fmt::Write,
+        feasiblity: Feasibility,
+        depth: usize,
+        depths_iter: &mut VecDeque<Vec<usize>>,
+        rooti: usize,
+    ) -> fmt::Result {
+        let next_depths = depths_iter.pop_front().unwrap_or_default();
+        let mut js = next_depths.iter().cloned();
+        let mut i = 0;
+        let mut skip = false;
+        while let Some(j) = js.next() {
+            while i < j - 1 {
+                write!(f, "  ")?;
+                i += 1;
+            }
+            if j == depth {
+                write!(f, "┣━")?;
+                i += 1;
+                skip = true;
+                break;
+            } else {
+                write!(f, "┃ ")?;
+                i += 1;
+            }
+        }
+        if !skip && depth > 0 {
+            while i < depth - 1 {
+                write!(f, "  ")?;
+                i += 1;
+            }
+            write!(f, "┗━")?;
+        }
+        writeln!(f, "➤ {rooti} {}", feasiblity.symbol())
+    }
+}
+
+pub(crate) struct DisplayTableau<T>(pub(crate) Rc<RefCell<TableauNode2<T>>>);
+
+impl<T: BaseTransit + DisplayTransit> fmt::Display for DisplayTableau<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut i = 1;
+        let mut seeds = VecDeque::new();
+        writeln!(f, "0: {}", self.0.borrow().feasibility.symbol())?;
+        TableauNode2::display_root(&self.0, f, &mut i, &mut seeds)?;
+        writeln!(f)?;
+        writeln!(f)?;
+        while let Some((seedi, seed)) = seeds.pop_front() {
+            if let TabChildren::Transition(transit) = &seed.borrow().children {
+                transit.display_transit(f, seedi, &mut i, &mut seeds)?;
+            }
         }
         Ok(())
     }
 }
 
-impl fmt::Display for TableauNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut next_depths = VecDeque::new();
-        self.get_depths_rec(&mut next_depths, 1);
-        next_depths.pop_front();
-        self.display_rec(f, 1, &mut next_depths)
-    }
+pub(crate) enum DupContra {
+    Ok,
+    Bottom,
+    Dup(Vec<Conflict>),
+    Contra(Vec<Conflict>),
 }

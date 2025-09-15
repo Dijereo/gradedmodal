@@ -1,18 +1,12 @@
-use std::{
-    cell::RefCell,
-    collections::VecDeque,
-    fmt, mem,
-    ops::RangeInclusive,
-    rc::{Rc, Weak},
-};
-
-use good_lp::Variable;
+use std::{cell::RefCell, collections::VecDeque, fmt, mem, ops::RangeInclusive, rc::Rc};
 
 use crate::{
     flatformula::FlatFormula,
     formula::Formula,
-    rules3::{Feasibility, ForkStore, ForkType, GradedKCalc},
-    tableau2::{LabeledFormula, TabChildren, TableauNode2},
+    model::GraphInner,
+    rules::{Calculus, Feasibility, ForkStore, ForkType},
+    tableau::{DisplayTableau, LabeledFormula, TableauNode2},
+    timeout::{MayTimeout, TimeoutHandler},
 };
 
 #[derive(Debug)]
@@ -23,75 +17,95 @@ pub(crate) struct Modals {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Constraint {
+pub(crate) struct Grading {
     pub(crate) forkid: usize,
     pub(crate) sense: bool,
     pub(crate) value: u32,
     pub(crate) formula: Rc<Formula>,
 }
 
+#[derive(Clone)]
+pub(crate) struct Constraints {
+    pub(crate) gradings: Vec<Grading>,
+    pub(crate) boxsubforms: Vec<LabeledFormula>,
+}
+
 pub(crate) struct ParallelWorlds<T> {
     pub(crate) tab: Rc<RefCell<TableauNode2<T>>>,
-    pub(crate) forkid_ranges: Vec<RangeInclusive<usize>>,
+    pub(crate) forkids: Vec<RangeInclusive<usize>>,
     pub(crate) choices: Vec<Vec<(usize, usize)>>,
 }
 
-pub(crate) struct TransitKOr45 {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) paraws: ParallelWorlds<Self>,
-    pub(crate) constraints: Vec<Constraint>,
-    pub(crate) modals: Modals,
-    pub(crate) solution: Vec<u32>,
+pub(crate) trait BaseTransit: Sized {
+    fn feasibility(&self) -> Feasibility;
+
+    fn is_closed(&self) -> bool {
+        self.feasibility().is_bad()
+    }
+
+    fn transit(
+        fruit: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Option<Self>>;
 }
 
-pub(crate) struct TransitT {
-    pub(crate) reflexion: bool,
-    pub(crate) feasibility: Feasibility,
-    // TODO: Change constraints to include boxed formulae
-    pub(crate) box_subformulae: Vec<Rc<Formula>>,
-    pub(crate) paraws: ParallelWorlds<Self>,
-    pub(crate) constraints: Vec<Constraint>,
-    pub(crate) ranges: Vec<RangeInclusive<usize>>,
-    pub(crate) vars: Vec<Variable>,
-    pub(crate) solution: Vec<u32>,
+pub(crate) trait SolveTransit: BaseTransit {
+    fn solve(&mut self, toh: &impl TimeoutHandler) -> MayTimeout<()>;
+
+    fn from_modals(
+        modals: Modals,
+        leaf: &Rc<RefCell<TableauNode2<Self>>>,
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Self>;
+
+    fn recurse(&mut self, calc: &mut Calculus, toh: &impl TimeoutHandler) -> MayTimeout<()>;
 }
 
-pub(crate) struct TransitB5 {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) paraws: ParallelWorlds<Self>,
-    pub(crate) reflexion: ParallelWorlds<Self>,
-    pub(crate) constraints: Vec<Constraint>,
-    pub(crate) modals: Modals,
-    pub(crate) solution: Vec<u32>,
-    pub(crate) rfxsolution: usize,
+pub(crate) trait DisplayTransit: Sized {
+    fn display_transit(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        rooti: usize,
+        curri: &mut usize,
+        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
+    ) -> fmt::Result;
 }
 
-pub(crate) struct Transit5 {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) modals: Modals,
-    pub(crate) submodals: Vec<LabeledFormula>,
-    pub(crate) spotconstraints: Vec<Constraint>,
-    pub(crate) paracliques: Vec<ParaClique<Self>>,
+pub(crate) trait ModelTransit: Sized {
+    fn to_graph_inner(this: DisplayTableau<Self>) -> GraphInner;
 }
 
-pub(crate) struct ParaClique<T> {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) settings: Vec<bool>,
-    pub(crate) spotws: ParallelWorlds<T>,
-    pub(crate) cliquews: ParallelWorlds<T>,
-    pub(crate) cliqueconstraints: Vec<Constraint>,
-    pub(crate) spotsolution: Vec<u32>,
-    pub(crate) cliquesolution: Vec<u32>,
-}
-
-pub(crate) struct Transit4 {
-    pub(crate) feasibility: Feasibility,
-    pub(crate) paraws: ParallelWorlds<Self>,
-    pub(crate) constraints: Vec<Constraint>,
-    pub(crate) modals: Modals,
-    pub(crate) ranges: Vec<RangeInclusive<usize>>,
-    pub(crate) vars: Vec<Variable>,
-    pub(crate) solution: Vec<u32>,
+pub(crate) fn general_transit<T: BaseTransit + SolveTransit>(
+    calc: &mut Calculus,
+    fruit: &Rc<RefCell<TableauNode2<T>>>,
+    toh: &impl TimeoutHandler,
+) -> MayTimeout<Option<T>> {
+    let mut labels = vec![];
+    fruit.borrow().traverse_anc_formulae(&mut |label| {
+        labels.push(label.clone());
+        true
+    });
+    let modals = Modals::new(
+        labels.iter(),
+        calc.framecond.ray(),
+        calc.framecond.spotlit(),
+        toh,
+    )?;
+    if modals.ge.is_empty() {
+        return Ok(None);
+    }
+    let mut transit = T::from_modals(modals, fruit, calc, toh)?;
+    if transit.is_closed() {
+        return Ok(Some(transit));
+    }
+    transit.recurse(calc, toh)?;
+    if transit.is_closed() {
+        return Ok(Some(transit));
+    }
+    transit.solve(toh)?;
+    Ok(Some(transit))
 }
 
 impl Modals {
@@ -99,14 +113,15 @@ impl Modals {
         labels: impl Iterator<Item = &'a LabeledFormula>,
         serial: bool,
         spotlit: bool,
-    ) -> Modals {
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Modals> {
         let mut this = Modals {
             bx: vec![],
             ge: vec![],
             le: vec![],
         };
         for label in labels {
-            this.store(&label);
+            let _ = this.store(&label);
         }
         if spotlit {
             let dummy = Formula::bottom();
@@ -117,7 +132,8 @@ impl Modals {
                 .map(|(_, l)| l)
                 .chain(this.bx.iter_mut())
             {
-                f.formula = FlatFormula::from(mem::replace(&mut f.formula, dummy.clone())).into();
+                f.formula =
+                    FlatFormula::from_rcf(mem::replace(&mut f.formula, dummy.clone()), toh)?.into();
             }
         }
         if serial && this.ge.is_empty() && (!this.le.is_empty() || !this.bx.is_empty()) {
@@ -127,40 +143,59 @@ impl Modals {
                     formula: Formula::top(),
                     conflictset: vec![],
                     lemma: false,
+                    expanded: false,
                 },
             ));
         }
-        this
+        Ok(this)
     }
 
-    fn to_forks_constraints(
-        &self,
+    pub(crate) fn iter_all<'a>(&'a self) -> impl Iterator<Item = &'a LabeledFormula> {
+        self.ge
+            .iter()
+            .chain(self.le.iter())
+            .map(|(_, f)| f)
+            .chain(self.bx.iter())
+    }
+
+    pub(crate) fn to_forks_constraints(
+        self,
         forkstore: &mut ForkStore,
-    ) -> (Option<RangeInclusive<usize>>, Vec<Constraint>) {
-        let labels = self.ge.iter().map(|(c, lab)| (c, true, lab));
-        let labels = labels.chain(self.le.iter().map(|(c, lab)| (c, false, lab)));
-        let mut forks = VecDeque::with_capacity(self.ge.len() + self.le.len());
+    ) -> (Option<RangeInclusive<usize>>, Constraints) {
+        let mut startid = None;
+        let mut endid = 0;
         let mut constraints = Vec::with_capacity(self.ge.len() + self.le.len());
-        for (&value, sense, lab) in labels {
+        let labels = self.ge.into_iter().map(|(c, lab)| (c, true, lab));
+        let labels = labels.chain(self.le.into_iter().map(|(c, lab)| (c, false, lab)));
+        for (value, sense, lab) in labels {
             let fork = forkstore.create_fork(
                 ForkType::ParallelWorlds,
                 vec![vec![lab.formula.not()], vec![lab.formula.clone()]],
                 &lab.conflictset,
             );
-            constraints.push(Constraint {
+            constraints.push(Grading {
                 forkid: fork.id,
                 sense,
                 value,
-                formula: lab.formula.clone(),
+                formula: lab.formula,
             });
-            forks.push_back(fork);
+            if let None = startid {
+                startid = Some(fork.id);
+            }
+            endid = fork.id;
         }
-        let range = forks.front().zip(forks.back()).map(|(a, b)| a.id..=b.id);
-        (range, constraints)
+        let range = startid.map(|s| s..=endid);
+        (
+            range,
+            Constraints {
+                gradings: constraints,
+                boxsubforms: self.bx,
+            },
+        )
     }
 
-    fn store(&mut self, label: &LabeledFormula) {
-        match label.formula.as_ref() {
+    fn store<'a>(&'a mut self, formula: &LabeledFormula) -> Option<&'a LabeledFormula> {
+        match formula.formula.as_ref() {
             Formula::Bottom
             | Formula::Top
             | Formula::PropVar(..)
@@ -168,41 +203,51 @@ impl Modals {
             | Formula::And(..)
             | Formula::Or(..)
             | Formula::Imply(..)
-            | Formula::Iff(..) => {}
-            Formula::Box(phi) => self.bx.push(LabeledFormula {
-                formula: phi.clone(),
-                conflictset: label.conflictset.clone(),
-                lemma: false,
-            }),
-            Formula::Diamond(phi) => self.ge.push((
-                1,
-                LabeledFormula {
+            | Formula::Iff(..) => None,
+            Formula::Box(phi) => {
+                let subform = LabeledFormula {
                     formula: phi.clone(),
-                    conflictset: label.conflictset.clone(),
+                    conflictset: formula.conflictset.clone(),
                     lemma: false,
-                },
-            )),
-            Formula::DiamondGe(count, phi) => self.ge.push((
-                *count,
-                LabeledFormula {
+                    expanded: false,
+                };
+                self.bx.push(subform);
+                self.bx.last()
+            }
+            Formula::Diamond(phi) => {
+                let subform = LabeledFormula {
                     formula: phi.clone(),
-                    conflictset: label.conflictset.clone(),
+                    conflictset: formula.conflictset.clone(),
                     lemma: false,
-                },
-            )),
-            Formula::DiamondLe(count, phi) => self.le.push((
-                *count,
-                LabeledFormula {
+                    expanded: false,
+                };
+                self.ge.push((1, subform));
+                self.ge.last().map(|(_, f)| f)
+            }
+            Formula::DiamondGe(count, phi) => {
+                let subform = LabeledFormula {
                     formula: phi.clone(),
-                    conflictset: label.conflictset.clone(),
+                    conflictset: formula.conflictset.clone(),
                     lemma: false,
-                },
-            )),
+                    expanded: false,
+                };
+                self.ge.push((*count, subform));
+                self.ge.last().map(|(_, f)| f)
+            }
+            Formula::DiamondLe(count, phi) => {
+                let subform = LabeledFormula {
+                    formula: phi.clone(),
+                    conflictset: formula.conflictset.clone(),
+                    lemma: false,
+                    expanded: false,
+                };
+                self.le.push((*count, subform));
+                self.le.last().map(|(_, f)| f)
+            }
         }
     }
 
-    fn submodals(&self) -> Vec<LabeledFormula> {
-        let mut submodalfs = vec![];
+    pub(crate) fn submodals(&self) -> Vec<LabeledFormula> {
         let mut out = vec![];
         for label in self
             .ge
@@ -211,106 +256,248 @@ impl Modals {
             .map(|(_, l)| l)
             .chain(self.bx.iter())
         {
-            label.formula.store_modals(&mut submodalfs);
-            for f in submodalfs.drain(..) {
-                out.push(LabeledFormula {
-                    formula: f,
-                    conflictset: label.conflictset.clone(),
-                    lemma: false,
-                });
-            }
+            label.store_modals(&mut |f| out.push(f));
         }
         out
+    }
+
+    pub(crate) fn to_box_forks_constraints(
+        self,
+        forkstore: &mut ForkStore,
+    ) -> (
+        Option<RangeInclusive<usize>>,
+        Constraints,
+        Vec<(Rc<Formula>, usize)>,
+    ) {
+        let (forks, constraints) = self.to_forks_constraints(forkstore);
+        let mut boxforks = vec![];
+        let mut startid = None;
+        let mut endid = 0;
+        for formula in &constraints.boxsubforms {
+            let fork = forkstore.create_fork(
+                ForkType::ParallelWorlds,
+                vec![vec![formula.formula.not()], vec![formula.formula.clone()]],
+                &formula.conflictset,
+            );
+            if let None = startid {
+                startid = Some(fork.id);
+            }
+            endid = fork.id;
+            boxforks.push((formula.formula.clone(), fork.id));
+        }
+        let range = match (forks, startid) {
+            (None, None) => None,
+            (None, Some(startid)) => Some(startid..=endid),
+            (r @ Some(_), None) => r,
+            (Some(r), Some(_)) => Some(*r.start()..=endid),
+        };
+        (range, constraints, boxforks)
+    }
+
+    pub(crate) fn to_deep_forks_constraints(
+        self,
+        forkstore: &mut ForkStore,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<(
+        Vec<RangeInclusive<usize>>,
+        Constraints,
+        Vec<(Rc<Formula>, usize)>,
+    )> {
+        let mut newformulae = vec![];
+        for formula in self.iter_all() {
+            formula.store_modals(&mut |f| newformulae.push(f));
+        }
+        let (forks, mut constraints) = self.to_forks_constraints(forkstore);
+        let mut forks: Vec<_> = forks.into_iter().collect();
+        let mut modals = Modals::new(newformulae.iter(), false, false, toh)?;
+        let mut boxforks = vec![];
+        while !modals.ge.is_empty() || !modals.le.is_empty() {
+            newformulae.clear();
+            for formula in modals.iter_all() {
+                formula.store_modals(&mut |f| newformulae.push(f));
+            }
+            let (fks, cns, bxfks) = modals.to_box_forks_constraints(forkstore);
+            forks.extend(fks);
+            constraints.gradings.extend(cns.gradings);
+            boxforks.extend(bxfks);
+            modals = Modals::new(newformulae.iter(), false, false, toh)?;
+        }
+        Ok((forks, constraints, boxforks))
+    }
+
+    pub(crate) fn to_existing_forks(
+        self,
+        src_range: &Vec<RangeInclusive<usize>>,
+        src_constraints: Constraints,
+        forkstore: &ForkStore,
+    ) -> (Vec<RangeInclusive<usize>>, Constraints) {
+        let mut constraints = Vec::with_capacity(self.ge.len() + self.le.len());
+        let mut forkids = Vec::with_capacity(self.ge.len() + self.le.len());
+        let formulae = self.ge.into_iter().map(|(c, formula)| (c, true, formula));
+        let formulae = formulae.chain(self.le.into_iter().map(|(c, formula)| (c, false, formula)));
+        let src_gradings = VecDeque::from(src_constraints.gradings);
+        let src_boxsubforms = VecDeque::from(src_constraints.boxsubforms);
+        for (value, sense, formula) in formulae {
+            let mut fork = None;
+            for i in 0..src_gradings.len() {
+                if formula
+                    .formula
+                    .directly_equivalent(&src_gradings[i].formula)
+                {
+                    fork = Some(&forkstore.forks[src_gradings[i].forkid]);
+                    break;
+                }
+            }
+            let fork = fork.expect("Fork should be found");
+            constraints.push(Grading {
+                forkid: fork.id,
+                sense,
+                value,
+                formula: formula.formula,
+            });
+            forkids.push(fork.id..=fork.id);
+        }
+        (
+            forkids,
+            Constraints {
+                gradings: constraints,
+                boxsubforms: self.bx,
+            },
+        )
+    }
+
+    // pub(crate) fn to_deep_existing_forks(
+    //     self,
+    //     constraints: Constraints,
+    //     forkstore: &ForkStore,
+    // ) -> (Vec<RangeInclusive<usize>>, Constraints) {
+    //     if self.ge.is_empty() && self.le.is_empty() {
+    //         let (forks, constraints) = self.to_forks_constraints(forkstore);
+    //         return (forks.into_iter().collect(), constraints);
+    //     }
+    //     let mut newformulae = vec![];
+    //     for formula in self.iter_all() {
+    //         formula.store_modals(&mut |f| newformulae.push(f));
+    //     }
+    //     let (forks, mut constraints) = self.to_forks_constraints(forkstore);
+    //     let mut forks: Vec<_> = forks.into_iter().collect();
+    //     let mut modals = Modals::new(newformulae.iter(), false, false);
+    //     while !modals.ge.is_empty() || !modals.le.is_empty() {
+    //         newformulae.clear();
+    //         for formula in modals.iter_all() {
+    //             formula.store_modals(&mut |f| newformulae.push(f));
+    //         }
+    //         let (fks, cns) = modals.to_box_forks_constraints(forkstore);
+    //         forks.extend(fks);
+    //         constraints.gradings.extend(cns.gradings);
+    //         constraints.boxsubforms.extend(cns.boxsubforms);
+    //         modals = Modals::new(newformulae.iter(), false, false);
+    //     }
+    //     (forks, constraints)
+    // }
+}
+
+impl LabeledFormula {
+    pub(crate) fn store_modals(&self, store: &mut impl FnMut(Self)) {
+        self.formula.store_modals(&mut |f| {
+            store(LabeledFormula {
+                formula: f.clone(),
+                conflictset: self.conflictset.clone(),
+                lemma: false,
+                expanded: false,
+            })
+        });
     }
 }
 
 impl Formula {
-    pub(crate) fn store_modals(self: &Rc<Formula>, out: &mut Vec<Rc<Formula>>) {
+    fn store_modals(self: &Rc<Formula>, store: &mut impl FnMut(&Rc<Formula>)) {
         match self.as_ref() {
             Formula::Bottom | Formula::Top | Formula::PropVar(_, _) => {}
-            Formula::Not(phi) => phi.store_modals(out),
+            Formula::Not(phi) => phi.store_modals(store),
             Formula::Box(_)
             | Formula::Diamond(_)
             | Formula::DiamondGe(_, _)
-            | Formula::DiamondLe(_, _) => out.push(self.clone()),
+            | Formula::DiamondLe(_, _) => store(self),
             Formula::And(phi0, phi1)
             | Formula::Or(phi0, phi1)
             | Formula::Imply(phi0, phi1)
             | Formula::Iff(phi0, phi1) => {
-                phi0.store_modals(out);
-                phi1.store_modals(out);
+                phi0.store_modals(store);
+                phi1.store_modals(store);
             }
         }
     }
 }
 
-impl Constraint {
-    pub(crate) fn display<'a>(
-        f: &mut fmt::Formatter<'_>,
-        bxs: impl Iterator<Item = &'a Rc<Formula>>,
-        cns: &Vec<Self>,
-    ) -> fmt::Result {
-        for cn in cns {
+impl fmt::Display for Constraints {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for cn in &self.gradings {
             if cn.sense {
                 writeln!(f, "(≥{}): φ{} := {}", cn.value, cn.forkid, cn.formula)?;
             } else {
                 writeln!(f, "(≤{}): φ{} := {}", cn.value, cn.forkid, cn.formula)?;
             }
         }
-        for phi in bxs {
-            writeln!(f, "□: {phi}")?;
+        for phi in &self.boxsubforms {
+            writeln!(f, "□: {}", phi.formula)?;
         }
         Ok(())
     }
 }
 
 impl<T: BaseTransit> ParallelWorlds<T> {
-    fn from_modals(
-        modals: &Modals,
+    pub(crate) fn from_modals(
+        modals: Modals,
         parent: Option<&Rc<RefCell<TableauNode2<T>>>>,
-        calc: &mut GradedKCalc,
-    ) -> (Self, Vec<Constraint>) {
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<(Self, Constraints)> {
         let (forkranges, constraints) = modals.to_forks_constraints(&mut calc.forks);
         let this = Self::from_forks(
-            modals.bx.clone(),
+            constraints.boxsubforms.clone(),
             forkranges.into_iter().collect(),
             parent,
             calc,
-        );
-        (this, constraints)
+            toh,
+        )?;
+        Ok((this, constraints))
     }
 
-    fn from_forks(
+    pub(crate) fn from_forks(
         formulae: Vec<LabeledFormula>,
         forkids: Vec<RangeInclusive<usize>>,
         parent: Option<&Rc<RefCell<TableauNode2<T>>>>,
-        calc: &mut GradedKCalc,
-    ) -> Self {
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<Self> {
         let tab = Rc::new(RefCell::new(TableauNode2::from_formulae(formulae, parent)));
         let forks = VecDeque::from_iter(
             forkids
                 .iter()
                 .flat_map(|r| calc.forks.forks[r.clone()].iter().cloned()),
         );
-        calc.expand_static(&tab, forks, false);
-        Self {
+        calc.expand_static(&tab, forks, false, toh)?;
+        Ok(Self {
             tab,
-            forkid_ranges: forkids,
+            forkids,
             choices: vec![],
-        }
+        })
     }
 
     fn add_forks(
         &mut self,
         forkids: impl Iterator<Item = RangeInclusive<usize>>,
-        calc: &mut GradedKCalc,
-    ) {
+        calc: &mut Calculus,
+        toh: &impl TimeoutHandler,
+    ) -> MayTimeout<()> {
         let mut forks = VecDeque::new();
         for range in forkids {
             forks.extend(calc.forks.forks[range.clone()].iter().cloned());
-            self.forkid_ranges.push(range);
+            self.forkids.push(range);
         }
-        calc.expand_static(&self.tab, forks, false);
+        calc.expand_static(&self.tab, forks, false, toh)?;
+        Ok(())
     }
 
     pub(crate) fn set_choices(&mut self, dedup: bool) {
@@ -324,770 +511,11 @@ impl<T: BaseTransit> ParallelWorlds<T> {
                 continue;
             }
             let mut subchoices = vec![];
-            fruit
-                .borrow()
-                .get_choices(&mut subchoices, &self.forkid_ranges);
+            fruit.borrow().get_choices(&mut subchoices, &self.forkids);
             self.choices.push(subchoices);
         }
         if dedup {
             self.choices.dedup(); // ?
         }
-    }
-}
-pub(crate) trait Transit: BaseTransit {
-    fn solve(&mut self);
-}
-
-pub(crate) trait BaseTransit: Sized {
-    fn feasibility(&self) -> Feasibility;
-
-    fn is_closed(&self) -> bool {
-        self.feasibility().is_bad()
-    }
-
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self>;
-
-    fn from_modals(
-        modals: Modals,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Self;
-
-    fn recurse(&mut self, calc: &mut GradedKCalc);
-
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result;
-}
-
-impl BaseTransit for TransitKOr45 {
-    fn feasibility(&self) -> Feasibility {
-        self.feasibility
-    }
-
-    fn recurse(&mut self, calc: &mut GradedKCalc) {
-        calc.first_transition(&self.paraws.tab)
-    }
-
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
-        calc.first_transit(fruit)
-    }
-
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        Constraint::display(
-            f,
-            self.modals.bx.iter().map(|lab| &lab.formula),
-            &self.constraints,
-        )?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
-        writeln!(f)?;
-        for (i, choice) in self.paraws.choices.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        if self.feasibility.is_bad() {
-            writeln!(f, "No solution")?
-        } else {
-            write!(f, "Solution: ")?;
-            for (i, val) in self.solution.iter().enumerate() {
-                write!(f, "{val}*w{i} ")?;
-            }
-            writeln!(f)?;
-        }
-        writeln!(f)
-    }
-
-    fn from_modals(
-        modals: Modals,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(&modals, Some(leaf), calc);
-        let feasibility = paraws.tab.borrow().feasibility;
-        Self {
-            feasibility,
-            paraws,
-            constraints,
-            modals,
-            solution: vec![],
-        }
-    }
-}
-
-impl BaseTransit for TransitT {
-    fn feasibility(&self) -> Feasibility {
-        self.feasibility
-    }
-
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
-        Self::reflect(fruit, vec![], None.into_iter(), calc)
-    }
-
-    fn recurse(&mut self, calc: &mut GradedKCalc) {
-        if self.is_closed() {
-            return;
-        }
-        let mut flowers = Vec::new();
-        TableauNode2::get_flowers(&self.paraws.tab, &mut flowers);
-        let mut feasibility = Feasibility::Infeasible;
-        for flower in flowers {
-            let subtransit = if self.reflexion {
-                Self::reflect(
-                    &flower,
-                    self.ranges.clone(),
-                    self.constraints.iter().cloned(),
-                    calc,
-                )
-            } else {
-                Self::reflect(&flower, self.ranges.clone(), None.into_iter(), calc)
-            };
-            if let Some(subtransit) = subtransit {
-                if let Feasibility::Feasible = subtransit.feasibility {
-                    feasibility = Feasibility::Feasible;
-                }
-                flower.borrow_mut().feasibility = subtransit.feasibility;
-                flower.borrow_mut().children = TabChildren::Transition(subtransit);
-            } else {
-                feasibility = Feasibility::Feasible;
-            }
-        }
-        // TODO: Set entire tree of feasibility
-        self.paraws.tab.borrow_mut().feasibility = feasibility;
-        self.feasibility = feasibility;
-    }
-
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(
-            f,
-            "{rooti} {}: {}",
-            if self.reflexion { "[self]" } else { "" },
-            self.feasibility.symbol()
-        )?;
-        Constraint::display(f, self.box_subformulae.iter(), &self.constraints)?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
-        if self.reflexion {
-            return writeln!(f)
-        }
-        writeln!(f)?;
-        for (i, choice) in self.paraws.choices.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        if self.feasibility.is_bad() {
-            writeln!(f, "No solution")?
-        } else {
-            write!(f, "Solution: ")?;
-            for (i, val) in self.solution.iter().enumerate() {
-                write!(f, "{val}*w{i} ")?;
-            }
-            writeln!(f)?;
-        }
-        writeln!(f)
-    }
-
-    fn from_modals(
-        modals: Modals,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Self {
-        for lab in &modals.bx {
-            println!("B: {} L: {}", lab.formula, lab.lemma);
-        }
-        let (ranges, constraints) = modals.to_forks_constraints(&mut calc.forks);
-        let ranges = ranges.map_or(vec![], |r| vec![r]);
-        println!("R: {:?}", ranges);
-        let paraws =
-            ParallelWorlds::from_forks(modals.bx.clone(), ranges.clone(), Some(leaf), calc);
-        for lab in &paraws.tab.borrow().formulae {
-            println!("M: {} L: {}", lab.formula, lab.lemma);
-        }
-        let feasibility = paraws.tab.borrow().feasibility;
-        Self {
-            reflexion: true,
-            feasibility,
-            box_subformulae: modals.bx.into_iter().map(|lab| lab.formula).collect(),
-            paraws,
-            constraints,
-            ranges,
-            vars: vec![],
-            solution: vec![],
-        }
-    }
-}
-
-impl TransitT {
-    fn from_reflection(
-        modals: Modals,
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        mut labels: Vec<LabeledFormula>,
-        mut ranges: Vec<RangeInclusive<usize>>,
-        src_constraints: impl Iterator<Item = Constraint>,
-        calc: &mut GradedKCalc,
-    ) -> Self {
-        let (forkids, mut constraints) = modals.to_forks_constraints(&mut calc.forks);
-        for lab in labels.iter_mut() {
-            lab.lemma = true;
-        }
-        for lab in &labels {
-            println!("L: {} L: {}", lab.formula, lab.lemma);
-        }
-        println!("R: {:?}", forkids);
-        let paraws = ParallelWorlds::<Self>::from_forks(
-            labels,
-            forkids.clone().map_or(vec![], |f| vec![f]),
-            Some(fruit),
-            calc,
-        );
-        ranges.extend(forkids.into_iter());
-        constraints.extend(src_constraints);
-        let feasibility = paraws.tab.borrow().feasibility;
-        for lab in &paraws.tab.borrow().formulae {
-            println!("F: {} L: {}", lab.formula, lab.lemma);
-        }
-        Self {
-            reflexion: true,
-            feasibility,
-            paraws,
-            constraints,
-            box_subformulae: modals.bx.into_iter().map(|lab| lab.formula).collect(),
-            vars: vec![],
-            solution: vec![],
-            ranges,
-        }
-    }
-
-    pub(crate) fn reflect(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        ranges: Vec<RangeInclusive<usize>>,
-        src_constraints: impl Iterator<Item = Constraint>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
-        let mut labels = vec![];
-        fruit.borrow().traverse_anc_formulae(&mut |label| {
-            labels.push(label.clone());
-            true
-        });
-        let modals = Modals::new(labels.iter().filter(|lab| !lab.lemma), false, false);
-        if modals.ge.is_empty() && modals.le.is_empty() {
-            if let Some(mut transit) = Self::transition(fruit, labels.iter(), ranges.clone(), src_constraints.collect(), calc)
-            {
-                let mut choices = Vec::new();
-                Self::get_choices(fruit, &mut choices, &ranges);
-                // transit.set_choices();
-                transit.full_solve(&choices);
-                return Some(transit);
-            } else {
-                return None;
-            }
-        }
-        let mut transit =
-            Self::from_reflection(modals, fruit, labels, ranges, src_constraints, calc);
-        if transit.is_closed() {
-            return Some(transit);
-        }
-        transit.recurse(calc);
-        if transit.is_closed() {
-            return Some(transit);
-        }
-        Some(transit)
-    }
-
-    fn transition<'a>(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        labels: impl Iterator<Item = &'a LabeledFormula>,
-        ranges: Vec<RangeInclusive<usize>>,
-        constraints: Vec<Constraint>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
-        if ranges.is_empty() {
-            return None;
-        }
-        let bxformulae: Vec<_> = labels
-            .filter_map(|lab| {
-                if let Formula::Box(phi) = lab.formula.as_ref() {
-                    Some(LabeledFormula {
-                        formula: phi.clone(),
-                        conflictset: lab.conflictset.clone(),
-                        lemma: false,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect();
-        for lab in &bxformulae {
-            println!("T: {} L: {}", lab.formula, lab.lemma);
-        }
-        println!("R: {:?}", ranges);
-        let boxphis = bxformulae.iter().map(|lab| lab.formula.clone()).collect();
-        let paraws = ParallelWorlds::<Self>::from_forks(bxformulae, ranges, Some(fruit), calc);
-        let feasibility = paraws.tab.borrow().feasibility;
-        for lab in &paraws.tab.borrow().formulae {
-            println!("P: {} L: {}", lab.formula, lab.lemma);
-        }
-        let mut subtransit = Self {
-            reflexion: false,
-            feasibility,
-            paraws,
-            constraints,
-            box_subformulae: boxphis,
-            vars: vec![],
-            solution: vec![],
-            ranges: vec![],
-        };
-        if subtransit.is_closed() {
-            return Some(subtransit);
-        }
-        subtransit.recurse(calc);
-        if subtransit.is_closed() {
-            return Some(subtransit);
-        }
-        Some(subtransit)
-    }
-}
-
-impl BaseTransit for TransitB5 {
-    fn feasibility(&self) -> Feasibility {
-        self.feasibility
-    }
-
-    fn recurse(&mut self, _calc: &mut GradedKCalc) {}
-
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
-        calc.first_transit(fruit)
-    }
-
-    fn from_modals(
-        modals: Modals,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(&modals, Some(leaf), calc);
-        let feasibility = paraws.tab.borrow().feasibility;
-        let reflexion = if paraws.tab.borrow().is_closed() {
-            ParallelWorlds::from_forks(vec![], vec![], Some(leaf), calc)
-        } else {
-            Self::get_reflexion(&modals, &paraws, leaf, calc)
-        };
-        Self {
-            feasibility,
-            paraws,
-            constraints,
-            modals,
-            solution: vec![],
-            rfxsolution: 0,
-            reflexion,
-        }
-    }
-
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        Constraint::display(
-            f,
-            self.modals.bx.iter().map(|lab| &lab.formula),
-            &self.constraints,
-        )?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.reflexion.tab, f, curri, roots)?;
-        writeln!(f)?;
-        for (i, choice) in self.paraws.choices.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        for (i, choice) in self.reflexion.choices.iter().enumerate() {
-            write!(f, "u{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        match self.feasibility {
-            Feasibility::Contradiction | Feasibility::Infeasible | Feasibility::NoSolution => {
-                writeln!(f, "No solution")?
-            }
-            Feasibility::Feasible => {
-                write!(f, "Solution: ")?;
-                for (i, val) in self.solution.iter().enumerate() {
-                    if i == self.rfxsolution {
-                        write!(f, "{val}*w{i}+u ")?;
-                    } else {
-                        write!(f, "{val}*w{i} ")?;
-                    }
-                }
-                writeln!(f)?;
-            }
-        }
-        writeln!(f)
-    }
-}
-
-impl TransitB5 {
-    fn get_reflexion(
-        modals: &Modals,
-        paraws: &ParallelWorlds<Self>,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> ParallelWorlds<Self> {
-        let mut formulae = modals.bx.clone();
-        leaf.borrow().traverse_anc_formulae(&mut |l| {
-            formulae.push(l.clone());
-            true
-        });
-        ParallelWorlds::from_forks(formulae, paraws.forkid_ranges.clone(), Some(leaf), calc)
-    }
-}
-
-impl BaseTransit for Transit5 {
-    fn feasibility(&self) -> Feasibility {
-        self.feasibility
-    }
-
-    fn recurse(&mut self, _calc: &mut GradedKCalc) {}
-
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
-        calc.first_transit(fruit)
-    }
-
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        Constraint::display(
-            f,
-            self.modals.bx.iter().map(|lab| &lab.formula),
-            &self.spotconstraints,
-        )?;
-        writeln!(f)?;
-        writeln!(f, "Second Transition Modals:")?;
-        for (i, submodal) in self.submodals.iter().enumerate() {
-            writeln!(f, "ψ{i} := {}", submodal.formula)?;
-        }
-        writeln!(f)?;
-        for (i, paracliq) in self.paracliques.iter().enumerate() {
-            writeln!(f, "Clique {i}:")?;
-            TableauNode2::display_root(&paracliq.spotws.tab, f, curri, roots)?;
-            writeln!(f)?;
-            TableauNode2::display_root(&paracliq.cliquews.tab, f, curri, roots)?;
-            for (i, choice) in paracliq.spotws.choices.iter().enumerate() {
-                write!(f, "u{i}: ")?;
-                for (forkid, branchid) in choice {
-                    write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-                }
-                writeln!(f)?;
-            }
-            for (i, choice) in paracliq.cliquews.choices.iter().enumerate() {
-                write!(f, "w{i}: ")?;
-                for (forkid, branchid) in choice {
-                    write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-                }
-                writeln!(f)?;
-            }
-            if paracliq.spotsolution.is_empty() {
-                writeln!(f, "No solution")?;
-            } else {
-                write!(f, "Solution: ")?;
-                for (i, val) in paracliq.spotsolution.iter().enumerate() {
-                    write!(f, "{val}*u{i} ")?;
-                }
-                writeln!(f)?;
-                for (i, val) in paracliq.cliquesolution.iter().enumerate() {
-                    write!(f, "{val}*w{i} ")?;
-                }
-                writeln!(f)?;
-            }
-        }
-        Ok(())
-    }
-
-    fn from_modals(
-        modals: Modals,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Self {
-        let submodals = modals.submodals();
-        let mut settings = vec![true; submodals.len()];
-        let mut paracliques = vec![];
-        let (spotranges, spotconstraints) = modals.to_forks_constraints(&mut calc.forks);
-        let mut feasibility = Feasibility::Contradiction;
-        // OPT: Get initial spotlight para worlds and break if contradiction
-        loop {
-            let paraclique = ParaClique::new(
-                submodals.iter(),
-                &settings,
-                modals.bx.iter().cloned(),
-                Vec::from_iter(spotranges.iter().cloned()),
-                leaf,
-                calc,
-            );
-            feasibility = feasibility.better(&paraclique.feasibility);
-            paracliques.push(paraclique);
-            if !Self::next_setting(&mut settings) {
-                break;
-            }
-        }
-        Self {
-            modals,
-            submodals,
-            spotconstraints,
-            paracliques,
-            feasibility,
-        }
-    }
-}
-
-impl<T: Transit> ParaClique<T> {
-    fn new<'a>(
-        submodals: impl Iterator<Item = &'a LabeledFormula>,
-        signs: &Vec<bool>,
-        modalboxes: impl Iterator<Item = LabeledFormula>,
-        mut spotranges: Vec<RangeInclusive<usize>>,
-        leaf: &Rc<RefCell<TableauNode2<T>>>,
-        calc: &mut GradedKCalc,
-    ) -> Self {
-        let settings: Vec<_> = submodals
-            .zip(signs.iter())
-            .map(|(label, sign)| LabeledFormula {
-                formula: if *sign {
-                    label.formula.clone()
-                } else {
-                    label.formula.not()
-                },
-                conflictset: label.conflictset.clone(),
-                lemma: false,
-            })
-            .collect();
-        let cliquemodals = Modals::new(settings.iter(), false, false);
-        let (cliquews, cliqueconstraints) =
-            ParallelWorlds::from_modals(&cliquemodals, Some(leaf), calc);
-        let mut spotformulae = settings;
-        spotformulae.extend(cliquemodals.bx.iter().cloned());
-        spotformulae.extend(modalboxes);
-        spotranges.extend_from_slice(&cliquews.forkid_ranges);
-        let spotws = ParallelWorlds::from_forks(spotformulae, spotranges, Some(leaf), calc);
-        let cliquefeas = spotws.tab.borrow().feasibility;
-        ParaClique {
-            settings: signs.clone(),
-            feasibility: cliquefeas,
-            spotws,
-            cliquews,
-            cliqueconstraints,
-            spotsolution: vec![],
-            cliquesolution: vec![],
-        }
-    }
-}
-
-impl Transit5 {
-    fn next_setting(settings: &mut Vec<bool>) -> bool {
-        for st in settings {
-            *st = !*st;
-            if !*st {
-                return true;
-            }
-        }
-        return false;
-    }
-}
-
-impl BaseTransit for Transit4 {
-    fn feasibility(&self) -> Feasibility {
-        self.feasibility
-    }
-
-    fn first_transit(
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Self> {
-        calc.first_transit(fruit)
-    }
-
-    fn recurse(&mut self, calc: &mut GradedKCalc) {
-        if self.feasibility.is_bad() {
-            return;
-        }
-        let mut flowers = Vec::new();
-        TableauNode2::get_flowers(&self.paraws.tab, &mut flowers);
-        let mut feasibility = Feasibility::Infeasible;
-        for flower in flowers {
-            let subtransit = self.diffract(&flower, calc);
-            match subtransit {
-                Some(subtransit) => {
-                    if let Feasibility::Feasible = subtransit.feasibility {
-                        feasibility = Feasibility::Feasible;
-                    }
-                    flower.borrow_mut().feasibility = subtransit.feasibility;
-                    flower.borrow_mut().children = TabChildren::Transition(subtransit);
-                }
-                None => feasibility = Feasibility::Feasible,
-            }
-        }
-        // TODO: Set entire tree of feasibility
-        self.feasibility = feasibility;
-        self.paraws.tab.borrow_mut().feasibility = feasibility;
-    }
-
-    fn display_transit(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        rooti: usize,
-        curri: &mut usize,
-        roots: &mut VecDeque<(usize, Rc<RefCell<TableauNode2<Self>>>)>,
-    ) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(f, "{rooti}: {}", self.feasibility.symbol())?;
-        Constraint::display(
-            f,
-            self.modals.bx.iter().map(|lab| &lab.formula),
-            &self.constraints,
-        )?;
-        writeln!(f)?;
-        TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
-        writeln!(f)?;
-        for (i, choice) in self.paraws.choices.iter().enumerate() {
-            write!(f, "w{i}: ")?;
-            for (forkid, branchid) in choice {
-                write!(f, "{}φ{forkid} ", if *branchid == 0 { "¬" } else { "" })?;
-            }
-            writeln!(f)?;
-        }
-        if self.feasibility.is_bad() {
-            writeln!(f, "No solution")?
-        } else {
-            write!(f, "Solution: ")?;
-            for (i, val) in self.solution.iter().enumerate() {
-                write!(f, "{val}*w{i} ")?;
-            }
-            writeln!(f)?;
-        }
-        writeln!(f)
-    }
-
-    fn from_modals(
-        modals: Modals,
-        leaf: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Self {
-        let (paraws, constraints) = ParallelWorlds::from_modals(&modals, Some(leaf), calc);
-        let feasibility = paraws.tab.borrow().feasibility;
-        Self {
-            feasibility,
-            ranges: paraws.forkid_ranges.clone(),
-            paraws,
-            constraints,
-            modals,
-            vars: vec![],
-            solution: vec![],
-        }
-    }
-}
-
-impl Transit4 {
-    fn from_diffraction(
-        modals: Modals,
-        mut ranges: Vec<RangeInclusive<usize>>,
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Self {
-        let (forkids, constraints) = modals.to_forks_constraints(&mut calc.forks);
-        ranges.extend(forkids.into_iter());
-        let paraws =
-            ParallelWorlds::from_forks(modals.bx.clone(), ranges.clone(), Some(fruit), calc);
-        let feasibility = paraws.tab.borrow().feasibility;
-        Self {
-            feasibility,
-            paraws,
-            constraints,
-            modals,
-            vars: vec![],
-            solution: vec![],
-            ranges,
-        }
-    }
-
-    pub(crate) fn diffract(
-        &self,
-        fruit: &Rc<RefCell<TableauNode2<Self>>>,
-        calc: &mut GradedKCalc,
-    ) -> Option<Transit4> {
-        let mut labels = vec![];
-        fruit.borrow().traverse_anc_formulae(&mut |label| {
-            labels.push(label.clone());
-            true
-        });
-        labels.extend(self.modals.bx.iter().cloned());
-        let modals = Modals::new(labels.iter(), calc.framecond.ray(), false);
-        // sleep(Duration::from_secs(3));
-        if modals.ge.is_empty() {
-            return None;
-        }
-        let mut subtransit = Self::from_diffraction(modals, self.ranges.clone(), fruit, calc);
-        if subtransit.feasibility.is_bad() {
-            return Some(subtransit);
-        }
-        subtransit.recurse(calc);
-        if subtransit.feasibility.is_bad() {
-            return Some(subtransit);
-        }
-        subtransit.check();
-        Some(subtransit)
     }
 }

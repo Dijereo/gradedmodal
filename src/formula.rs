@@ -8,11 +8,11 @@ use crate::{
     token::Token,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub(crate) enum Formula {
     Bottom,
     Top,
-    PropVar(char, Option<u32>),
+    PropVar(char, Option<usize>),
     Not(Rc<Formula>),
     Box(Rc<Formula>),
     Diamond(Rc<Formula>),
@@ -173,7 +173,7 @@ impl fmt::Display for Formula {
 }
 
 impl Formula {
-    pub(crate) fn is_bottom(&self) -> bool {
+    pub(crate) const fn is_bottom(&self) -> bool {
         if let Formula::Bottom = self {
             true
         } else {
@@ -189,8 +189,33 @@ impl Formula {
         Rc::new(Formula::Bottom)
     }
 
+    pub(crate) fn propi(p: char, i: usize) -> Rc<Formula> {
+        Rc::new(Formula::PropVar(p, Some(i)))
+    }
+
+    pub(crate) fn prop(p: char) -> Rc<Formula> {
+        Rc::new(Formula::PropVar(p, None))
+    }
+
     pub(crate) fn not(self: &Rc<Formula>) -> Rc<Formula> {
         Rc::new(Formula::Not(self.clone()))
+    }
+
+    pub(crate) fn neg_modal(self: &Rc<Formula>) -> Rc<Formula> {
+        match self.as_ref() {
+            Formula::Box(phi) => phi.not().diamond(),
+            Formula::Diamond(phi) => phi.not().box_(),
+            Formula::DiamondGe(c, phi) => phi.dmle(c - 1),
+            Formula::DiamondLe(c, phi) => phi.dmge(c + 1),
+            Formula::Bottom
+            | Formula::Top
+            | Formula::PropVar(_, _)
+            | Formula::Not(_)
+            | Formula::And(_, _)
+            | Formula::Or(_, _)
+            | Formula::Imply(_, _)
+            | Formula::Iff(_, _) => unreachable!("Should only be called on modals"),
+        }
     }
 
     pub(crate) fn and(self: &Rc<Formula>, other: &Rc<Formula>) -> Rc<Formula> {
@@ -233,23 +258,77 @@ impl Formula {
         Rc::new(Formula::Box(self.clone()))
     }
 
-    pub(crate) fn is_negation(&self, other: &Formula) -> bool {
-        match (self, other) {
-            (Formula::Not(phi1), phi2) => phi1.as_ref() == phi2,
-            (phi1, Formula::Not(phi2)) => phi1 == phi2.as_ref(),
-            _ => false,
-        }
+    pub(crate) fn directly_equivalent(self: &Rc<Self>, other: &Rc<Self>) -> bool {
+        Rc::as_ptr(self) == Rc::as_ptr(other)
+            || match (self.as_ref(), other.as_ref()) {
+                (Formula::Not(phi1), Formula::Not(phi2)) => phi1.directly_equivalent(phi2),
+                (Formula::Bottom, Formula::Bottom) => true,
+                (Formula::Top, Formula::Top) => true,
+                (Formula::Top, Formula::DiamondGe(0, _)) => true,
+                (Formula::DiamondGe(0, _), Formula::Top) => true,
+                (Formula::PropVar(c1, i1), Formula::PropVar(c2, i2)) => c1 == c2 && i1 == i2,
+                (Formula::Box(phi1), Formula::Box(phi2)) => phi1.directly_equivalent(phi2),
+                (Formula::Box(phi1), Formula::DiamondLe(0, phi2)) => {
+                    phi1.directly_contradicts(phi2)
+                }
+                (Formula::DiamondLe(0, phi1), Formula::Box(phi2)) => {
+                    phi1.directly_contradicts(phi2)
+                }
+                (Formula::Diamond(phi1), Formula::Diamond(phi2)) => phi1.directly_equivalent(phi2),
+                (Formula::Diamond(phi1), Formula::DiamondGe(1, phi2)) => {
+                    phi1.directly_equivalent(phi2)
+                }
+                (Formula::DiamondGe(1, phi1), Formula::Diamond(phi2)) => {
+                    phi1.directly_equivalent(phi2)
+                }
+                (Formula::DiamondGe(c1, phi1), Formula::DiamondGe(c2, phi2)) => {
+                    c1 == c2 && phi1.directly_equivalent(phi2)
+                }
+                (Formula::And(phi0, phi1), Formula::And(phi2, phi3)) => {
+                    phi0.directly_equivalent(phi2) && phi1.directly_equivalent(phi3)
+                }
+                (Formula::Or(phi0, phi1), Formula::Or(phi2, phi3)) => {
+                    phi0.directly_equivalent(phi2) && phi1.directly_equivalent(phi3)
+                }
+                (Formula::Imply(phi0, phi1), Formula::Imply(phi2, phi3)) => {
+                    phi0.directly_equivalent(phi2) && phi1.directly_equivalent(phi3)
+                }
+                (Formula::Iff(phi0, phi1), Formula::Iff(phi2, phi3)) => {
+                    phi0.directly_equivalent(phi2) && phi1.directly_equivalent(phi3)
+                }
+                _ => false,
+            }
+    }
+
+    pub(crate) fn directly_contradicts(self: &Rc<Formula>, other: &Rc<Formula>) -> bool {
+        Rc::as_ptr(self) != Rc::as_ptr(other)
+            && match (self.as_ref(), other.as_ref()) {
+                (Formula::Not(phi1), Formula::Not(phi2)) => phi1.directly_contradicts(phi2),
+                (Formula::Not(phi1), _) => phi1.directly_equivalent(other),
+                (_, Formula::Not(phi2)) => self.directly_equivalent(phi2),
+                (Formula::DiamondGe(c1, phi1), Formula::DiamondLe(c2, phi2)) => {
+                    c1 > c2 && phi1.directly_equivalent(phi2)
+                }
+                (Formula::Diamond(phi1), Formula::DiamondLe(c2, phi2)) => {
+                    *c2 < 1 && phi1.directly_equivalent(phi2)
+                }
+                (Formula::DiamondGe(c1, phi1), Formula::Box(phi2)) => {
+                    *c1 > 0 && phi1.directly_contradicts(phi2)
+                }
+                (Formula::Diamond(phi1), Formula::Box(phi2)) => phi1.directly_contradicts(phi2),
+                _ => false,
+            }
     }
 }
 
-pub(crate) fn full_parser<S>(stream: S) -> Result<Formula, Option<(usize, Token)>>
+pub(crate) fn full_parser<S>(stream: S) -> Result<Rc<Formula>, Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
     parse_entire(stream, formula_parser)
 }
 
-fn var_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn var_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -257,23 +336,23 @@ where
         stream,
         |s| {
             parse_unit(s, |token| match token {
-                Token::PROPVAR(c) => Ok(c),
+                Token::PROPVAR(p) => Ok(p),
                 _ => Err(token),
             })
         },
         |s| {
             parse_option(s, |s2| {
                 parse_unit(s2, |token| match token {
-                    Token::NUM(n) => Ok(n),
+                    Token::NUM(i) => Ok(i as usize),
                     _ => Err(token),
                 })
             })
         },
-        |c, n| Formula::PropVar(c, n),
+        |p, i| i.map_or(Formula::prop(p), |i| Formula::propi(p, i)),
     )
 }
 
-fn paren_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn paren_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -284,7 +363,7 @@ where
     )
 }
 
-fn atom_parser<'a, S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn atom_parser<'a, S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone + 'a,
 {
@@ -297,14 +376,19 @@ where
             Box::new(diamond_parser),
             Box::new(dmge_parser),
             Box::new(dmle_parser),
+            Box::new(dmgt_parser),
+            Box::new(dmlt_parser),
+            Box::new(dmeq_parser),
+            Box::new(dmne_parser),
             Box::new(var_parser),
             Box::new(bottom_parser),
-        ] as [Box<DynParser<'a, Token, Formula, S>>; 8])
+            Box::new(top_parser),
+        ] as [Box<DynParser<'a, Token, Rc<Formula>, S>>; 13])
             .into_iter(),
     )
 }
 
-fn not_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn not_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -312,11 +396,11 @@ where
         stream,
         |s| parse_eq(s, &Token::NOT, ()),
         atom_parser,
-        |_, formula| Formula::Not(Rc::new(formula)),
+        |_, formula| formula.not(),
     )
 }
 
-fn box_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn box_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -324,11 +408,11 @@ where
         stream,
         |s| parse_eq(s, &Token::BOX, ()),
         atom_parser,
-        |_, formula| Formula::Box(Rc::new(formula)),
+        |_, formula| formula.box_(),
     )
 }
 
-fn diamond_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn diamond_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -336,11 +420,11 @@ where
         stream,
         |s| parse_eq(s, &Token::DIAMOND, ()),
         atom_parser,
-        |_, formula| Formula::Diamond(Rc::new(formula)),
+        |_, formula| formula.diamond(),
     )
 }
 
-fn dmge_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn dmge_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -365,11 +449,40 @@ where
             )
         },
         atom_parser,
-        |n, formula| Formula::DiamondGe(n, Rc::new(formula)),
+        |n, formula| formula.dmge(n),
     )
 }
 
-fn dmle_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn dmgt_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| {
+            parse_snd(
+                s,
+                |s2| parse_eq(s2, &Token::DIAMOND, ()),
+                |s2| {
+                    parse_snd(
+                        s2,
+                        |s3| parse_eq(s3, &Token::GT, ()),
+                        |s3| {
+                            parse_unit(s3, |token| match token {
+                                Token::NUM(n) => Ok(n),
+                                _ => Err(token),
+                            })
+                        },
+                    )
+                },
+            )
+        },
+        atom_parser,
+        |n, formula| formula.dmge(n + 1),
+    )
+}
+
+fn dmle_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -394,46 +507,152 @@ where
             )
         },
         atom_parser,
-        |n, formula| Formula::DiamondLe(n, Rc::new(formula)),
+        |n, formula| formula.dmle(n),
     )
 }
 
-fn bottom_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn dmlt_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| {
+            parse_snd(
+                s,
+                |s2| parse_eq(s2, &Token::DIAMOND, ()),
+                |s2| {
+                    parse_snd(
+                        s2,
+                        |s3| parse_eq(s3, &Token::LT, ()),
+                        |s3| {
+                            parse_unit(s3, |token| match token {
+                                Token::NUM(n) => Ok(n),
+                                _ => Err(token),
+                            })
+                        },
+                    )
+                },
+            )
+        },
+        atom_parser,
+        |n, formula| {
+            if n == 0 {
+                Formula::bottom()
+            } else {
+                formula.dmle(n - 1)
+            }
+        },
+    )
+}
+
+fn dmeq_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| {
+            parse_snd(
+                s,
+                |s2| parse_eq(s2, &Token::DIAMOND, ()),
+                |s2| {
+                    parse_snd(
+                        s2,
+                        |s3| parse_eq(s3, &Token::EQ, ()),
+                        |s3| {
+                            parse_unit(s3, |token| match token {
+                                Token::NUM(n) => Ok(n),
+                                _ => Err(token),
+                            })
+                        },
+                    )
+                },
+            )
+        },
+        atom_parser,
+        |n, formula| formula.dmge(n).and(&formula.dmle(n)),
+    )
+}
+
+fn dmne_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)> + Clone,
+{
+    parse_tup(
+        stream,
+        |s| {
+            parse_snd(
+                s,
+                |s2| parse_eq(s2, &Token::DIAMOND, ()),
+                |s2| {
+                    parse_snd(
+                        s2,
+                        |s3| parse_eq(s3, &Token::NEQ, ()),
+                        |s3| {
+                            parse_unit(s3, |token| match token {
+                                Token::NUM(n) => Ok(n),
+                                _ => Err(token),
+                            })
+                        },
+                    )
+                },
+            )
+        },
+        atom_parser,
+        |n, formula| {
+            if n == 0 {
+                formula.diamond()
+            } else {
+                formula.dmge(n + 1).or(&formula.dmle(n - 1))
+            }
+        },
+    )
+}
+
+fn bottom_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)>,
 {
-    parse_eq(stream, &Token::BOTTOM, Formula::Bottom)
+    parse_eq(stream, &Token::BOTTOM, Formula::bottom())
 }
 
-fn imply_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn top_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
+where
+    S: Iterator<Item = (usize, Token)>,
+{
+    parse_eq(stream, &Token::TOP, Formula::top())
+}
+
+fn imply_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
     parse_snd(stream, |s| parse_eq(s, &Token::IMPLY, ()), formula_parser)
 }
 
-fn iff_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn iff_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
     parse_snd(stream, |s| parse_eq(s, &Token::IFF, ()), nimply_parser)
 }
 
-fn or_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn or_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
     parse_snd(stream, |s| parse_eq(s, &Token::OR, ()), ncond_parser)
 }
 
-fn and_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn and_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
     parse_snd(stream, |s| parse_eq(s, &Token::AND, ()), conj_parser)
 }
 
-fn conj_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn conj_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -442,13 +661,13 @@ where
         atom_parser,
         |s| parse_option(s, and_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::And(Rc::new(f1), Rc::new(f2)),
+            Some(f2) => f1.and(&f2),
             None => f1,
         },
     )
 }
 
-fn ncond_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn ncond_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -457,13 +676,13 @@ where
         conj_parser,
         |s| parse_option(s, or_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::Or(Rc::new(f1), Rc::new(f2)),
+            Some(f2) => f1.or(&f2),
             None => f1,
         },
     )
 }
 
-fn nimply_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+fn nimply_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -472,13 +691,13 @@ where
         ncond_parser,
         |s| parse_option(s, iff_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::Iff(Rc::new(f1), Rc::new(f2)),
+            Some(f2) => f1.iff(&f2),
             None => f1,
         },
     )
 }
 
-pub(crate) fn formula_parser<S>(stream: S) -> Result<(Formula, S), Option<(usize, Token)>>
+pub(crate) fn formula_parser<S>(stream: S) -> Result<(Rc<Formula>, S), Option<(usize, Token)>>
 where
     S: Iterator<Item = (usize, Token)> + Clone,
 {
@@ -487,7 +706,7 @@ where
         nimply_parser,
         |s| parse_option(s, imply_parser),
         |f1, f2| match f2 {
-            Some(f2) => Formula::Imply(Rc::new(f1), Rc::new(f2)),
+            Some(f2) => f1.imply(&f2),
             None => f1,
         },
     )
@@ -495,116 +714,96 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::rc::Rc;
+
     use crate::token::tokenize;
 
     use super::*;
 
-    fn prop(c: char) -> Formula {
-        Formula::PropVar(c, None)
-    }
-
-    fn prop_n(c: char, n: u32) -> Formula {
-        Formula::PropVar(c, Some(n))
-    }
-
-    fn not(f: Formula) -> Formula {
-        Formula::Not(Rc::new(f))
-    }
-
-    fn boxm(f: Formula) -> Formula {
-        Formula::Box(Rc::new(f))
-    }
-
-    fn diamond(f: Formula) -> Formula {
-        Formula::Diamond(Rc::new(f))
-    }
-
-    fn and(l: Formula, r: Formula) -> Formula {
-        Formula::And(Rc::new(l), Rc::new(r))
-    }
-
-    fn or(l: Formula, r: Formula) -> Formula {
-        Formula::Or(Rc::new(l), Rc::new(r))
-    }
-
-    fn imply(l: Formula, r: Formula) -> Formula {
-        Formula::Imply(Rc::new(l), Rc::new(r))
-    }
-
-    fn iff(l: Formula, r: Formula) -> Formula {
-        Formula::Iff(Rc::new(l), Rc::new(r))
-    }
-
-    fn parse_str(input: &str) -> Formula {
+    fn parse_str(input: &str) -> Rc<Formula> {
         let tokens = tokenize(input).unwrap();
         full_parser(tokens.into_iter().enumerate()).unwrap()
     }
 
     #[test]
     fn test_parse_propvar() {
-        assert_eq!(parse_str("_|_"), Formula::Bottom);
-        assert_eq!(parse_str("p"), prop('p'));
-        assert_eq!(parse_str("p42"), prop_n('p', 42));
+        assert!(parse_str("_|_").directly_equivalent(&Formula::bottom()));
+        assert!(parse_str("p").directly_equivalent(&Formula::prop('p')));
+        assert!(parse_str("p42").directly_equivalent(&Formula::propi('p', 42)));
     }
 
     #[test]
     fn test_parse_not() {
-        assert_eq!(parse_str("~q1"), not(prop_n('q', 1)));
-        assert_eq!(parse_str("~~q2"), not(not(prop_n('q', 2))));
+        assert!(parse_str("~q1").directly_equivalent(&Formula::propi('q', 1).not()));
+        assert!(parse_str("~~q2").directly_equivalent(&Formula::propi('q', 2).not().not()));
     }
 
     #[test]
     fn test_parse_modals() {
-        assert_eq!(parse_str("<>p"), diamond(prop('p')));
-        assert_eq!(parse_str("[]p0"), boxm(prop_n('p', 0)));
-        assert_eq!(
-            parse_str("<>~[]<>x2"),
-            diamond(not(boxm(diamond(prop_n('x', 2)))))
+        assert!(parse_str("<>p").directly_equivalent(&Formula::prop('p').diamond()));
+        assert!(parse_str("[]p0").directly_equivalent(&Formula::propi('p', 0).box_()));
+        assert!(
+            parse_str("<>~[]<>x2")
+                .directly_equivalent(&Formula::propi('x', 2).diamond().box_().not().diamond())
         );
     }
 
     #[test]
     fn test_parse_and_or() {
-        assert_eq!(parse_str("x1 & y2"), and(prop_n('x', 1), prop_n('y', 2)));
-        assert_eq!(parse_str("x1 | y"), or(prop_n('x', 1), prop('y')));
-        assert_eq!(
-            parse_str("x1 & y2 | z"),
-            or(and(prop_n('x', 1), prop_n('y', 2)), prop('z'))
+        assert!(
+            parse_str("x1 & y2")
+                .directly_equivalent(&Formula::propi('x', 1).and(&Formula::propi('y', 2)))
         );
-        assert_eq!(
-            parse_str("x1 | y2 & z3"),
-            or(prop_n('x', 1), and(prop_n('y', 2), prop_n('z', 3)))
+        assert!(
+            parse_str("x1 | y")
+                .directly_equivalent(&Formula::propi('x', 1).or(&Formula::prop('y')))
         );
+        assert!(
+            parse_str("x1 & y2 | z").directly_equivalent(
+                &Formula::propi('x', 1)
+                    .and(&Formula::propi('y', 2))
+                    .or(&Formula::prop('z'))
+            )
+        );
+        assert!(parse_str("x1 | y2 & z3").directly_equivalent(
+            &Formula::propi('x', 1).or(&Formula::propi('y', 2).and(&Formula::propi('z', 3)))
+        ));
     }
 
     #[test]
     fn test_parse_imply_iff() {
-        assert_eq!(parse_str("p1 -> p2"), imply(prop_n('p', 1), prop_n('p', 2)));
-        assert_eq!(parse_str("p1 <-> p2"), iff(prop_n('p', 1), prop_n('p', 2)));
-        assert_eq!(
-            parse_str("p1 -> p2 -> p3"),
-            imply(prop_n('p', 1), imply(prop_n('p', 2), prop_n('p', 3)))
+        assert!(
+            parse_str("p1 -> p2")
+                .directly_equivalent(&Formula::propi('p', 1).imply(&Formula::propi('p', 2)))
         );
-        assert_eq!(
-            parse_str("p <-> p2 <-> _|_"),
-            iff(prop('p',), iff(prop_n('p', 2), Formula::Bottom))
+        assert!(
+            parse_str("p1 <-> p2")
+                .directly_equivalent(&Formula::propi('p', 1).iff(&Formula::propi('p', 2)))
         );
+        assert!(parse_str("p1 -> p2 -> p3").directly_equivalent(
+            &Formula::propi('p', 1).imply(&Formula::propi('p', 2).imply(&Formula::propi('p', 3)))
+        ));
+        assert!(parse_str("p <-> p2 <-> _|_").directly_equivalent(
+            &Formula::prop('p',).iff(&Formula::propi('p', 2).iff(&Formula::bottom()))
+        ));
     }
 
     #[test]
     fn test_parse_grouping() {
-        assert_eq!(
-            parse_str("~(p1 & p2)"),
-            not(and(prop_n('p', 1), prop_n('p', 2)))
+        assert!(
+            parse_str("~(p1 & p2)")
+                .directly_equivalent(&Formula::propi('p', 1).and(&Formula::propi('p', 2)).not())
         );
-        assert_eq!(
-            parse_str("(p1 -> _|_) & p3"),
-            and(imply(prop_n('p', 1), Formula::Bottom), prop_n('p', 3))
+        assert!(
+            parse_str("(p1 -> _|_) & p3").directly_equivalent(
+                &Formula::propi('p', 1)
+                    .imply(&Formula::bottom())
+                    .and(&Formula::propi('p', 3))
+            )
         );
-        assert_eq!(
-            parse_str("p1 -> (p2 & p3)"),
-            imply(prop_n('p', 1), and(prop_n('p', 2), prop_n('p', 3)))
-        );
+        assert!(parse_str("p1 -> (p2 & p3)").directly_equivalent(
+            &Formula::propi('p', 1).imply(&Formula::propi('p', 2).and(&Formula::propi('p', 3)))
+        ));
     }
 
     #[test]
