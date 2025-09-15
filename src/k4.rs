@@ -9,8 +9,8 @@ use std::{
 use good_lp::{Expression, ProblemVariables, Solution, SolverModel, Variable, solvers, variable};
 
 use crate::{
-    rules3::{Calculus, Feasibility},
-    tableau2::{TabChildren, TableauNode2},
+    rules::{Calculus, Feasibility},
+    tableau::{TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},
     transit::{
         BaseTransit, Constraints, DisplayTransit, Modals, ParallelWorlds, SolveTransit,

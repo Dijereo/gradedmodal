@@ -3,7 +3,6 @@ use std::{
     fmt::Write,
     io::{self, Write as _},
     mem,
-    sync::Arc,
 };
 
 use crate::{

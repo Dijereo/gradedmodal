@@ -1,17 +1,11 @@
-use std::{
-    cmp::{self, max},
-    rc::Rc,
-};
+use std::rc::Rc;
 
-use good_lp::constraint::eq;
 use rand::Rng;
 
 use crate::{
     formula::Formula,
     frame::FrameCondition,
-    randgen::{
-        Atom, Conj, Disj, DisjConn, GRADE, Modal, Phi, Unit, rand_choice, rand_choice_weighted,
-    },
+    randgen::{GRADE, Modal, rand_choice, rand_choice_weighted},
 };
 
 pub(crate) fn rand_thm(rng: &mut impl Rng) -> (Rc<Formula>, FrameCondition) {
@@ -59,7 +53,8 @@ fn rand_true(
                 rng,
                 frames,
                 deeper,
-            ).diamond()),
+            )
+            .diamond()),
             6 if frames.symmetric() => {
                 let c = rng.random_range(GRADE) as u32;
                 let c2 = rng.random_range(1..=c);

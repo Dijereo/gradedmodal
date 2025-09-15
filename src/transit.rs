@@ -1,7 +1,12 @@
 use std::{cell::RefCell, collections::VecDeque, fmt, mem, ops::RangeInclusive, rc::Rc};
 
 use crate::{
-    flatformula::FlatFormula, formula::Formula, model::GraphInner, rules3::{Calculus, Feasibility, ForkStore, ForkType}, tableau2::{DisplayTableau, LabeledFormula, TableauNode2}, timeout::{MayTimeout, TimeoutHandler}
+    flatformula::FlatFormula,
+    formula::Formula,
+    model::GraphInner,
+    rules::{Calculus, Feasibility, ForkStore, ForkType},
+    tableau::{DisplayTableau, LabeledFormula, TableauNode2},
+    timeout::{MayTimeout, TimeoutHandler},
 };
 
 #[derive(Debug)]
@@ -259,7 +264,11 @@ impl Modals {
     pub(crate) fn to_box_forks_constraints(
         self,
         forkstore: &mut ForkStore,
-    ) -> (Option<RangeInclusive<usize>>, Constraints, Vec<(Rc<Formula>, usize)>) {
+    ) -> (
+        Option<RangeInclusive<usize>>,
+        Constraints,
+        Vec<(Rc<Formula>, usize)>,
+    ) {
         let (forks, constraints) = self.to_forks_constraints(forkstore);
         let mut boxforks = vec![];
         let mut startid = None;
@@ -289,7 +298,11 @@ impl Modals {
         self,
         forkstore: &mut ForkStore,
         toh: &impl TimeoutHandler,
-    ) -> MayTimeout<(Vec<RangeInclusive<usize>>, Constraints, Vec<(Rc<Formula>, usize)>)> {
+    ) -> MayTimeout<(
+        Vec<RangeInclusive<usize>>,
+        Constraints,
+        Vec<(Rc<Formula>, usize)>,
+    )> {
         let mut newformulae = vec![];
         for formula in self.iter_all() {
             formula.store_modals(&mut |f| newformulae.push(f));

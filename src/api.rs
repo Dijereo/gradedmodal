@@ -11,7 +11,7 @@ use crate::{
     formula::full_parser,
     frame::FrameCondition,
     model::GraphView,
-    timeout::{NoopHandler, StopHandler, Timedout, TimeoutHandler},
+    timeout::{StopHandler, Timedout, TimeoutHandler},
     token::tokenize,
 };
 

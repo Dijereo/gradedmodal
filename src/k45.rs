@@ -10,8 +10,8 @@ use good_lp::{Expression, ProblemVariables, Solution, SolverModel, solvers, vari
 use crate::{
     formula::Formula,
     model::{EdgeInner, GraphInner, NodeInner, NodePosition},
-    rules3::{Calculus, Feasibility},
-    tableau2::{DisplayTableau, TabChildren, TableauNode2},
+    rules::{Calculus, Feasibility},
+    tableau::{DisplayTableau, TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},
     transit::{
         self, BaseTransit, Constraints, DisplayTransit, Modals, ModelTransit, ParallelWorlds,

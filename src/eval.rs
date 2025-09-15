@@ -220,8 +220,10 @@ where
     Q: Eq + Hash,
 {
     fn run(&self, formula: &F, frames: FrameCondition) -> (EvalStatus, Option<String>) {
-        let (stop, handle) =
-            StopHandler::new(self.duration.expect("Prover not initiated by .init()"), Some(9.0));
+        let (stop, handle) = StopHandler::new(
+            self.duration.expect("Prover not initiated by .init()"),
+            Some(9.0),
+        );
         self.reaper
             .as_ref()
             .expect("Prover not initiated by .init()")

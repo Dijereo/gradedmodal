@@ -265,7 +265,8 @@ mod tests {
 
     #[test]
     fn test_multiple_tokens() {
-        let input = "~ p1 & []~( l23 | i |_|_ ) -> <>≥6q4 <-> -o5 && !v1 ^ □¬( t23 V z ∨ ! ) → ◇≤7a4 ↔ T";
+        let input =
+            "~ p1 & []~( l23 | i |_|_ ) -> <>≥6q4 <-> -o5 && !v1 ^ □¬( t23 V z ∨ ! ) → ◇≤7a4 ↔ T";
         let expected = vec![
             Token::NOT,
             Token::PROPVAR('p'),

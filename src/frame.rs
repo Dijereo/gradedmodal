@@ -14,8 +14,8 @@ use crate::{
     k5::Transit5,
     k45::TransitKOr45,
     kb::TransitB,
-    rules3::Calculus,
-    tableau2::DisplayTableau,
+    rules::Calculus,
+    tableau::DisplayTableau,
     timeout::{MayTimeout, NoopHandler, TimeoutHandler},
     tt::TransitT,
 };

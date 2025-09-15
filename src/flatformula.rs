@@ -1,6 +1,9 @@
 use std::{cmp::max, mem, rc::Rc};
 
-use crate::{formula::Formula, timeout::{MayTimeout, TimeoutHandler}};
+use crate::{
+    formula::Formula,
+    timeout::{MayTimeout, TimeoutHandler},
+};
 
 #[derive(Clone, Debug)]
 pub(crate) enum FlatFormula {

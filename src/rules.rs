@@ -9,7 +9,7 @@ use crate::{
     flatformula::FlatFormula,
     formula::Formula,
     frame::FrameCondition,
-    tableau2::{Conflict, DupContra, LabeledFormula, TabBranch, TabChildren, TableauNode2},
+    tableau::{Conflict, DupContra, LabeledFormula, TabBranch, TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},
     transit::{BaseTransit, Constraints, Grading},
 };
