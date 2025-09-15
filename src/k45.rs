@@ -174,7 +174,10 @@ impl ModelTransit for TransitKOr45 {
             };
             graph.adjlist.push((node, vec![]));
             match &fruit.borrow().children {
-                TabChildren::Leaf | TabChildren::Fork { .. } => {}
+                TabChildren::Fork { .. } => {
+                    unreachable!("Fruit should not have fork children.")
+                }
+                TabChildren::Leaf => {}
                 TabChildren::Transition(transit) => transit.to_graph_rec(0, &mut graph),
             }
             break;
@@ -224,11 +227,13 @@ impl TransitKOr45 {
                     formulae,
                     position: NodePosition { x: 0, y: 0 },
                 };
-                let currid = graph.adjlist.len();
                 graph.adjlist.push((node, vec![]));
                 match &fruit.borrow().children {
-                    TabChildren::Leaf | TabChildren::Fork { .. } => {}
-                    TabChildren::Transition(nexttransit) => nexttransit.to_graph_rec(currid, graph),
+                    TabChildren::Fork { .. } => {
+                        unreachable!("Fruit should not have fork children.")
+                    }
+                    TabChildren::Leaf => {}
+                    TabChildren::Transition(nexttransit) => nexttransit.to_graph_rec(target, graph),
                 }
                 break;
             }

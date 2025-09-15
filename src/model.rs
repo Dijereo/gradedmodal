@@ -177,19 +177,6 @@ pub(crate) trait IntoModelGraph: BaseTransit + DisplayTransit {
     fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<NodeView>, edges: &mut Vec<EdgeView>);
 }
 
-impl DisplayTableau<TransitT> {
-    pub(crate) fn serve(
-        self,
-        formula_str: String,
-        solve_time: String,
-        parse_time: String,
-        framecond: FrameCondition,
-        validate: bool,
-    ) -> ServerResult {
-        self.base_model(formula_str, solve_time, parse_time, framecond, validate)
-    }
-}
-
 impl DisplayTableau<Transit5> {
     pub(crate) fn serve(
         self,

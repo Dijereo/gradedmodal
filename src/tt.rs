@@ -10,7 +10,7 @@ use good_lp::{Expression, ProblemVariables, Solution, SolverModel, Variable, sol
 
 use crate::{
     formula::Formula,
-    model::{EdgeView, GraphInner, IntoModelGraph, NodeInner, NodePosition, NodeView},
+    model::{EdgeInner, EdgeView, GraphInner, IntoModelGraph, NodeInner, NodePosition, NodeView},
     rules3::{Calculus, Feasibility},
     tableau2::{DisplayTableau, LabeledFormula, TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},
@@ -20,7 +20,7 @@ use crate::{
 };
 
 pub(crate) struct TransitT {
-    pub(crate) reflexion: bool,
+    pub(crate) is_reflexive: bool,
     pub(crate) feasibility: Feasibility,
     pub(crate) paraws: ParallelWorlds<Self>,
     pub(crate) constraints: Constraints,
@@ -68,7 +68,7 @@ impl TransitT {
         constraints.gradings.extend(src_constraints);
         let feasibility = paraws.tab.borrow().feasibility;
         Ok(Self {
-            reflexion: true,
+            is_reflexive: true,
             feasibility,
             paraws,
             constraints,
@@ -85,7 +85,7 @@ impl TransitT {
         let mut flowers = Vec::new();
         TableauNode2::get_flowers(&self.paraws.tab, &mut flowers);
         for flower in flowers {
-            let subtransit = if self.reflexion {
+            let subtransit = if self.is_reflexive {
                 Self::reflect(
                     &flower,
                     self.ranges.clone(),
@@ -182,7 +182,7 @@ impl TransitT {
         )?;
         let feasibility = paraws.tab.borrow().feasibility;
         let mut subtransit = Self {
-            reflexion: false,
+            is_reflexive: false,
             feasibility,
             paraws,
             constraints: Constraints {
@@ -213,7 +213,7 @@ impl TransitT {
         // ? OPT: bin search + remove ?
         if let Some(parent) = tab.borrow().parent.upgrade() {
             match &parent.borrow().children {
-                TabChildren::Transition(transit) if !transit.reflexion => {}
+                TabChildren::Transition(transit) if !transit.is_reflexive => {}
                 _ => parent.borrow().get_choices(choices, forkids),
             }
         }
@@ -293,13 +293,13 @@ impl DisplayTransit for TransitT {
         writeln!(
             f,
             "{rooti} {}: {}",
-            if self.reflexion { "[self]" } else { "" },
+            if self.is_reflexive { "[self]" } else { "" },
             self.feasibility.symbol()
         )?;
         writeln!(f, "{}", self.constraints)?;
         writeln!(f)?;
         TableauNode2::display_root(&self.paraws.tab, f, curri, roots)?;
-        if self.reflexion {
+        if self.is_reflexive {
             return writeln!(f);
         }
         writeln!(f)?;
@@ -323,149 +323,186 @@ impl DisplayTransit for TransitT {
     }
 }
 
-// impl ModelTransit for TransitT {
-//     fn to_graph_inner(this: DisplayTableau<Self>) -> GraphInner {
-//         let mut fruits = vec![];
-//         TableauNode2::get_fruits(&this.0, &mut fruits);
-//         let mut graph = GraphInner { adjlist: vec![] };
-//         for fruit in fruits {
-//             if fruit.borrow().is_closed() {
-//                 continue;
-//             }
-//             match &fruit.borrow().children {
-//                 TabChildren::Fork { .. } => unreachable!("Fruit should not have fork children."),
-//                 TabChildren::Transition(transit) if transit.reflexion => {
-//                     transit.to_graph_rec(None, &mut graph);
-//                     break;
-//                 }
-//                 TabChildren::Transition(_) | TabChildren::Leaf => {}
-//             }
-//             let mut formulae = vec![];
-//             fruit.borrow().traverse_anc_formulae(&mut |f| {
-//                 match f.formula.as_ref() {
-//                     Formula::PropVar(_, _)
-//                     | Formula::Box(_)
-//                     | Formula::Diamond(_)
-//                     | Formula::DiamondGe(_, _)
-//                     | Formula::DiamondLe(_, _) => formulae.push(f.clone()),
-//                     Formula::Not(formula) => match formula.as_ref() {
-//                         Formula::PropVar(_, _) => formulae.push(f.clone()),
-//                         _ => {}
-//                     },
-//                     _ => {}
-//                 };
-//                 true
-//             });
-//             let node = NodeInner {
-//                 count: 1,
-//                 formulae,
-//                 position: NodePosition { x: 0, y: 0 },
-//             };
-//             graph.adjlist.push((node, vec![]));
-//             match &fruit.borrow().children {
-//                 TabChildren::Fork { .. } => {
-//                     unreachable!("This option should have been handled earlier.")
-//                 }
-//                 TabChildren::Transition(transit) if transit.reflexion => {
-//                     unreachable!("This option should have been handled earlier.")
-//                 }
-//                 TabChildren::Transition(transit) => transit.to_graph_rec(Some(0), &mut graph),
-//                 TabChildren::Leaf => {}
-//             }
-//             break;
-//         }
-//         graph
-//     }
-// }
+impl ModelTransit for TransitT {
+    fn to_graph_inner(this: DisplayTableau<Self>) -> GraphInner {
+        let mut fruits = vec![];
+        TableauNode2::get_fruits(&this.0, &mut fruits);
+        let mut graph = GraphInner { adjlist: vec![] };
+        for fruit in fruits {
+            if fruit.borrow().is_closed() {
+                continue;
+            }
+            match &fruit.borrow().children {
+                TabChildren::Fork { .. } => unreachable!("Fruit should not have fork children."),
+                TabChildren::Transition(transit) if transit.is_reflexive => {
+                    transit.to_graph_reflexive(None, 1, &mut graph);
+                    break;
+                }
+                TabChildren::Transition(_) | TabChildren::Leaf => {}
+            }
+            let mut formulae = vec![];
+            fruit.borrow().traverse_anc_formulae(&mut |f| {
+                match f.formula.as_ref() {
+                    Formula::PropVar(_, _)
+                    | Formula::Box(_)
+                    | Formula::Diamond(_)
+                    | Formula::DiamondGe(_, _)
+                    | Formula::DiamondLe(_, _) => formulae.push(f.clone()),
+                    Formula::Not(formula) => match formula.as_ref() {
+                        Formula::PropVar(_, _) => formulae.push(f.clone()),
+                        _ => {}
+                    },
+                    _ => {}
+                };
+                true
+            });
+            let node = NodeInner {
+                count: 1,
+                formulae,
+                position: NodePosition { x: 0, y: 0 },
+            };
+            graph.adjlist.push((node, vec![]));
+            match &fruit.borrow().children {
+                TabChildren::Fork { .. } => {
+                    unreachable!("This option should have been handled earlier.")
+                }
+                TabChildren::Transition(transit) if transit.is_reflexive => {
+                    unreachable!("This option should have been handled earlier.")
+                }
+                TabChildren::Transition(transit) => transit.to_graph_rec(0, &mut graph),
+                TabChildren::Leaf => {}
+            }
+            break;
+        }
+        graph
+    }
+}
 
-// impl TransitT {
-//     pub(crate) fn to_graph_rec(&self, parent_id: Option<usize>, graph: &mut GraphInner) {
-//         let mut fruits = vec![];
-//         TableauNode2::get_fruits(&self.paraws.tab, &mut fruits);
-//         for fruit in fruits {
-//             if fruit.borrow().is_closed() {
-//                 continue;
-//             }
-//             match &fruit.borrow().children {
-//                 TabChildren::Fork { .. } => unreachable!("Fruit should not have fork children."),
-//                 TabChildren::Transition(transit) if transit.reflexion => {
-//                     return transit.to_graph_rec(parent_id, &mut graph);
-//                 }
-//                 TabChildren::Transition(_) | TabChildren::Leaf => {}
-//             }
-//         }
-//         for (c, choices) in self.solution.iter().zip(self.paraws.choices.iter()) {
-//             if *c == 0 {
-//                 continue;
-//             }
-//             for fruit in fruits.iter() {
-//                 let mut fruitchoices = vec![];
-//                 fruit
-//                     .borrow()
-//                     .get_choices(&mut fruitchoices, &self.paraws.forkids);
-//                 if &fruitchoices != choices {
-//                     continue;
-//                 }
-//                 let target = graph.adjlist.len();
-//                 graph.adjlist[parent_id]
-//                     .1
-//                     .push(EdgeInner { target, sym: false });
-//                 let mut formulae = vec![];
-//                 fruit.borrow().traverse_anc_formulae(&mut |f| {
-//                     match f.formula.as_ref() {
-//                         Formula::PropVar(_, _)
-//                         | Formula::Box(_)
-//                         | Formula::Diamond(_)
-//                         | Formula::DiamondGe(_, _)
-//                         | Formula::DiamondLe(_, _) => formulae.push(f.clone()),
-//                         Formula::Not(formula) => match formula.as_ref() {
-//                             Formula::PropVar(_, _) => formulae.push(f.clone()),
-//                             _ => {}
-//                         },
-//                         _ => {}
-//                     };
-//                     true
-//                 });
-//                 let node = NodeInner {
-//                     count: *c as usize,
-//                     formulae,
-//                     position: NodePosition { x: 0, y: 0 },
-//                 };
-//                 let currid = graph.adjlist.len();
-//                 graph.adjlist.push((node, vec![]));
-//                 match &fruit.borrow().children {
-//                     TabChildren::Leaf | TabChildren::Fork { .. } => {}
-//                     TabChildren::Transition(nexttransit) => nexttransit.to_graph_rec(currid, graph),
-//                 }
-//                 break;
-//             }
-//         }
-//     }
-// }
-
-impl IntoModelGraph for TransitT {
-    fn model_graph_rec(
+impl TransitT {
+    pub(crate) fn to_graph_reflexive(
         &self,
-        parenti: usize,
-        nodes: &mut Vec<NodeView>,
-        edges: &mut Vec<EdgeView>,
+        parent_id: Option<usize>,
+        count: usize,
+        graph: &mut GraphInner,
     ) {
-        if !self.reflexion {
-            let selfi = nodes.len();
-            let selfid = selfi.to_string();
-            nodes.push(NodeView {
-                id: selfid.clone(),
-                label: format!("#{selfi}"),
-                formulae: String::new(),
+        let mut fruits = vec![];
+        TableauNode2::get_fruits(&self.paraws.tab, &mut fruits);
+        for fruit in fruits {
+            if fruit.borrow().is_closed() {
+                continue;
+            }
+            match &fruit.borrow().children {
+                TabChildren::Fork { .. } => unreachable!("Fruit should not have fork children."),
+                TabChildren::Transition(transit) if transit.is_reflexive => {
+                    return transit.to_graph_reflexive(parent_id, count, graph);
+                }
+                TabChildren::Transition(_) | TabChildren::Leaf => {}
+            }
+            let mut formulae = vec![];
+            fruit.borrow().traverse_anc_formulae(&mut |f| {
+                match f.formula.as_ref() {
+                    Formula::PropVar(_, _)
+                    | Formula::Box(_)
+                    | Formula::Diamond(_)
+                    | Formula::DiamondGe(_, _)
+                    | Formula::DiamondLe(_, _) => formulae.push(f.clone()),
+                    Formula::Not(formula) => match formula.as_ref() {
+                        Formula::PropVar(_, _) => formulae.push(f.clone()),
+                        _ => {}
+                    },
+                    _ => {}
+                };
+                true
             });
-            edges.push(EdgeView {
-                source: parenti.to_string(),
-                target: selfid,
-                sym: String::new(),
-            });
-            self.paraws.tab.borrow().model_graph(selfi, nodes, edges);
-        } else {
-            self.paraws.tab.borrow().model_graph(parenti, nodes, edges);
+            let target = graph.adjlist.len();
+            if let Some(parent_id) = parent_id {
+                graph.adjlist[parent_id]
+                    .1
+                    .push(EdgeInner { target, sym: false });
+            }
+            let node = NodeInner {
+                count,
+                formulae,
+                position: NodePosition { x: 0, y: 0 },
+            };
+            graph.adjlist.push((node, vec![]));
+            match &fruit.borrow().children {
+                TabChildren::Fork { .. } => {
+                    unreachable!("Fruit should not have fork children.")
+                }
+                TabChildren::Transition(transit) if transit.is_reflexive => {
+                    unreachable!("This option should have been handled earlier.")
+                }
+                TabChildren::Transition(transit) => transit.to_graph_rec(target, graph),
+                TabChildren::Leaf => {}
+            }
+            break;
+        }
+    }
+
+    pub(crate) fn to_graph_rec(&self, parent_id: usize, graph: &mut GraphInner) {
+        let mut fruits = vec![];
+        TableauNode2::get_fruits(&self.paraws.tab, &mut fruits);
+        for (c, choices) in self.solution.iter().zip(self.paraws.choices.iter()) {
+            if *c == 0 {
+                continue;
+            }
+            for fruit in fruits.iter() {
+                let mut fruitchoices = vec![];
+                fruit
+                    .borrow()
+                    .get_choices(&mut fruitchoices, &self.paraws.forkids);
+                if &fruitchoices != choices {
+                    continue;
+                }
+                match &fruit.borrow().children {
+                    TabChildren::Fork { .. } => {
+                        unreachable!("Fruit should not have fork children.")
+                    }
+                    TabChildren::Transition(transit) if transit.is_reflexive => {
+                        transit.to_graph_reflexive(Some(parent_id), *c as usize, graph);
+                        break;
+                    }
+                    TabChildren::Transition(_) | TabChildren::Leaf => {}
+                }
+                let target = graph.adjlist.len();
+                graph.adjlist[parent_id]
+                    .1
+                    .push(EdgeInner { target, sym: false });
+                let mut formulae = vec![];
+                fruit.borrow().traverse_anc_formulae(&mut |f| {
+                    match f.formula.as_ref() {
+                        Formula::PropVar(_, _)
+                        | Formula::Box(_)
+                        | Formula::Diamond(_)
+                        | Formula::DiamondGe(_, _)
+                        | Formula::DiamondLe(_, _) => formulae.push(f.clone()),
+                        Formula::Not(formula) => match formula.as_ref() {
+                            Formula::PropVar(_, _) => formulae.push(f.clone()),
+                            _ => {}
+                        },
+                        _ => {}
+                    };
+                    true
+                });
+                let node = NodeInner {
+                    count: *c as usize,
+                    formulae,
+                    position: NodePosition { x: 0, y: 0 },
+                };
+                graph.adjlist.push((node, vec![]));
+                match &fruit.borrow().children {
+                    TabChildren::Fork { .. } => {
+                        unreachable!("Fruit should not have fork children.")
+                    }
+                    TabChildren::Transition(transit) if transit.is_reflexive => {
+                        unreachable!("This option should have been handled earlier.")
+                    }
+                    TabChildren::Transition(transit) => transit.to_graph_rec(target, graph),
+                    TabChildren::Leaf => {}
+                }
+                break;
+            }
         }
     }
 }

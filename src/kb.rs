@@ -460,11 +460,13 @@ impl<const R: bool> TransitB<R> {
                     formulae,
                     position: NodePosition { x: 0, y: 0 },
                 };
-                let currid = graph.adjlist.len();
                 graph.adjlist.push((node, vec![]));
                 match &fruit.borrow().children {
-                    TabChildren::Leaf | TabChildren::Fork { .. } => {}
-                    TabChildren::Transition(nexttransit) => nexttransit.to_graph_rec(currid, graph),
+                    TabChildren::Fork { .. } => {
+                        unreachable!("Fruit should not have fork children.")
+                    }
+                    TabChildren::Leaf => {}
+                    TabChildren::Transition(nexttransit) => nexttransit.to_graph_rec(target, graph),
                 }
                 break;
             }
