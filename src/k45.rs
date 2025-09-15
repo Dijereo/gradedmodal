@@ -9,7 +9,7 @@ use good_lp::{Expression, ProblemVariables, Solution, SolverModel, solvers, vari
 
 use crate::{
     formula::Formula,
-    model::{EdgeInner, EdgeView, GraphInner, IntoModelGraph, NodeInner, NodePosition, NodeView},
+    model::{EdgeInner, GraphInner, NodeInner, NodePosition},
     rules3::{Calculus, Feasibility},
     tableau2::{DisplayTableau, TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},

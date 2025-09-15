@@ -173,93 +173,6 @@ impl From<GraphInner> for GraphView {
     }
 }
 
-pub(crate) trait IntoModelGraph: BaseTransit + DisplayTransit {
-    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<NodeView>, edges: &mut Vec<EdgeView>);
-}
-
-impl DisplayTableau<Transit5> {
-    pub(crate) fn serve(
-        self,
-        formula_str: String,
-        solve_time: String,
-        parse_time: String,
-        framecond: FrameCondition,
-        validate: bool,
-    ) -> ServerResult {
-        self.base_model(formula_str, solve_time, parse_time, framecond, validate)
-    }
-}
-
-impl<T: BaseTransit + DisplayTransit + IntoModelGraph> DisplayTableau<T> {
-    pub(crate) fn base_model(
-        self,
-        formula_str: String,
-        solve_time: String,
-        parse_time: String,
-        framecond: FrameCondition,
-        validate: bool,
-    ) -> ServerResult {
-        let satisfiable = !self.0.borrow().is_closed();
-        let tabw_start = Instant::now();
-        let mut tableau = String::new();
-        let res = match (validate, satisfiable) {
-            (true, true) => writeln!(&mut tableau, "CounterSatisfiable\n"),
-            (true, false) => writeln!(&mut tableau, "Theorem\n"),
-            (false, true) => writeln!(&mut tableau, "Satisfiable\n"),
-            (false, false) => writeln!(&mut tableau, "Unsatisfiable\n"),
-        };
-        if let Err(e) = write!(&mut tableau, "{}", self) {
-            eprintln!("Error writing tableau.");
-            eprintln!("{e}");
-            return Err(ServerError::ServerErr);
-        }
-        let tabwrite_time = format!("{:.3?}", tabw_start.elapsed());
-        let graph_start = Instant::now();
-        let mut nodes = vec![NodeView {
-            id: "0".to_string(),
-            label: "1".to_string(),
-            formulae: String::new(),
-        }];
-        let mut edges = vec![];
-        self.0.borrow().model_graph(0, &mut nodes, &mut edges);
-        let graph = if satisfiable {
-            Some(GraphView {
-                nodes: nodes
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, n)| NodeViewData {
-                        data: n,
-                        position: NodePosition {
-                            x: 50 * (i % 5),
-                            y: 50 * (i / 5),
-                        },
-                    })
-                    .collect(),
-                edges: edges
-                    .into_iter()
-                    .map(|e| EdgeViewData { data: e })
-                    .collect(),
-            })
-        } else {
-            None
-        };
-        let graph_time = format!("{:.3?}", graph_start.elapsed());
-        Ok(ServerOutput {
-            formula: formula_str,
-            times: ServerTimes {
-                server_time: String::new(),
-                parse_time,
-                solve_time,
-                tabwrite_time,
-                graph_time,
-            },
-            graph,
-            tableau,
-            success: satisfiable != validate,
-        })
-    }
-}
-
 impl<T: ModelTransit + BaseTransit + DisplayTransit> DisplayTableau<T> {
     pub(crate) fn serve(
         self,
@@ -307,26 +220,5 @@ impl<T: ModelTransit + BaseTransit + DisplayTransit> DisplayTableau<T> {
             tableau,
             success: satisfiable != validate,
         })
-    }
-}
-
-impl<T: IntoModelGraph> TableauNode2<T> {
-    pub(crate) fn model_graph(
-        &self,
-        selfi: usize,
-        nodes: &mut Vec<NodeView>,
-        edges: &mut Vec<EdgeView>,
-    ) {
-        match &self.children {
-            TabChildren::Leaf => {}
-            TabChildren::Fork { branches, .. } => {
-                for branch in branches {
-                    Self::model_graph(&branch.node.borrow(), selfi, nodes, edges);
-                }
-            }
-            TabChildren::Transition(transit) => {
-                transit.model_graph_rec(selfi, nodes, edges);
-            }
-        }
     }
 }

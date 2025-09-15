@@ -9,7 +9,6 @@ use std::{
 use good_lp::{Expression, ProblemVariables, Solution, SolverModel, Variable, solvers, variable};
 
 use crate::{
-    model::{EdgeView, IntoModelGraph, NodeView},
     rules3::{Calculus, Feasibility},
     tableau2::{TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},
@@ -270,23 +269,5 @@ impl DisplayTransit for Transit4 {
             writeln!(f)?;
         }
         writeln!(f)
-    }
-}
-
-impl IntoModelGraph for Transit4 {
-    fn model_graph_rec(&self, parenti: usize, nodes: &mut Vec<NodeView>, edges: &mut Vec<EdgeView>) {
-        let selfi = nodes.len();
-        let selfid = selfi.to_string();
-        nodes.push(NodeView {
-            id: selfid.clone(),
-            label: format!("#{selfi}"),
-            formulae: String::new(),
-        });
-        edges.push(EdgeView {
-            source: parenti.to_string(),
-            target: selfid,
-            sym: String::new(),
-        });
-        self.paraws.tab.borrow().model_graph(selfi, nodes, edges)
     }
 }

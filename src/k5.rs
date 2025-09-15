@@ -9,13 +9,14 @@ use std::{
 use good_lp::{Expression, ProblemVariables, Solution, SolverModel, solvers, variable};
 
 use crate::{
-    model::{EdgeView, IntoModelGraph, NodeView},
+    formula::Formula,
+    model::{EdgeInner, GraphInner, NodeInner, NodePosition},
     rules3::{Calculus, Feasibility},
-    tableau2::{LabeledFormula, TableauNode2},
+    tableau2::{DisplayTableau, LabeledFormula, TabChildren, TableauNode2},
     timeout::{MayTimeout, TimeoutHandler},
     transit::{
-        BaseTransit, Constraints, DisplayTransit, Grading, Modals, ParallelWorlds, SolveTransit,
-        general_transit,
+        BaseTransit, Constraints, DisplayTransit, Grading, Modals, ModelTransit, ParallelWorlds,
+        SolveTransit, general_transit,
     },
 };
 
@@ -301,28 +302,147 @@ impl DisplayTransit for Transit5 {
     }
 }
 
-impl IntoModelGraph for Transit5 {
-    fn model_graph_rec(
-        &self,
-        parenti: usize,
-        nodes: &mut Vec<NodeView>,
-        edges: &mut Vec<EdgeView>,
-    ) {
-        let selfi = nodes.len();
-        let selfid = selfi.to_string();
-        nodes.push(NodeView {
-            id: selfid.clone(),
-            label: format!("#{selfi}"),
-            formulae: String::new(),
-        });
-        edges.push(EdgeView {
-            source: parenti.to_string(),
-            target: selfid,
-            sym: String::new(),
-        });
-        for pcq in &self.paracliques {
-            pcq.spotws.tab.borrow().model_graph(selfi, nodes, edges);
-            pcq.cliquews.tab.borrow().model_graph(selfi, nodes, edges);
+impl ModelTransit for Transit5 {
+    fn to_graph_inner(this: DisplayTableau<Self>) -> GraphInner {
+        let mut fruits = vec![];
+        TableauNode2::get_fruits(&this.0, &mut fruits);
+        let mut graph = GraphInner { adjlist: vec![] };
+        for fruit in fruits {
+            if fruit.borrow().is_closed() {
+                continue;
+            }
+            let mut formulae = vec![];
+            fruit.borrow().traverse_anc_formulae(&mut |f| {
+                match f.formula.as_ref() {
+                    Formula::PropVar(_, _)
+                    | Formula::Box(_)
+                    | Formula::Diamond(_)
+                    | Formula::DiamondGe(_, _)
+                    | Formula::DiamondLe(_, _) => formulae.push(f.clone()),
+                    Formula::Not(formula) => match formula.as_ref() {
+                        Formula::PropVar(_, _) => formulae.push(f.clone()),
+                        _ => {}
+                    },
+                    _ => {}
+                };
+                true
+            });
+            let node = NodeInner {
+                count: 1,
+                formulae,
+                position: NodePosition { x: 0, y: 0 },
+            };
+            graph.adjlist.push((node, vec![]));
+            match &fruit.borrow().children {
+                TabChildren::Leaf => {}
+                TabChildren::Fork { .. } => unreachable!("Fruit should not have fork children"),
+                TabChildren::Transition(transit) => {
+                    transit.to_graph_spotlight(&mut graph);
+                }
+            }
+            break;
+        }
+        graph
+    }
+}
+
+impl Transit5 {
+    fn to_graph_spotlight(&self, graph: &mut GraphInner) {
+        for paraclique in &self.paracliques {
+            if paraclique.spotws.tab.borrow().is_closed() {
+                continue;
+            }
+            for (c, choices) in paraclique
+                .spotsolution
+                .iter()
+                .zip(paraclique.spotws.choices.iter())
+            {
+                if *c == 0 {
+                    continue;
+                }
+                let mut fruits = vec![];
+                TableauNode2::get_fruits(&paraclique.spotws.tab, &mut fruits);
+                for fruit in fruits.iter() {
+                    let mut fruitchoices = vec![];
+                    fruit
+                        .borrow()
+                        .get_choices(&mut fruitchoices, &paraclique.spotws.forkids);
+                    if &fruitchoices != choices {
+                        continue;
+                    }
+                    let target = graph.adjlist.len();
+                    graph.adjlist[0].1.push(EdgeInner { target, sym: false });
+                    let mut formulae = vec![];
+                    fruit.borrow().traverse_anc_formulae(&mut |f| {
+                        match f.formula.as_ref() {
+                            Formula::PropVar(_, _)
+                            | Formula::Box(_)
+                            | Formula::Diamond(_)
+                            | Formula::DiamondGe(_, _)
+                            | Formula::DiamondLe(_, _) => formulae.push(f.clone()),
+                            Formula::Not(formula) => match formula.as_ref() {
+                                Formula::PropVar(_, _) => formulae.push(f.clone()),
+                                _ => {}
+                            },
+                            _ => {}
+                        };
+                        true
+                    });
+                    let node = NodeInner {
+                        count: *c as usize,
+                        formulae,
+                        position: NodePosition { x: 0, y: 0 },
+                    };
+                    graph.adjlist.push((node, vec![]));
+                    break;
+                }
+            }
+            paraclique.to_graph_clique(graph);
+            break;
+        }
+    }
+}
+
+impl ParaClique<Transit5> {
+    pub(crate) fn to_graph_clique(&self, graph: &mut GraphInner) {
+        let mut fruits = vec![];
+        TableauNode2::get_fruits(&self.cliquews.tab, &mut fruits);
+        for (c, choices) in self.cliquesolution.iter().zip(self.cliquews.choices.iter()) {
+            if *c == 0 {
+                continue;
+            }
+            for fruit in fruits.iter() {
+                let mut fruitchoices = vec![];
+                fruit
+                    .borrow()
+                    .get_choices(&mut fruitchoices, &self.cliquews.forkids);
+                if &fruitchoices != choices {
+                    continue;
+                }
+                let mut formulae = vec![];
+                fruit.borrow().traverse_anc_formulae(&mut |f| {
+                    match f.formula.as_ref() {
+                        Formula::PropVar(_, _)
+                        | Formula::Box(_)
+                        | Formula::Diamond(_)
+                        | Formula::DiamondGe(_, _)
+                        | Formula::DiamondLe(_, _) => formulae.push(f.clone()),
+                        Formula::Not(formula) => match formula.as_ref() {
+                            Formula::PropVar(_, _) => formulae.push(f.clone()),
+                            _ => {}
+                        },
+                        _ => {}
+                    };
+                    true
+                });
+                let node = NodeInner {
+                    count: *c as usize,
+                    formulae,
+                    position: NodePosition { x: 0, y: 0 },
+                };
+                graph.adjlist.push((node, vec![]));
+                break;
+            }
         }
     }
 }
