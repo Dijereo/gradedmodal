@@ -190,19 +190,6 @@ impl DisplayTableau<Transit5> {
     }
 }
 
-impl DisplayTableau<TransitB5> {
-    pub(crate) fn serve(
-        self,
-        formula_str: String,
-        solve_time: String,
-        parse_time: String,
-        framecond: FrameCondition,
-        validate: bool,
-    ) -> ServerResult {
-        self.base_model(formula_str, solve_time, parse_time, framecond, validate)
-    }
-}
-
 impl<T: BaseTransit + DisplayTransit + IntoModelGraph> DisplayTableau<T> {
     pub(crate) fn base_model(
         self,
