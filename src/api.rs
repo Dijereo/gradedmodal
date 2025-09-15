@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use axum::{
     Json,
@@ -11,7 +11,7 @@ use crate::{
     formula::full_parser,
     frame::FrameCondition,
     model::GraphView,
-    timeout::{NoopHandler, Timedout, TimeoutHandler},
+    timeout::{NoopHandler, StopHandler, Timedout, TimeoutHandler},
     token::tokenize,
 };
 
@@ -65,7 +65,23 @@ impl IntoResponse for ServerError {
             ServerError::ActionErr(err) => (StatusCode::BAD_REQUEST, err).into_response(),
             ServerError::ServerErr => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             ServerError::NotImplemented(err) => (StatusCode::NOT_IMPLEMENTED, err).into_response(),
-            ServerError::Timedout => StatusCode::REQUEST_TIMEOUT.into_response(),
+            ServerError::Timedout => (
+                StatusCode::OK,
+                Json(ServerOutput {
+                    formula: String::new(),
+                    times: ServerTimes {
+                        server_time: String::new(),
+                        parse_time: String::new(),
+                        solve_time: String::new(),
+                        tabwrite_time: String::new(),
+                        graph_time: String::new(),
+                    },
+                    graph: None,
+                    tableau: "Timedout or Out of Memory".to_string(),
+                    success: false,
+                }),
+            )
+                .into_response(),
         }
     }
 }
@@ -77,7 +93,7 @@ pub(crate) async fn solve_endpt(Json(json): Json<UserSubmission>) -> ServerResul
         "val" => true,
         _ => return Err(ServerError::ActionErr(json.action)),
     };
-    let toh = NoopHandler;
+    let (toh, handle) = StopHandler::new(Duration::from_secs(5), None);
     solve(&json.formula, &json.frames, validate, toh)
 }
 

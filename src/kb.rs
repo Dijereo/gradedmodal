@@ -373,14 +373,8 @@ impl<const R: bool> DisplayTransit for TransitB<R> {
 
 impl<const R: bool> ModelTransit for TransitB<R> {
     fn to_graph_inner(this: DisplayTableau<Self>) -> GraphInner {
-        Self::to_graph_starting(&this.0)
-    }
-}
-
-impl<const R: bool> TransitB<R> {
-    fn to_graph_starting(this: &Rc<RefCell<TableauNode2<Self>>>) -> GraphInner {
         let mut fruits = vec![];
-        TableauNode2::get_fruits(this, &mut fruits);
+        TableauNode2::get_fruits(&this.0, &mut fruits);
         let mut graph = GraphInner { adjlist: vec![] };
         for fruit in fruits {
             if fruit.borrow().is_closed() {
@@ -415,6 +409,50 @@ impl<const R: bool> TransitB<R> {
                 position: NodePosition { x: 0, y: 0 },
             };
             graph.adjlist.push((node, vec![]));
+            break;
+        }
+        graph
+    }
+}
+
+impl<const R: bool> TransitB<R> {
+    fn to_graph_starting(this: &Rc<RefCell<TableauNode2<Self>>>) -> GraphInner {
+        let mut fruits = vec![];
+        TableauNode2::get_fruits(this, &mut fruits);
+        let mut graph = GraphInner { adjlist: vec![] };
+        for fruit in fruits {
+            if fruit.borrow().is_closed() {
+                continue;
+            }
+            let mut formulae = vec![];
+            fruit.borrow().traverse_anc_formulae(&mut |f| {
+                match f.formula.as_ref() {
+                    Formula::PropVar(_, _)
+                    | Formula::Box(_)
+                    | Formula::Diamond(_)
+                    | Formula::DiamondGe(_, _)
+                    | Formula::DiamondLe(_, _) => formulae.push(f.clone()),
+                    Formula::Not(formula) => match formula.as_ref() {
+                        Formula::PropVar(_, _) => formulae.push(f.clone()),
+                        _ => {}
+                    },
+                    _ => {}
+                };
+                true
+            });
+            let node = NodeInner {
+                count: 1,
+                formulae,
+                position: NodePosition { x: 0, y: 0 },
+            };
+            graph.adjlist.push((node, vec![]));
+            match &fruit.borrow().children {
+                TabChildren::Leaf => {}
+                TabChildren::Fork { .. } => unreachable!("Fruit should not have fork children"),
+                TabChildren::Transition(transit) => {
+                    transit.to_graph_rec(0, &mut graph);
+                }
+            }
             break;
         }
         graph

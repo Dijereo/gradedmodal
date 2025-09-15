@@ -1,0 +1,16 @@
+# What is Golem
+Golem is a tableau-based automated theorem prover for graded modal logic.
+
+# How to run Golem
+The easiest way to run Golem is to pull the docker image using
+
+`docker pull dionrecai/golem:latest`,
+
+then run the container using:
+
+`docker run -d -p 3001:3000 dionrecai/golem:latest`.
+
+You can change port `3001` to any available port.
+
+Finally, Golem's web app will be available at
+`localhost:3001` or whatever port you set.
